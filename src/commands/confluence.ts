@@ -6,7 +6,7 @@ import type { CopyOptions } from "./jira.ts";
 import { adfToMarkdown } from "../adf/to-markdown.ts";
 import { downloadAttachments } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
-import { fetchPage } from "../api/confluence.ts";
+import { fetchPage, searchPages } from "../api/confluence.ts";
 import { requireAuth } from "../credentials.ts";
 import {
 	attachmentsSection,
@@ -16,17 +16,71 @@ import {
 	mediaResolver,
 } from "../markdown/document.ts";
 import { resolveOutput, slugify } from "../util/output-path.ts";
-import { parsePageId } from "../util/parse.ts";
+import { parseLimit, parsePageId } from "../util/parse.ts";
+import { runSearch } from "./search-run.ts";
+
+export interface SearchOptions {
+	space?: string;
+	cql?: string;
+	limit?: string;
+	json?: boolean;
+	copy?: boolean;
+	out?: string;
+}
 
 export async function confluenceCopy(arg: string | undefined, options: CopyOptions): Promise<void> {
 	const auth = await requireAuth();
 	const id = await resolveId(arg);
-
 	const client = new AtlassianClient(auth);
-	console.log(`Fetching page ${id} ...`);
-	const page = await fetchPage(client, auth.site, id);
+	await copyPage(client, auth.site, id, options.out);
+}
 
-	const target = resolveOutput(`${page.id}-${slugify(page.title)}`, options.out);
+export async function confluenceSearch(
+	query: string | undefined,
+	options: SearchOptions,
+): Promise<void> {
+	if (options.cql && (query || options.space)) {
+		throw new Error("--cql cannot be combined with a text query or --space.");
+	}
+	if (options.json && options.copy) {
+		throw new Error("--json and --copy cannot be used together.");
+	}
+
+	const auth = await requireAuth();
+	const client = new AtlassianClient(auth);
+	const limit = parseLimit(options.limit);
+	const { pages, hasMore } = await searchPages(client, auth.site, {
+		text: query,
+		space: options.space,
+		cql: options.cql,
+		limit,
+	});
+
+	await runSearch(
+		pages.map((p) => ({
+			id: p.id,
+			prefix: `${p.id}  ${p.space}`,
+			text: p.title,
+			json: { id: p.id, space: p.space, title: p.title, url: p.url },
+		})),
+		{ json: options.json, copy: options.copy, limit, hasMore, out: options.out },
+		{ singular: "page", plural: "pages" },
+		(id) => copyPage(client, auth.site, id, options.out),
+	);
+}
+
+// Fetch one page and write it to Markdown. Shared by the copy command and the
+// search picker.
+async function copyPage(
+	client: AtlassianClient,
+	site: string,
+	id: string,
+	out: string | undefined,
+): Promise<void> {
+	console.log(`Fetching page ${id} ...`);
+	const page = await fetchPage(client, site, id);
+
+	const target = resolveOutput(`${page.id}-${slugify(page.title)}`, out);
 	const downloaded = await downloadAttachments(
 		client,
 		page.attachments,

@@ -2,6 +2,8 @@ import type { AdfNode } from "../adf/types.ts";
 import type { RemoteAttachment } from "./attachments.ts";
 import type { AtlassianClient } from "./client.ts";
 
+import { decodeEntities } from "../util/html.ts";
+
 export interface ConfluenceComment {
 	author: string;
 	created: string;
@@ -83,6 +85,77 @@ export async function fetchPage(
 		attachments,
 		comments,
 	};
+}
+
+export interface PageSummary {
+	id: string;
+	space: string;
+	title: string;
+	url: string;
+}
+
+export interface PageSearchParams {
+	text?: string;
+	space?: string;
+	cql?: string;
+	limit: number;
+}
+
+interface SearchResponse {
+	results?: {
+		content?: { id?: string; title?: string };
+		title?: string;
+		url?: string;
+		space?: { key?: string };
+		resultGlobalContainer?: { title?: string };
+	}[];
+}
+
+export interface PageSearchResult {
+	pages: PageSummary[];
+	// the API returned a full page, so more matches may exist
+	hasMore: boolean;
+}
+
+export async function searchPages(
+	client: AtlassianClient,
+	site: string,
+	params: PageSearchParams,
+): Promise<PageSearchResult> {
+	const cql = buildCql(params);
+	const query = new URLSearchParams({
+		cql,
+		limit: String(params.limit),
+		expand: "space",
+	});
+	const res = await client.getJson<SearchResponse>(`/wiki/rest/api/search?${query.toString()}`);
+	const results = res.results ?? [];
+	// count against the raw results: some rows are dropped below for lacking a
+	// content id, which must not hide that the server had a full page.
+	const pages = results
+		.filter((r) => r.content?.id)
+		.map((r) => ({
+			id: r.content?.id ?? "",
+			space: r.space?.key ?? r.resultGlobalContainer?.title ?? "",
+			title: decodeEntities(r.content?.title ?? r.title ?? ""),
+			url: r.url ? `${site}/wiki${r.url}` : "",
+		}));
+	return { pages, hasMore: results.length === params.limit };
+}
+
+// Build CQL from friendly params, or return the raw --cql verbatim. Friendly
+// mode always constrains to pages so every result is copy-able.
+export function buildCql(params: PageSearchParams): string {
+	if (params.cql) return params.cql;
+	const clauses = ["type = page"];
+	if (params.space) clauses.push(`space = ${cqlValue(params.space)}`);
+	if (params.text) clauses.push(`text ~ ${cqlValue(params.text)}`);
+	return `${clauses.join(" AND ")} ORDER BY lastmodified DESC`;
+}
+
+// Quote and escape a value for use in a CQL string literal.
+function cqlValue(value: string): string {
+	return `"${value.replace(/(["\\])/g, "\\$1")}"`;
 }
 
 async function fetchSpaceKey(client: AtlassianClient, spaceId: string): Promise<string> {

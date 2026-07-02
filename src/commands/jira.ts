@@ -4,7 +4,7 @@ import { writeFile } from "node:fs/promises";
 import { adfToMarkdown } from "../adf/to-markdown.ts";
 import { downloadAttachments } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
-import { fetchIssue } from "../api/jira.ts";
+import { fetchIssue, searchIssues } from "../api/jira.ts";
 import { requireAuth } from "../credentials.ts";
 import {
 	attachmentsSection,
@@ -14,21 +14,82 @@ import {
 	mediaResolver,
 } from "../markdown/document.ts";
 import { resolveOutput } from "../util/output-path.ts";
-import { parseIssueKey } from "../util/parse.ts";
+import { parseIssueKey, parseLimit } from "../util/parse.ts";
+import { runSearch } from "./search-run.ts";
 
 export interface CopyOptions {
+	out?: string;
+}
+
+export interface SearchOptions {
+	project?: string;
+	assignee?: string;
+	status?: string;
+	jql?: string;
+	limit?: string;
+	json?: boolean;
+	copy?: boolean;
 	out?: string;
 }
 
 export async function jiraCopy(arg: string | undefined, options: CopyOptions): Promise<void> {
 	const auth = await requireAuth();
 	const key = await resolveKey(arg);
-
 	const client = new AtlassianClient(auth);
-	console.log(`Fetching ${key} ...`);
-	const issue = await fetchIssue(client, auth.site, key);
+	await copyIssue(client, auth.site, key, options.out);
+}
 
-	const target = resolveOutput(issue.key, options.out);
+export async function jiraSearch(query: string | undefined, options: SearchOptions): Promise<void> {
+	if (options.jql && (query || options.project || options.assignee || options.status)) {
+		throw new Error("--jql cannot be combined with a text query or other filters.");
+	}
+	if (options.json && options.copy) {
+		throw new Error("--json and --copy cannot be used together.");
+	}
+
+	const auth = await requireAuth();
+	const client = new AtlassianClient(auth);
+	const limit = parseLimit(options.limit);
+	const issues = await searchIssues(client, auth.site, {
+		text: query,
+		project: options.project,
+		assignee: options.assignee,
+		status: options.status,
+		jql: options.jql,
+		limit,
+	});
+
+	await runSearch(
+		issues.map((i) => ({
+			id: i.key,
+			prefix: `${i.key}  ${i.status}`,
+			text: i.summary,
+			json: { key: i.key, status: i.status, summary: i.summary, url: i.url },
+		})),
+		{
+			json: options.json,
+			copy: options.copy,
+			limit,
+			hasMore: issues.length === limit,
+			out: options.out,
+		},
+		{ singular: "issue", plural: "issues" },
+		(key) => copyIssue(client, auth.site, key, options.out),
+	);
+}
+
+// Fetch one issue and write it to Markdown. Shared by the copy command and the
+// search picker.
+async function copyIssue(
+	client: AtlassianClient,
+	site: string,
+	key: string,
+	out: string | undefined,
+): Promise<void> {
+	console.log(`Fetching ${key} ...`);
+	const issue = await fetchIssue(client, site, key);
+
+	const target = resolveOutput(issue.key, out);
 	const downloaded = await downloadAttachments(
 		client,
 		issue.attachments,

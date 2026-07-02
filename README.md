@@ -72,6 +72,49 @@ atlass confluence copy     # prompts for the id or URL
 Accepts a numeric page id or a page URL. Writes `123456-title-slug.md` to the
 current directory.
 
+### Search Jira issues
+
+```bash
+atlass jira search "safari login"                 # free text
+atlass jira search --project PROJ --assignee me   # my open issues in PROJ
+atlass jira search --status "In Progress"
+atlass jira search --jql "project = PROJ AND labels = regression"
+atlass jira search                                # recent issues
+```
+
+Friendly filters (`--project`, `--assignee`, `--status`, text) are AND'd
+together and ordered by most recently updated. `--assignee me` maps to the
+current user. `--jql` takes a raw query and cannot be combined with the friendly
+filters. Prints one issue per line (`KEY  status  summary`); use `--json` for
+machine output. Only the first `--limit` results are shown (default 25, max
+100).
+
+### Search Confluence pages
+
+```bash
+atlass confluence search "onboarding"
+atlass confluence search --space DOCS
+atlass confluence search --cql "label = runbook ORDER BY created DESC"
+atlass confluence search                          # recent pages
+```
+
+Friendly mode always constrains to pages, so every result is copy-able. `--cql`
+takes a raw query and cannot be combined with `--space` or text. Prints one page
+per line (`id  space  title`); `--json` and `--limit` work as for Jira.
+
+### Copy from search results
+
+Add `--copy` to any search to pick results interactively and copy each to
+Markdown (multi-select, needs an interactive terminal). With `--copy`, `--out`
+is a directory that every selected file is written into:
+
+```bash
+atlass jira search --project PROJ --copy --out ./tickets/
+atlass confluence search --space DOCS --copy
+```
+
+Copying continues on failure and reports a summary at the end.
+
 ### Output location
 
 By default files are written to the current directory, named after the issue
