@@ -1,0 +1,41 @@
+{
+	"name": "atlass",
+	"version": "0.0.0",
+	"description": "CLI to copy Jira issues and Confluence pages to Markdown.",
+	"license": "MIT",
+	"bin": {
+		"atlass": "./dist/cli.mjs"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"exports": {
+		".": "./dist/cli.mjs",
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "vp pack",
+		"dev": "vp pack --watch",
+		"test": "vp test",
+		"check": "vp check",
+		"prepublishOnly": "vp run build",
+		"prepare": "vp config"
+	},
+	"dependencies": {
+		"@inquirer/prompts": "^8.5.2",
+		"@napi-rs/keyring": "^1.3.0",
+		"commander": "^15.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^25.6.2",
+		"@typescript/native-preview": "7.0.0-dev.20260509.2",
+		"bumpp": "^11.1.0",
+		"typescript": "^6.0.3",
+		"vite-plus": "^0.1.20"
+	},
+	"packageManager": "pnpm@11.9.0"
+}
