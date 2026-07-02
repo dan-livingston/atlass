@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 
+import pkg from "../package.json" with { type: "json" };
 import { login, logout, status } from "./commands/auth.ts";
 import { confluenceCopy } from "./commands/confluence.ts";
 import { jiraCopy } from "./commands/jira.ts";
@@ -10,7 +11,7 @@ const program = new Command();
 program
 	.name("atlass")
 	.description("Copy Jira issues and Confluence pages to Markdown.")
-	.version("0.0.0");
+	.version(pkg.version);
 
 const auth = program.command("auth").description("Manage Atlassian credentials");
 auth.command("login").description("Store site, email, and API token").action(run(login));
