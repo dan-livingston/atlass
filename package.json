@@ -23,7 +23,8 @@
 		"test": "vp test",
 		"check": "vp check",
 		"prepublishOnly": "vp run build",
-		"prepare": "vp config"
+		"prepare": "vp config",
+		"release": "bumpp"
 	},
 	"dependencies": {
 		"@inquirer/prompts": "^8.5.2",
