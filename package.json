@@ -3,8 +3,12 @@
 	"version": "1.1.0",
 	"description": "CLI to copy Jira issues and Confluence pages to Markdown.",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dan-livingston/atlass.git"
+	},
 	"bin": {
-		"atlass": "./dist/cli.mjs"
+		"atlass": "dist/cli.mjs"
 	},
 	"files": [
 		"dist"
