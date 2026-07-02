@@ -10,7 +10,7 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: read
-            id-token: write # provenance
+            id-token: write # OIDC trusted publishing + provenance
         steps:
             - uses: actions/checkout@v7
 
@@ -28,6 +28,19 @@ jobs:
 
             - run: pnpm test
 
-            - run: pnpm publish --provenance --no-git-checks
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+            - run: pnpm build
+
+            # skip if this version is already on npm (e.g. the bootstrap v1.0.0 tag)
+            - id: check
+              run: |
+                  name=$(node -p "require('./package.json').name")
+                  version=$(node -p "require('./package.json').version")
+                  if npm view "$name@$version" version >/dev/null 2>&1; then
+                      echo "exists=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "exists=false" >> "$GITHUB_OUTPUT"
+                  fi
+
+            # npm publish (not pnpm) for OIDC: pnpm 11 OIDC publish is broken (pnpm#11513)
+            - if: steps.check.outputs.exists == 'false'
+              run: npm publish
