@@ -12,9 +12,14 @@ export class AtlassianClient {
 		this.authHeader = `Basic ${basic}`;
 	}
 
-	private async request(path: string, accept: string): Promise<Response> {
+	private async request(
+		path: string,
+		init: { method?: string; headers?: Record<string, string>; body?: string | FormData },
+	): Promise<Response> {
 		const res = await fetch(`${this.site}${path}`, {
-			headers: { Authorization: this.authHeader, Accept: accept },
+			method: init.method,
+			body: init.body,
+			headers: { Authorization: this.authHeader, ...init.headers },
 		});
 		if (!res.ok) {
 			const body = await res.text().catch(() => "");
@@ -24,7 +29,30 @@ export class AtlassianClient {
 	}
 
 	async getJson<T>(path: string): Promise<T> {
-		const res = await this.request(path, "application/json");
+		const res = await this.request(path, { headers: { Accept: "application/json" } });
+		return res.json() as Promise<T>;
+	}
+
+	async putJson<T>(path: string, body: unknown): Promise<T> {
+		const res = await this.request(path, {
+			method: "PUT",
+			headers: { Accept: "application/json", "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+		return res.json() as Promise<T>;
+	}
+
+	// upload a file as multipart/form-data. the field name must be "file" and the
+	// XSRF check must be disabled for the Confluence attachment endpoint.
+	async postMultipart<T>(path: string, filename: string, bytes: Uint8Array): Promise<T> {
+		const form = new FormData();
+		const blob = new Blob([bytes as unknown as Uint8Array<ArrayBuffer>]);
+		form.append("file", blob, filename);
+		const res = await this.request(path, {
+			method: "POST",
+			headers: { Accept: "application/json", "X-Atlassian-Token": "nocheck" },
+			body: form,
+		});
 		return res.json() as Promise<T>;
 	}
 
@@ -32,7 +60,7 @@ export class AtlassianClient {
 	// URLs the Atlassian APIs hand back for media/content.
 	async getBinary(url: string): Promise<Uint8Array> {
 		const path = url.startsWith("http") ? new URL(url).pathname + new URL(url).search : url;
-		const res = await this.request(path, "*/*");
+		const res = await this.request(path, { headers: { Accept: "*/*" } });
 		return new Uint8Array(await res.arrayBuffer());
 	}
 }
@@ -45,6 +73,15 @@ function httpError(status: number, path: string, body = ""): Error {
 	}
 	if (status === 404) {
 		return new Error(`Not found (404): ${path}`);
+	}
+	if (status === 409) {
+		const detail = extractError(body);
+		return new Error(`Conflict (409): ${detail || "the page changed on the server"}`);
+	}
+	if (status === 413) {
+		return new Error(
+			"Payload too large (413): the page or an attachment exceeds the size limit.",
+		);
 	}
 	if (status === 400) {
 		const detail = extractError(body);

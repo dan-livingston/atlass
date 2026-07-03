@@ -12,6 +12,8 @@ export interface AdfNode {
 	content?: AdfNode[];
 	marks?: AdfMark[];
 	text?: string;
+	// only set on the top-level "doc" node (atlas_doc_format requires version 1)
+	version?: number;
 }
 
 export interface MediaAttrs {

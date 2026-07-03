@@ -3,7 +3,7 @@ import { Command } from "commander";
 
 import pkg from "../package.json" with { type: "json" };
 import { login, logout, status } from "./commands/auth.ts";
-import { confluenceCopy, confluenceSearch } from "./commands/confluence.ts";
+import { confluenceCopy, confluenceSearch, confluenceUpdate } from "./commands/confluence.ts";
 import { jiraCopy, jiraSearch } from "./commands/jira.ts";
 
 const program = new Command();
@@ -41,6 +41,14 @@ confluence
 	.description("Copy a Confluence page (id or URL) to a Markdown file")
 	.option("-o, --out <path>", "output file or directory")
 	.action(run(confluenceCopy));
+confluence
+	.command("update [file]")
+	.description("Update a Confluence page from an edited Markdown file")
+	.option("--title", "also push the H1 as the page title")
+	.option("-m, --message <text>", "version message (default 'Updated via atlass')")
+	.option("-f, --force", "skip the stale-version and data-loss checks")
+	.option("--dry-run", "show what would change without writing")
+	.action(run(confluenceUpdate));
 confluence
 	.command("search [query]")
 	.description("Search Confluence pages (text query, --space, or --cql)")

@@ -1,10 +1,12 @@
 # atlass
 
-CLI to copy Jira issues and Confluence pages to Markdown.
+CLI to copy Jira issues and Confluence pages to Markdown, and push edits back to
+Confluence.
 
 Fetches an issue or page from Atlassian Cloud, converts its rich content to
 Markdown, writes a `.md` file with YAML frontmatter, and downloads any
-attachments alongside it.
+attachments alongside it. Confluence pages can be edited locally and updated
+back on the server.
 
 ## Install
 
@@ -71,6 +73,44 @@ atlass confluence copy     # prompts for the id or URL
 
 Accepts a numeric page id or a page URL. Writes `123456-title-slug.md` to the
 current directory.
+
+### Update a Confluence page
+
+Copy a page, edit the Markdown, then push it back:
+
+```bash
+atlass confluence update 123456-title-slug.md
+atlass confluence update            # prompts for the file path
+atlass confluence update file.md --dry-run   # show what would change, write nothing
+atlass confluence update file.md --title     # also rename the page to the H1
+atlass confluence update file.md -m "fix typo"
+```
+
+The page id and version come from the file's frontmatter, so the file is
+self-describing. The body is everything between the H1 and the `## Comments`
+section; the frontmatter, the H1, and the `## Comments` / `## Attachments`
+sections are not sent as page content.
+
+Only the body is updated by default. Pass `--title` to also push the H1 as the
+new page title.
+
+Notes and safety:
+
+- The body is converted from Markdown to ADF. Only the standard constructs the
+  copy produces round-trip (headings, lists, task lists, code, blockquotes,
+  tables, rules, inline marks, links, images). Confluence-specific content
+  (panels, expands, macros, layouts) was flattened to plain Markdown on copy
+  and cannot be rebuilt. When the live page still contains such content, the
+  update warns and asks for confirmation before overwriting.
+- Before writing, the current server version is checked against the frontmatter
+  version. If the page changed since you copied it, the update aborts so you can
+  re-copy. `--force` overrides this and the data-loss confirmation.
+- Images referenced in the body are uploaded as attachments (matched by name and
+  size, so unchanged images are not re-uploaded). Local paths resolve relative
+  to the Markdown file; a missing local image aborts the update. External image
+  URLs are kept as external media.
+- Each update adds a version with the message `Updated via atlass` (override
+  with `--message`).
 
 ### Search Jira issues
 
@@ -199,12 +239,15 @@ pnpm dev       # build in watch mode
 
 - `src/cli.ts` command wiring (commander)
 - `src/commands/` `auth`, `jira`, `confluence` command handlers
-- `src/api/` fetch client, Jira and Confluence endpoints, attachment downloader
-- `src/adf/` ADF to Markdown converter (unit tested)
-- `src/markdown/` frontmatter, comments, attachments, media resolver
+- `src/api/` fetch client, Jira and Confluence endpoints, attachment up/download
+- `src/adf/` ADF to Markdown and Markdown to ADF converters (unit tested)
+- `src/markdown/` frontmatter, comments, attachments, media resolver, update source
 - `src/config.ts`, `src/credentials.ts` config file and keyring
 - `src/util/` key/id parsing and output path resolution
 
 The ADF to Markdown converter in `src/adf/to-markdown.ts` is a single hand
 rolled walker shared by both commands. Confluence page bodies are requested as
-`atlas_doc_format` so they flow through the same converter as Jira.
+`atlas_doc_format` so they flow through the same converter as Jira. The reverse
+direction, `src/adf/from-markdown.ts`, tokenizes Markdown with `marked` and
+emits ADF for the Confluence update command; it covers the same clean subset the
+copy produces.
