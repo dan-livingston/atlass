@@ -4,7 +4,7 @@ import { Command } from "commander";
 import pkg from "../package.json" with { type: "json" };
 import { login, logout, status } from "./commands/auth.ts";
 import { confluenceCopy, confluenceSearch, confluenceUpdate } from "./commands/confluence.ts";
-import { jiraCopy, jiraSearch } from "./commands/jira.ts";
+import { jiraCopy, jiraSearch, jiraUpdate } from "./commands/jira.ts";
 
 const program = new Command();
 
@@ -23,6 +23,12 @@ jira.command("copy [issue]")
 	.description("Copy a Jira issue (key or URL) to a Markdown file")
 	.option("-o, --out <path>", "output file or directory")
 	.action(run(jiraCopy));
+jira.command("update [file]")
+	.description("Update a Jira issue description from an edited Markdown file")
+	.option("--summary", "also push the H1 as the issue summary")
+	.option("-f, --force", "skip the stale-issue and data-loss checks")
+	.option("--dry-run", "show what would change without writing")
+	.action(run(jiraUpdate));
 jira.command("search [query]")
 	.description("Search Jira issues (text query, filters, or --jql)")
 	.option("-p, --project <key>", "limit to a project")

@@ -98,6 +98,24 @@ export async function fetchIssue(
 	};
 }
 
+export interface IssueUpdate {
+	description: AdfNode;
+	// pushed as the new issue summary only when set
+	summary?: string;
+}
+
+// Update an issue's description (and optionally summary). The edit endpoint
+// returns 204 No Content, so nothing is parsed back.
+export async function updateIssue(
+	client: AtlassianClient,
+	key: string,
+	update: IssueUpdate,
+): Promise<void> {
+	const fields: Record<string, unknown> = { description: update.description };
+	if (update.summary !== undefined) fields["summary"] = update.summary;
+	await client.put(`/rest/api/3/issue/${encodeURIComponent(key)}`, { fields });
+}
+
 export interface IssueSummary {
 	key: string;
 	status: string;

@@ -42,6 +42,16 @@ export class AtlassianClient {
 		return res.json() as Promise<T>;
 	}
 
+	// PUT with no response parsing, for endpoints that return 204 No Content
+	// (e.g. the Jira issue edit endpoint).
+	async put(path: string, body: unknown): Promise<void> {
+		await this.request(path, {
+			method: "PUT",
+			headers: { Accept: "application/json", "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+	}
+
 	// upload a file as multipart/form-data. the field name must be "file" and the
 	// XSRF check must be disabled for the Confluence attachment endpoint.
 	async postMultipart<T>(path: string, filename: string, bytes: Uint8Array): Promise<T> {

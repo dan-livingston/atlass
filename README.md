@@ -63,6 +63,40 @@ atlass jira copy            # prompts for the key or URL
 Accepts an issue key or any URL containing one. Writes `PROJ-123.md` to the
 current directory.
 
+### Update a Jira issue
+
+Copy an issue, edit the Markdown, then push the description back:
+
+```bash
+atlass jira update PROJ-123.md
+atlass jira update                     # prompts for the file path
+atlass jira update file.md --dry-run   # show what would change, write nothing
+atlass jira update file.md --summary   # also push the H1 as the issue summary
+```
+
+The issue key comes from the file's frontmatter. The body is everything between
+the H1 and the `## Comments` section; the frontmatter, the H1, and the
+`## Comments` / `## Attachments` sections are not sent.
+
+Only the description is updated by default. Pass `--summary` to also push the H1
+as the new issue summary.
+
+Notes and safety:
+
+- The body is converted from Markdown to ADF. Only the standard constructs the
+  copy produces round-trip (headings, lists, task lists, code, blockquotes,
+  tables, rules, inline marks, links). Jira-specific content (panels, macros)
+  was flattened to plain Markdown on copy and cannot be rebuilt. When the live
+  description still contains such content, the update warns and asks for
+  confirmation before overwriting.
+- Jira has no page-style version number, so staleness is checked against the
+  frontmatter `updated` timestamp. If the issue changed since you copied it, the
+  update aborts so you can re-copy. `--force` overrides this and the data-loss
+  confirmation.
+- Image changes are not supported yet. External image URLs are kept as external
+  media, but a local image reference aborts the update (edit text only), and a
+  server-side image in the description is reported before it would be removed.
+
 ### Copy a Confluence page
 
 ```bash
