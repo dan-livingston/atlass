@@ -11,6 +11,7 @@ function pipeline(over: Partial<PipelineSummary>): PipelineSummary {
 		buildNumber: 1,
 		status: "SUCCESSFUL",
 		ref: "main",
+		commit: "a1b2c3d",
 		durationSeconds: 154,
 		createdOn: "2026-07-14T12:00:00Z",
 		creator: "Dana Scully",
@@ -59,6 +60,12 @@ test("pipeline rows: a running build has no duration and empty fields dash", () 
 			NOW,
 		),
 	).toEqual(["#5  IN_PROGRESS  main  -  3d ago  -"]);
+});
+
+test("pipeline rows: a commit-target run with no branch ref shows the commit", () => {
+	expect(
+		formatPipelineRows([pipeline({ buildNumber: 7, ref: "", commit: "5c09b34" })], NOW),
+	).toEqual(["#7  SUCCESSFUL  5c09b34  2m34s  3d ago  Dana Scully"]);
 });
 
 function step(over: Partial<StepSummary>): StepSummary {

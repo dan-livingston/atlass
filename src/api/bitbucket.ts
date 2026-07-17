@@ -19,7 +19,7 @@ interface PipelineValue {
 	trigger?: { name?: string };
 	creator?: { display_name?: string };
 	created_on?: string;
-	build_seconds_used?: number;
+	completed_on?: string;
 	repository?: { full_name?: string };
 }
 
@@ -42,6 +42,8 @@ export interface PipelineSummary {
 	buildNumber: number;
 	status: string;
 	ref: string;
+	// short commit hash; shown when a run has no branch/tag ref (commit target)
+	commit: string;
 	durationSeconds: number | null;
 	createdOn: string;
 	creator: string;
@@ -50,7 +52,6 @@ export interface PipelineSummary {
 
 export interface PipelineDetail extends PipelineSummary {
 	repo: string;
-	commit: string;
 	trigger: string;
 }
 
@@ -78,15 +79,17 @@ export function pipelinesQuery(limit: number): string {
 	return new URLSearchParams({ sort: "-created_on", pagelen: String(pagelen) }).toString();
 }
 
-// Steps report start/completion timestamps rather than a duration; derive whole
-// elapsed seconds, or null while a step is still running.
-export function stepDurationSeconds(
-	startedOn: string | undefined,
-	completedOn: string | undefined,
+// Whole elapsed seconds between two ISO timestamps, or null if either is missing
+// or unparseable. Used for a step's runtime and a pipeline's wall-clock duration
+// (build_seconds_used counts billable minutes, which are 0 on self-hosted
+// runners, so it is not a reliable duration).
+export function elapsedSeconds(
+	startOn: string | undefined,
+	endOn: string | undefined,
 ): number | null {
-	if (!startedOn || !completedOn) return null;
-	const start = Date.parse(startedOn);
-	const end = Date.parse(completedOn);
+	if (!startOn || !endOn) return null;
+	const start = Date.parse(startOn);
+	const end = Date.parse(endOn);
 	if (Number.isNaN(start) || Number.isNaN(end)) return null;
 	return Math.floor((end - start) / 1000);
 }
@@ -124,7 +127,8 @@ function mapPipeline(p: PipelineValue): PipelineSummary {
 		buildNumber: p.build_number,
 		status: pipelineStatus(p.state),
 		ref: p.target?.ref_name ?? "",
-		durationSeconds: p.build_seconds_used ?? null,
+		commit: p.target?.commit?.hash?.slice(0, 7) ?? "",
+		durationSeconds: elapsedSeconds(p.created_on, p.completed_on),
 		createdOn: p.created_on ?? "",
 		creator: p.creator?.display_name ?? "",
 		uuid: p.uuid,
@@ -135,7 +139,6 @@ function mapDetail(p: PipelineValue): PipelineDetail {
 	return {
 		...mapPipeline(p),
 		repo: p.repository?.full_name ?? "",
-		commit: p.target?.commit?.hash?.slice(0, 7) ?? "",
 		trigger: p.trigger?.name ?? "",
 	};
 }
@@ -208,7 +211,7 @@ export async function listSteps(
 		out.push({
 			name: step.name ?? "",
 			status: pipelineStatus(step.state),
-			durationSeconds: stepDurationSeconds(step.started_on, step.completed_on),
+			durationSeconds: elapsedSeconds(step.started_on, step.completed_on),
 		});
 	}
 	return out;

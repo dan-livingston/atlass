@@ -122,7 +122,7 @@ export function formatPipelineRows(pipelines: PipelineSummary[], nowMs: number):
 	const rows = pipelines.map((p) => ({
 		num: `#${p.buildNumber}`,
 		status: p.status || "-",
-		ref: p.ref || "-",
+		ref: p.ref || p.commit || "-",
 		dur: formatDuration(p.durationSeconds),
 		age: relativeTime(p.createdOn, nowMs),
 		creator: p.creator || "-",
@@ -156,8 +156,14 @@ export function formatStepRows(steps: StepSummary[]): string[] {
 function printPipelineDetail(detail: PipelineDetail, steps: StepSummary[], nowMs: number): void {
 	console.log(`Pipeline #${detail.buildNumber}  ${detail.status || "-"}`);
 	if (detail.repo) console.log(`Repo:     ${detail.repo}`);
-	const ref = detail.ref || "-";
-	console.log(`Ref:      ${detail.commit ? `${ref} (${detail.commit})` : ref}`);
+	// a run with a branch/tag shows "ref (commit)"; a commit-target run shows just
+	// the commit.
+	const refLine = detail.ref
+		? detail.commit
+			? `${detail.ref} (${detail.commit})`
+			: detail.ref
+		: detail.commit || "-";
+	console.log(`Ref:      ${refLine}`);
 	if (detail.trigger) console.log(`Trigger:  ${detail.trigger}`);
 	console.log(`Duration: ${formatDuration(detail.durationSeconds)}`);
 	const by = detail.creator ? ` by ${detail.creator}` : "";
