@@ -118,17 +118,20 @@ function httpError(status: number, path: string, body = ""): Error {
 	return new HttpError(status, `Request failed (${status}): ${detail || path}`);
 }
 
-// Jira and Confluence report query errors as JSON; pull out the readable
-// message, falling back to the raw body.
+// Atlassian APIs report query errors as JSON; pull out the readable message,
+// falling back to the raw body. Jira/Confluence use { errorMessages, message };
+// Bitbucket uses { error: { message } }.
 function extractError(body: string): string {
 	if (!body) return "";
 	try {
 		const json = JSON.parse(body) as {
 			errorMessages?: string[];
 			message?: string;
+			error?: { message?: string };
 		};
 		if (json.errorMessages?.length) return json.errorMessages.join("; ");
 		if (json.message) return json.message;
+		if (json.error?.message) return json.error.message;
 	} catch {
 		// not JSON, use the raw body
 	}

@@ -26,21 +26,28 @@ export async function login(): Promise<void> {
 	const client = new AtlassianClient({ site, email, token });
 	const me = await client.getJson<Myself>("/rest/api/3/myself");
 
-	await writeConfig({ site, email });
+	// merge so a Bitbucket block (if any) survives a Jira login.
+	const existing = (await readConfig()) ?? {};
+	await writeConfig({ ...existing, site, email });
 	saveToken(email, token);
 	console.log(`Logged in as ${me.displayName} on ${site}.`);
 }
 
 export async function logout(): Promise<void> {
 	const config = await readConfig();
-	if (config) deleteToken(config.email);
-	await clearConfig();
+	if (config?.email) deleteToken(config.email);
+	// keep the Bitbucket login intact if present; only drop the Jira parts.
+	if (config?.bitbucket && config.email) {
+		await writeConfig({ email: config.email, bitbucket: config.bitbucket });
+	} else {
+		await clearConfig();
+	}
 	console.log("Logged out. Credentials removed.");
 }
 
 export async function status(): Promise<void> {
 	const config = await readConfig();
-	if (!config) {
+	if (!config || !config.site || !config.email) {
 		console.log("Not logged in. Run `atlass auth login`.");
 		return;
 	}

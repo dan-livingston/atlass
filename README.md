@@ -50,6 +50,36 @@ atlass auth logout   # remove config and delete the token from the keyring
 
 Only one account is supported at a time.
 
+### Bitbucket
+
+Bitbucket Cloud is supported for viewing pipeline results. It uses the same
+Atlassian account email but a separate, Bitbucket-scoped API token (Atlassian
+tokens are scoped per product at creation, so a Jira token cannot be reused).
+
+```bash
+atlass bitbucket login
+```
+
+You are prompted for:
+
+- workspace, e.g. `acme` (from `bitbucket.org/acme/<repo>`)
+- default repo slug (optional)
+- API token, created with the `read:pipeline` and workspace-read scopes at
+  `https://id.atlassian.com/manage-profile/security/api-tokens` (select Bitbucket
+  as the app)
+
+The login is verified against the workspace before anything is saved. The
+workspace and optional default repo are stored in the `bitbucket` block of
+`config.json`; the token is stored in the OS keyring under a separate entry.
+
+```bash
+atlass bitbucket status   # show workspace, default repo, and token presence
+atlass bitbucket logout   # remove the Bitbucket config block and token
+```
+
+`bitbucket login`/`logout` are independent of `auth login`/`logout`: logging out
+of one leaves the other intact.
+
 ## Usage
 
 ### Copy a Jira issue
@@ -219,6 +249,32 @@ atlass confluence search --space DOCS --copy
 
 Copying continues on failure and reports a summary at the end.
 
+### View Bitbucket pipelines
+
+```bash
+atlass bitbucket pipelines                 # recent runs for the default repo
+atlass bitbucket pipelines --repo acme/web # a specific workspace/repo
+atlass bitbucket pipelines --repo web      # bare slug, under the config workspace
+atlass bitbucket pipelines --limit 50 --json
+```
+
+Lists recent pipeline runs, newest first, one per line
+(`#build  status  ref  duration  age  creator`). Status shows the result
+(`SUCCESSFUL`/`FAILED`/...) once a run completes, else its state
+(`IN_PROGRESS`/`PENDING`/...). The repo comes from `--repo` (a `workspace/slug`
+or a bare slug under the configured workspace), falling back to the configured
+default repo. `--limit` defaults to 25, max 100. `--json` emits the full mapped
+objects.
+
+```bash
+atlass bitbucket pipeline 124              # one run and its steps
+atlass bitbucket pipeline 124 --repo acme/web
+```
+
+Shows a run summary (status, ref, commit, trigger, duration, creator) and its
+step list (name, status, duration). The build number you pass is resolved to the
+run directly, falling back to a bounded scan of recent runs if needed.
+
 ### Output location
 
 By default files are written to the current directory, named after the issue
@@ -302,8 +358,8 @@ pnpm dev       # build in watch mode
 ### Layout
 
 - `src/cli.ts` command wiring (commander)
-- `src/commands/` `auth`, `jira`, `confluence` command handlers
-- `src/api/` fetch client, Jira and Confluence endpoints, attachment up/download
+- `src/commands/` `auth`, `jira`, `confluence`, `bitbucket` command handlers
+- `src/api/` fetch client, Jira, Confluence and Bitbucket endpoints, attachment up/download
 - `src/adf/` ADF to Markdown and Markdown to ADF converters (unit tested)
 - `src/markdown/` frontmatter, comments, attachments, media resolver, update source
 - `src/config.ts`, `src/credentials.ts` config file and keyring

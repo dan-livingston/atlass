@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { parseIssueKey, parsePageId } from "./parse.ts";
+import { parseIssueKey, parsePageId, resolveRepo } from "./parse.ts";
 
 test("parseIssueKey from bare key", () => {
 	expect(parseIssueKey("PROJ-123")).toBe("PROJ-123");
@@ -41,4 +41,36 @@ test("parsePageId from pageId query", () => {
 
 test("parsePageId returns null when absent", () => {
 	expect(parsePageId("nope")).toBeNull();
+});
+
+test("resolveRepo: workspace/slug flag wins outright", () => {
+	expect(resolveRepo("acme/web", { workspace: "other", defaultRepo: "api" })).toEqual({
+		workspace: "acme",
+		repo: "web",
+	});
+});
+
+test("resolveRepo: bare slug flag uses the config workspace", () => {
+	expect(resolveRepo("web", { workspace: "acme" })).toEqual({ workspace: "acme", repo: "web" });
+});
+
+test("resolveRepo: no flag falls back to the config default repo", () => {
+	expect(resolveRepo(undefined, { workspace: "acme", defaultRepo: "web" })).toEqual({
+		workspace: "acme",
+		repo: "web",
+	});
+});
+
+test("resolveRepo: no flag and no default is an error", () => {
+	expect(() => resolveRepo(undefined, { workspace: "acme" })).toThrow(/--repo/);
+});
+
+test("resolveRepo: bare slug with no configured workspace is an error", () => {
+	expect(() => resolveRepo("web", {})).toThrow(/workspace/);
+});
+
+test("resolveRepo: malformed workspace/slug is rejected", () => {
+	expect(() => resolveRepo("acme/", { workspace: "acme" })).toThrow();
+	expect(() => resolveRepo("/web", { workspace: "acme" })).toThrow();
+	expect(() => resolveRepo("a/b/c", { workspace: "acme" })).toThrow();
 });
