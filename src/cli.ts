@@ -4,7 +4,7 @@ import { Command } from "commander";
 import pkg from "../package.json" with { type: "json" };
 import { login, logout, status } from "./commands/auth.ts";
 import { confluenceCopy, confluenceSearch, confluenceUpdate } from "./commands/confluence.ts";
-import { jiraCopy, jiraSearch, jiraUpdate } from "./commands/jira.ts";
+import { jiraCopy, jiraProjects, jiraSearch, jiraUpdate } from "./commands/jira.ts";
 
 const program = new Command();
 
@@ -19,6 +19,10 @@ auth.command("logout").description("Remove stored credentials").action(run(logou
 auth.command("status").description("Show the current login").action(run(status));
 
 const jira = program.command("jira").description("Jira commands");
+jira.command("projects [query]")
+	.description("List projects (optionally filtered by key or name)")
+	.option("--json", "output results as JSON")
+	.action(run(jiraProjects));
 jira.command("copy [issue]")
 	.description("Copy a Jira issue (key or URL) to a Markdown file")
 	.option("-o, --out <path>", "output file or directory")

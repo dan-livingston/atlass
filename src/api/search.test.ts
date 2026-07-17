@@ -1,7 +1,7 @@
 import { expect, test } from "vite-plus/test";
 
 import { buildCql } from "./confluence.ts";
-import { buildJql } from "./jira.ts";
+import { buildJql, projectSearchQuery } from "./jira.ts";
 
 test("jql: empty query falls back to a bounded recent query", () => {
 	expect(buildJql({ limit: 25 })).toBe("updated >= -30d ORDER BY updated DESC");
@@ -34,6 +34,20 @@ test("jql: text query is escaped", () => {
 test("jql: raw jql is used verbatim", () => {
 	expect(buildJql({ jql: "assignee = currentUser()", project: "IGNORED", limit: 25 })).toBe(
 		"assignee = currentUser()",
+	);
+});
+
+test("projects: paged query orders by key and carries startAt", () => {
+	expect(projectSearchQuery(undefined, 0)).toBe("orderBy=key&maxResults=50&startAt=0");
+});
+
+test("projects: later page advances startAt", () => {
+	expect(projectSearchQuery(undefined, 50)).toBe("orderBy=key&maxResults=50&startAt=50");
+});
+
+test("projects: text filter is passed as query", () => {
+	expect(projectSearchQuery("pay ops", 0)).toBe(
+		"orderBy=key&maxResults=50&startAt=0&query=pay+ops",
 	);
 });
 

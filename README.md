@@ -163,6 +163,19 @@ filters. Prints one issue per line (`KEY  status  summary`); use `--json` for
 machine output. Only the first `--limit` results are shown (default 25, max
 100).
 
+### List Jira projects
+
+```bash
+atlass jira projects            # every project you can browse
+atlass jira projects pay        # filter by key or name
+atlass jira projects --json     # machine output
+```
+
+A discovery aid for the `--project` filter above: it fetches every project
+(paginated, ordered by key) and prints one per line as an aligned `KEY  Name`
+list. An optional query filters by key or name server-side. `--json` emits
+`{ key, name, id, type, url }` per project.
+
 ### Search Confluence pages
 
 ```bash

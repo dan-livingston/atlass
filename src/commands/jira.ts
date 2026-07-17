@@ -4,11 +4,13 @@ import { confirm, input } from "@inquirer/prompts";
 import { marked } from "marked";
 import { readFile, writeFile } from "node:fs/promises";
 
+import type { ProjectSummary } from "../api/jira.ts";
+
 import { markdownToAdf } from "../adf/from-markdown.ts";
 import { adfToMarkdown } from "../adf/to-markdown.ts";
 import { downloadAttachments } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
-import { fetchIssue, searchIssues, updateIssue } from "../api/jira.ts";
+import { fetchIssue, listProjects, searchIssues, updateIssue } from "../api/jira.ts";
 import { requireAuth } from "../credentials.ts";
 import {
 	attachmentsSection,
@@ -40,6 +42,35 @@ export interface SearchOptions {
 	json?: boolean;
 	copy?: boolean;
 	out?: string;
+}
+
+export interface ProjectsOptions {
+	json?: boolean;
+}
+
+export async function jiraProjects(
+	query: string | undefined,
+	options: ProjectsOptions,
+): Promise<void> {
+	const auth = await requireAuth();
+	const client = new AtlassianClient(auth);
+	const projects = await listProjects(client, auth.site, query);
+
+	if (options.json) {
+		console.log(JSON.stringify(projects, null, 2));
+		return;
+	}
+	if (projects.length === 0) {
+		console.log("No matching projects.");
+		return;
+	}
+	for (const line of formatProjectRows(projects)) console.log(line);
+}
+
+// Align the key column so names line up. Pure; exported for testing.
+export function formatProjectRows(projects: Pick<ProjectSummary, "key" | "name">[]): string[] {
+	const width = Math.max(...projects.map((p) => p.key.length));
+	return projects.map((p) => `${p.key.padEnd(width)}  ${p.name}`);
 }
 
 export async function jiraCopy(arg: string | undefined, options: CopyOptions): Promise<void> {
