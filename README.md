@@ -176,6 +176,23 @@ A discovery aid for the `--project` filter above: it fetches every project
 list. An optional query filters by key or name server-side. `--json` emits
 `{ key, name, id, type, url }` per project.
 
+### List Jira statuses
+
+```bash
+atlass jira statuses                 # every status on the site
+atlass jira statuses progress        # filter by name
+atlass jira statuses --project PROJ  # statuses used by one project
+atlass jira statuses --json          # machine output
+```
+
+A discovery aid for the `--status` filter above. Without `--project` it lists
+every status on the site; with `--project` it lists the statuses that project's
+issue types use (flattened to one list). An optional query filters by name
+(case-insensitive substring). Statuses are collapsed by name and category, then
+ordered by workflow lifecycle (To Do, then In Progress, then Done) and name.
+Prints an aligned `Name  Category` list; `--json` emits
+`{ name, id, category, categoryKey }` per status.
+
 ### Search Confluence pages
 
 ```bash

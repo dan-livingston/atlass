@@ -4,13 +4,13 @@ import { confirm, input } from "@inquirer/prompts";
 import { marked } from "marked";
 import { readFile, writeFile } from "node:fs/promises";
 
-import type { ProjectSummary } from "../api/jira.ts";
+import type { ProjectSummary, StatusSummary } from "../api/jira.ts";
 
 import { markdownToAdf } from "../adf/from-markdown.ts";
 import { adfToMarkdown } from "../adf/to-markdown.ts";
 import { downloadAttachments } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
-import { fetchIssue, listProjects, searchIssues, updateIssue } from "../api/jira.ts";
+import { fetchIssue, listProjects, listStatuses, searchIssues, updateIssue } from "../api/jira.ts";
 import { requireAuth } from "../credentials.ts";
 import {
 	attachmentsSection,
@@ -71,6 +71,41 @@ export async function jiraProjects(
 export function formatProjectRows(projects: Pick<ProjectSummary, "key" | "name">[]): string[] {
 	const width = Math.max(...projects.map((p) => p.key.length));
 	return projects.map((p) => `${p.key.padEnd(width)}  ${p.name}`);
+}
+
+export interface StatusesOptions {
+	project?: string;
+	json?: boolean;
+}
+
+export async function jiraStatuses(
+	query: string | undefined,
+	options: StatusesOptions,
+): Promise<void> {
+	const auth = await requireAuth();
+	const client = new AtlassianClient(auth);
+	let statuses = await listStatuses(client, options.project);
+
+	if (query) {
+		const needle = query.toLowerCase();
+		statuses = statuses.filter((s) => s.name.toLowerCase().includes(needle));
+	}
+
+	if (options.json) {
+		console.log(JSON.stringify(statuses, null, 2));
+		return;
+	}
+	if (statuses.length === 0) {
+		console.log("No matching statuses.");
+		return;
+	}
+	for (const line of formatStatusRows(statuses)) console.log(line);
+}
+
+// Align the name column so categories line up. Pure; exported for testing.
+export function formatStatusRows(statuses: Pick<StatusSummary, "name" | "category">[]): string[] {
+	const width = Math.max(...statuses.map((s) => s.name.length));
+	return statuses.map((s) => `${s.name.padEnd(width)}  ${s.category}`);
 }
 
 export async function jiraCopy(arg: string | undefined, options: CopyOptions): Promise<void> {

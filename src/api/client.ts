@@ -75,30 +75,47 @@ export class AtlassianClient {
 	}
 }
 
+// HTTP error that keeps the status code, so callers can branch on it without
+// matching the message text.
+export class HttpError extends Error {
+	constructor(
+		readonly status: number,
+		message: string,
+	) {
+		super(message);
+		this.name = "HttpError";
+	}
+}
+
 function httpError(status: number, path: string, body = ""): Error {
 	if (status === 401 || status === 403) {
-		return new Error(
+		return new HttpError(
+			status,
 			"Authentication failed (401/403). Run `atlass auth login` to update your token.",
 		);
 	}
 	if (status === 404) {
-		return new Error(`Not found (404): ${path}`);
+		return new HttpError(status, `Not found (404): ${path}`);
 	}
 	if (status === 409) {
 		const detail = extractError(body);
-		return new Error(`Conflict (409): ${detail || "the page changed on the server"}`);
+		return new HttpError(
+			status,
+			`Conflict (409): ${detail || "the page changed on the server"}`,
+		);
 	}
 	if (status === 413) {
-		return new Error(
+		return new HttpError(
+			status,
 			"Payload too large (413): the page or an attachment exceeds the size limit.",
 		);
 	}
 	if (status === 400) {
 		const detail = extractError(body);
-		return new Error(`Bad request (400): ${detail || path}`);
+		return new HttpError(status, `Bad request (400): ${detail || path}`);
 	}
 	const detail = extractError(body);
-	return new Error(`Request failed (${status}): ${detail || path}`);
+	return new HttpError(status, `Request failed (${status}): ${detail || path}`);
 }
 
 // Jira and Confluence report query errors as JSON; pull out the readable

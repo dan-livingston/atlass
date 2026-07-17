@@ -3,6 +3,7 @@ import type { RemoteAttachment } from "./attachments.ts";
 import type { AtlassianClient } from "./client.ts";
 
 import { decodeEntities } from "../util/html.ts";
+import { HttpError } from "./client.ts";
 
 export interface JiraComment {
 	author: string;
@@ -243,6 +244,85 @@ export function projectSearchQuery(query: string | undefined, startAt: number): 
 	});
 	if (query) params.set("query", query);
 	return params.toString();
+}
+
+export interface StatusSummary {
+	name: string;
+	id: string;
+	// statusCategory display name, e.g. "In Progress"
+	category: string;
+	// stable statusCategory key, e.g. "indeterminate"; language independent
+	categoryKey: string;
+}
+
+interface StatusResponse {
+	id: string;
+	name: string;
+	statusCategory?: { key?: string; name?: string };
+}
+
+// project/{key}/statuses groups statuses under each issue type
+interface ProjectStatusResponse {
+	statuses?: StatusResponse[];
+}
+
+// List statuses for the whole site, or just those used by one project. The
+// project endpoint groups statuses by issue type, so its results are flattened
+// and de-duplicated. A missing project surfaces as a friendly error.
+export async function listStatuses(
+	client: AtlassianClient,
+	project?: string,
+): Promise<StatusSummary[]> {
+	const raw = project
+		? await fetchProjectStatuses(client, project)
+		: await client.getJson<StatusResponse[]>("/rest/api/3/status");
+	return dedupeAndSortStatuses(raw.map(toStatusSummary));
+}
+
+async function fetchProjectStatuses(
+	client: AtlassianClient,
+	project: string,
+): Promise<StatusResponse[]> {
+	let groups: ProjectStatusResponse[];
+	try {
+		groups = await client.getJson<ProjectStatusResponse[]>(
+			`/rest/api/3/project/${encodeURIComponent(project)}/statuses`,
+		);
+	} catch (err) {
+		if (err instanceof HttpError && err.status === 404) {
+			throw new Error(`No project found with key "${project}".`);
+		}
+		throw err;
+	}
+	return groups.flatMap((g) => g.statuses ?? []);
+}
+
+function toStatusSummary(s: StatusResponse): StatusSummary {
+	return {
+		name: s.name,
+		id: s.id,
+		category: s.statusCategory?.name ?? "",
+		categoryKey: s.statusCategory?.key ?? "",
+	};
+}
+
+const CATEGORY_ORDER: Record<string, number> = { new: 0, indeterminate: 1, done: 2 };
+// unknown categories sort after the known lifecycle buckets
+const CATEGORY_LAST = Object.keys(CATEGORY_ORDER).length;
+
+// Order statuses by workflow lifecycle (To Do, In Progress, Done) then name,
+// collapsing statuses that share a name and category (the same name can exist
+// under many ids across workflows). Pure; exported for testing.
+export function dedupeAndSortStatuses(statuses: StatusSummary[]): StatusSummary[] {
+	const byNameCategory = new Map<string, StatusSummary>();
+	for (const s of statuses) {
+		const key = `${s.name}\0${s.categoryKey}`;
+		if (!byNameCategory.has(key)) byNameCategory.set(key, s);
+	}
+	return [...byNameCategory.values()].sort((a, b) => {
+		const rank = (s: StatusSummary) => CATEGORY_ORDER[s.categoryKey] ?? CATEGORY_LAST;
+		return rank(a) - rank(b) || a.name.localeCompare(b.name);
+	});
 }
 
 // Quote and escape a value for use in a JQL string literal.
