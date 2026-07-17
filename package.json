@@ -1,6 +1,6 @@
 {
 	"name": "atlass",
-	"version": "1.4.0",
+	"version": "1.5.0",
 	"description": "CLI to copy Jira issues and Confluence pages to Markdown, and update Confluence pages.",
 	"license": "MIT",
 	"repository": {
