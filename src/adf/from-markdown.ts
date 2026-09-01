@@ -6,9 +6,6 @@ import { randomUUID } from "node:crypto";
 import type { AdfDoc, AdfMark, AdfNode } from "./types.ts";
 
 export interface FromMarkdownOptions {
-	// Turn an image into a block-level ADF node (typically a mediaSingle). Return
-	// undefined to drop the image. Defaults to an external media node using the
-	// href verbatim; the update command overrides this to upload local files.
 	resolveImage?: (href: string, alt: string) => AdfNode | undefined;
 }
 
@@ -16,18 +13,11 @@ interface Ctx {
 	resolveImage: (href: string, alt: string) => AdfNode | undefined;
 }
 
-// Convert Markdown to an ADF document. Handles the clean subset that
-// `to-markdown.ts` emits (paragraphs, headings, lists, task lists, code,
-// blockquotes, rules, tables, and inline marks). Anything richer is passed
-// through as its plain-Markdown meaning; it is not reverse-engineered back into
-// panels, expands, or macros.
 export function markdownToAdf(md: string, options: FromMarkdownOptions = {}): AdfDoc {
-	const ctx: Ctx = { resolveImage: options.resolveImage ?? defaultResolveImage };
+	const ctx: Ctx = { resolveImage: options.resolveImage ?? externalMediaBlock };
 	const content = blocks(marked.lexer(md), ctx);
 	return { type: "doc", version: 1, content };
 }
-
-// ---- block level ----
 
 function blocks(tokens: Token[], ctx: Ctx): AdfNode[] {
 	const out: AdfNode[] = [];
@@ -48,10 +38,12 @@ function block(token: Token, ctx: Ctx): AdfNode[] {
 				},
 			];
 		case "paragraph":
-			return paragraph(token.tokens ?? [], ctx);
+			return paragraphsSplitAtImages(token.tokens ?? [], ctx);
 		case "text":
-			// loose text (e.g. a tight list item) behaves like a paragraph
-			return paragraph((token as Tokens.Text).tokens ?? [textToken(token.text)], ctx);
+			return paragraphsSplitAtImages(
+				(token as Tokens.Text).tokens ?? [textToken(token.text)],
+				ctx,
+			);
 		case "list":
 			return [list(token as Tokens.List, ctx)];
 		case "code":
@@ -62,17 +54,12 @@ function block(token: Token, ctx: Ctx): AdfNode[] {
 			return [table(token as Tokens.Table, ctx)];
 		case "hr":
 			return [{ type: "rule" }];
-		case "html":
-			// raw HTML has no ADF representation in the clean subset; drop it
-			return [];
 		default:
 			return [];
 	}
 }
 
-// A paragraph is split around block-level images: text before an image becomes
-// its own paragraph, each image becomes a separate media block.
-function paragraph(tokens: Token[], ctx: Ctx): AdfNode[] {
+function paragraphsSplitAtImages(tokens: Token[], ctx: Ctx): AdfNode[] {
 	const out: AdfNode[] = [];
 	let buffer: Token[] = [];
 	const flush = (): void => {
@@ -103,7 +90,7 @@ function list(token: Tokens.List, ctx: Ctx): AdfNode {
 			content: token.items.map((item) => ({
 				type: "taskItem",
 				attrs: { localId: randomUUID(), state: item.checked ? "DONE" : "TODO" },
-				content: inline(itemInline(item), ctx),
+				content: inline(taskItemInline(item), ctx),
 			})),
 		};
 	}
@@ -121,13 +108,15 @@ function listItem(item: Tokens.ListItem, ctx: Ctx): AdfNode {
 		item.tokens.filter((t) => t.type !== "checkbox"),
 		ctx,
 	);
-	// a list item must contain at least one block
-	if (children.length === 0) children.push({ type: "paragraph", content: [] });
-	return { type: "listItem", content: children };
+	const content = children.length > 0 ? children : [emptyParagraph()];
+	return { type: "listItem", content };
 }
 
-// Inline tokens for a task item, skipping the leading checkbox token.
-function itemInline(item: Tokens.ListItem): Token[] {
+function emptyParagraph(): AdfNode {
+	return { type: "paragraph", content: [] };
+}
+
+function taskItemInline(item: Tokens.ListItem): Token[] {
 	const first = item.tokens.find((t) => t.type === "text");
 	if (first && "tokens" in first && first.tokens) return first.tokens;
 	return [textToken(item.text)];
@@ -155,8 +144,6 @@ function tableCell(cell: Tokens.TableCell, type: string, ctx: Ctx): AdfNode {
 	return { type, content: [{ type: "paragraph", content: inline(cell.tokens, ctx) }] };
 }
 
-// ---- inline level ----
-
 function inline(tokens: Token[], ctx: Ctx, marks: AdfMark[] = []): AdfNode[] {
 	const out: AdfNode[] = [];
 	for (const token of tokens) out.push(...inlineNode(token, ctx, marks));
@@ -175,20 +162,27 @@ function inlineNode(token: Token, ctx: Ctx, marks: AdfMark[]): AdfNode[] {
 			return inline(
 				(token as Tokens.Strong).tokens,
 				ctx,
-				withMark(marks, { type: "strong" }),
+				withUniqueMark(marks, { type: "strong" }),
 			);
 		case "em":
-			return inline((token as Tokens.Em).tokens, ctx, withMark(marks, { type: "em" }));
+			return inline((token as Tokens.Em).tokens, ctx, withUniqueMark(marks, { type: "em" }));
 		case "del":
-			return inline((token as Tokens.Del).tokens, ctx, withMark(marks, { type: "strike" }));
+			return inline(
+				(token as Tokens.Del).tokens,
+				ctx,
+				withUniqueMark(marks, { type: "strike" }),
+			);
 		case "codespan":
-			return textNode((token as Tokens.Codespan).text, withMark(marks, { type: "code" }));
+			return textNode(
+				(token as Tokens.Codespan).text,
+				withUniqueMark(marks, { type: "code" }),
+			);
 		case "link": {
 			const link = token as Tokens.Link;
 			return inline(
 				link.tokens,
 				ctx,
-				withMark(marks, { type: "link", attrs: { href: link.href } }),
+				withUniqueMark(marks, { type: "link", attrs: { href: link.href } }),
 			);
 		}
 		case "br":
@@ -207,15 +201,11 @@ function textNode(text: string, marks: AdfMark[]): AdfNode[] {
 	return [node];
 }
 
-// Append a mark, replacing an existing mark of the same type (marks are unique
-// per type in ADF; the innermost link wins).
-function withMark(marks: AdfMark[], mark: AdfMark): AdfMark[] {
+function withUniqueMark(marks: AdfMark[], mark: AdfMark): AdfMark[] {
 	return [...marks.filter((m) => m.type !== mark.type), mark];
 }
 
-// ---- helpers ----
-
-function defaultResolveImage(href: string, alt: string): AdfNode {
+function externalMediaBlock(href: string, alt: string): AdfNode {
 	return {
 		type: "mediaSingle",
 		attrs: { layout: "center" },
