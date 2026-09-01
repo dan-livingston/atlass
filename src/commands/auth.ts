@@ -1,7 +1,7 @@
 import { input, password } from "@inquirer/prompts";
 
 import { AtlassianClient } from "../api/client.ts";
-import { clearConfig, normalizeSite, readConfig, writeConfig } from "../config.ts";
+import { clearConfig, siteOrigin, readConfig, writeConfig } from "../config.ts";
 import { deleteToken, readToken, saveToken } from "../credentials.ts";
 
 interface Myself {
@@ -10,7 +10,7 @@ interface Myself {
 }
 
 export async function login(): Promise<void> {
-	const site = normalizeSite(
+	const site = siteOrigin(
 		await input({
 			message: "Atlassian site (e.g. acme.atlassian.net):",
 			required: true,
