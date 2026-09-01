@@ -117,7 +117,7 @@ export async function updateIssue(
 ): Promise<void> {
 	const fields: Record<string, unknown> = { description: update.description };
 	if (update.summary !== undefined) fields["summary"] = update.summary;
-	await client.put(`/rest/api/3/issue/${encodeURIComponent(key)}`, { fields });
+	await client.putNoContent(`/rest/api/3/issue/${encodeURIComponent(key)}`, { fields });
 }
 
 export interface IssueSummary {

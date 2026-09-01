@@ -1,7 +1,7 @@
 import type { Auth } from "../credentials.ts";
 
-// thin wrapper over fetch that adds Basic auth and turns HTTP errors into
-// readable messages. one instance per resolved account.
+const DISABLE_XSRF_CHECK = { "X-Atlassian-Token": "nocheck" };
+
 export class AtlassianClient {
 	private readonly site: string;
 	private readonly authHeader: string;
@@ -42,9 +42,7 @@ export class AtlassianClient {
 		return res.json() as Promise<T>;
 	}
 
-	// PUT with no response parsing, for endpoints that return 204 No Content
-	// (e.g. the Jira issue edit endpoint).
-	async put(path: string, body: unknown): Promise<void> {
+	async putNoContent(path: string, body: unknown): Promise<void> {
 		await this.request(path, {
 			method: "PUT",
 			headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -52,31 +50,30 @@ export class AtlassianClient {
 		});
 	}
 
-	// upload a file as multipart/form-data. the field name must be "file" and the
-	// XSRF check must be disabled for the Confluence attachment endpoint.
 	async postMultipart<T>(path: string, filename: string, bytes: Uint8Array): Promise<T> {
 		const form = new FormData();
 		const blob = new Blob([bytes as unknown as Uint8Array<ArrayBuffer>]);
 		form.append("file", blob, filename);
 		const res = await this.request(path, {
 			method: "POST",
-			headers: { Accept: "application/json", "X-Atlassian-Token": "nocheck" },
+			headers: { Accept: "application/json", ...DISABLE_XSRF_CHECK },
 			body: form,
 		});
 		return res.json() as Promise<T>;
 	}
 
-	// download a binary attachment. accepts the relative or same-site absolute
-	// URLs the Atlassian APIs hand back for media/content.
-	async getBinary(url: string): Promise<Uint8Array> {
-		const path = url.startsWith("http") ? new URL(url).pathname + new URL(url).search : url;
+	async getBinary(urlOrPath: string): Promise<Uint8Array> {
+		const path = urlOrPath.startsWith("http") ? pathAndQuery(urlOrPath) : urlOrPath;
 		const res = await this.request(path, { headers: { Accept: "*/*" } });
 		return new Uint8Array(await res.arrayBuffer());
 	}
 }
 
-// HTTP error that keeps the status code, so callers can branch on it without
-// matching the message text.
+export function pathAndQuery(absoluteUrl: string): string {
+	const u = new URL(absoluteUrl);
+	return u.pathname + u.search;
+}
+
 export class HttpError extends Error {
 	constructor(
 		readonly status: number,
@@ -98,7 +95,7 @@ function httpError(status: number, path: string, body = ""): Error {
 		return new HttpError(status, `Not found (404): ${path}`);
 	}
 	if (status === 409) {
-		const detail = extractError(body);
+		const detail = extractErrorMessage(body);
 		return new HttpError(
 			status,
 			`Conflict (409): ${detail || "the page changed on the server"}`,
@@ -111,29 +108,35 @@ function httpError(status: number, path: string, body = ""): Error {
 		);
 	}
 	if (status === 400) {
-		const detail = extractError(body);
+		const detail = extractErrorMessage(body);
 		return new HttpError(status, `Bad request (400): ${detail || path}`);
 	}
-	const detail = extractError(body);
+	const detail = extractErrorMessage(body);
 	return new HttpError(status, `Request failed (${status}): ${detail || path}`);
 }
 
-// Atlassian APIs report query errors as JSON; pull out the readable message,
-// falling back to the raw body. Jira/Confluence use { errorMessages, message };
-// Bitbucket uses { error: { message } }.
-function extractError(body: string): string {
+interface JiraErrorBody {
+	errorMessages?: string[];
+	message?: string;
+}
+
+interface BitbucketErrorBody {
+	error?: { message?: string };
+}
+
+export function extractErrorMessage(body: string): string {
 	if (!body) return "";
-	try {
-		const json = JSON.parse(body) as {
-			errorMessages?: string[];
-			message?: string;
-			error?: { message?: string };
-		};
-		if (json.errorMessages?.length) return json.errorMessages.join("; ");
-		if (json.message) return json.message;
-		if (json.error?.message) return json.error.message;
-	} catch {
-		// not JSON, use the raw body
-	}
+	const json = tryParseJson<JiraErrorBody & BitbucketErrorBody>(body);
+	if (json?.errorMessages?.length) return json.errorMessages.join("; ");
+	if (json?.message) return json.message;
+	if (json?.error?.message) return json.error.message;
 	return body.slice(0, 300);
+}
+
+function tryParseJson<T>(text: string): T | null {
+	try {
+		return JSON.parse(text) as T;
+	} catch {
+		return null;
+	}
 }

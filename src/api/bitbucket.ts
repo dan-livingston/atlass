@@ -1,7 +1,7 @@
 import type { RepoRef } from "../util/parse.ts";
 import type { AtlassianClient } from "./client.ts";
 
-import { HttpError } from "./client.ts";
+import { HttpError, pathAndQuery } from "./client.ts";
 
 interface CompletedState {
 	name: "COMPLETED";
@@ -122,11 +122,6 @@ function toStepSummary(step: StepValue): StepSummary {
 
 function repoPath(ref: RepoRef): string {
 	return `/2.0/repositories/${encodeURIComponent(ref.workspace)}/${encodeURIComponent(ref.repo)}/pipelines`;
-}
-
-function pathAndQuery(absoluteUrl: string): string {
-	const u = new URL(absoluteUrl);
-	return u.pathname + u.search;
 }
 
 async function* walkPages<T>(client: AtlassianClient, firstPath: string): AsyncGenerator<T> {
