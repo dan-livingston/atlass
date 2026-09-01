@@ -162,8 +162,8 @@ export async function confluenceSearch(
 	await runSearch(
 		pages.map((p) => ({
 			id: p.id,
-			prefix: `${p.id}  ${p.space}`,
-			text: p.title,
+			fixedColumns: `${p.id}  ${p.space}`,
+			freeText: p.title,
 			json: { id: p.id, space: p.space, title: p.title, url: p.url },
 		})),
 		{ json: options.json, copy: options.copy, limit, hasMore, out: options.out },

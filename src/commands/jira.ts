@@ -205,8 +205,8 @@ export async function jiraSearch(query: string | undefined, options: SearchOptio
 	await runSearch(
 		issues.map((i) => ({
 			id: i.key,
-			prefix: `${i.key}  ${i.status}`,
-			text: i.summary,
+			fixedColumns: `${i.key}  ${i.status}`,
+			freeText: i.summary,
 			json: { key: i.key, status: i.status, summary: i.summary, url: i.url },
 		})),
 		{

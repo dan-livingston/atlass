@@ -1,14 +1,9 @@
 import { checkbox } from "@inquirer/prompts";
 
-// A single search result, ready to print, serialize, or copy.
 export interface SearchRow {
-	// key or page id, passed to the copy callback and used as the picker value
 	id: string;
-	// leading fixed columns, e.g. "PROJ-123  In Progress"
-	prefix: string;
-	// trailing free text (summary/title), truncated to terminal width on print
-	text: string;
-	// object emitted under --json
+	fixedColumns: string;
+	freeText: string;
 	json: Record<string, unknown>;
 }
 
@@ -16,14 +11,10 @@ export interface RunSearchOptions {
 	json?: boolean;
 	copy?: boolean;
 	limit: number;
-	// true when the API returned a full page, so more results may exist
 	hasMore?: boolean;
-	// raw --out, validated here because --copy writes many files
 	out?: string;
 }
 
-// bound concurrent copies so a big multi-select does not open dozens of
-// simultaneous fetch+download chains.
 const COPY_CONCURRENCY = 5;
 
 export interface Noun {
@@ -31,8 +22,6 @@ export interface Noun {
 	plural: string;
 }
 
-// Print results, or under --copy run an interactive multi-select that pipes
-// each pick through copyOne (continue on failure, summary at the end).
 export async function runSearch(
 	rows: SearchRow[],
 	options: RunSearchOptions,
@@ -56,8 +45,6 @@ export async function runSearch(
 	}
 
 	if (options.copy) {
-		// a file-style --out (foo.md) resolves to one path for every pick, so each
-		// copy would overwrite the last. Require a directory for multi-select.
 		if (options.out?.endsWith(".md")) {
 			throw new Error(
 				"--out must be a directory when using --copy; a .md file path would overwrite each selection.",
@@ -109,9 +96,9 @@ async function copySelected(rows: SearchRow[], noun: Noun, copyOne: (id: string)
 
 function formatRow(row: SearchRow): string {
 	const width = process.stdout.columns ?? 80;
-	const room = width - row.prefix.length - 2;
-	const text = room > 0 ? truncate(row.text, room) : "";
-	return text ? `${row.prefix}  ${text}` : row.prefix;
+	const room = width - row.fixedColumns.length - 2;
+	const text = room > 0 ? truncate(row.freeText, room) : "";
+	return text ? `${row.fixedColumns}  ${text}` : row.fixedColumns;
 }
 
 function truncate(text: string, max: number): string {
