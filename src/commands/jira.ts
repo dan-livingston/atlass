@@ -13,13 +13,7 @@ import { downloadAttachments, mediaResolver } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
 import { fetchIssue, listProjects, listStatuses, searchIssues, updateIssue } from "../api/jira.ts";
 import { requireAuth } from "../credentials.ts";
-import {
-	attachmentsSection,
-	commentsSection,
-	frontmatter,
-	joinSections,
-} from "../markdown/document.ts";
-import { parseJiraUpdateSource } from "../markdown/update-source.ts";
+import { parseIssueSource, render } from "../markdown/copied-document.ts";
 import { resolveOutput } from "../util/output-path.ts";
 import { isExternalHref, parseIssueKey, parseLimit } from "../util/parse.ts";
 import { runSearch } from "./search-run.ts";
@@ -117,7 +111,7 @@ export interface UpdateOptions {
 export async function jiraUpdate(arg: string | undefined, options: UpdateOptions): Promise<void> {
 	const file =
 		arg ?? (await input({ message: "Path to the issue Markdown file:", required: true }));
-	const src = parseJiraUpdateSource(await readFile(file, "utf8"));
+	const src = parseIssueSource(await readFile(file, "utf8"));
 
 	const auth = await requireAuth();
 	const client = new AtlassianClient(auth);
@@ -126,7 +120,7 @@ export async function jiraUpdate(arg: string | undefined, options: UpdateOptions
 	const stale = issue.updated !== src.updatedAtCopy;
 	const { local, external } = classifyImages(src.body);
 	const lossy = findLossyNodes(issue.description, JIRA_LOSSY_LABELS);
-	const newSummary = options.summary && src.h1Title ? src.h1Title : issue.summary;
+	const newSummary = options.summary && src.title ? src.title : issue.summary;
 
 	if (options.dryRun) {
 		printDryRun(src.key, issue.summary, newSummary, stale, external.length, local, lossy);
@@ -230,26 +224,28 @@ async function copyIssue(
 	);
 	const resolveMedia = mediaResolver(downloaded);
 
-	const meta = frontmatter({
-		key: issue.key,
-		type: issue.type,
-		status: issue.status,
-		assignee: issue.assignee,
-		reporter: issue.reporter,
-		priority: issue.priority,
-		labels: issue.labels,
-		created: issue.created,
-		updated: issue.updated,
-		url: issue.url,
+	const document = render({
+		fields: {
+			key: issue.key,
+			type: issue.type,
+			status: issue.status,
+			assignee: issue.assignee,
+			reporter: issue.reporter,
+			priority: issue.priority,
+			labels: issue.labels,
+			created: issue.created,
+			updated: issue.updated,
+			url: issue.url,
+		},
+		title: issue.summary,
+		body: adfToMarkdown(issue.description, { resolveMedia }),
+		comments: issue.comments.map((c) => ({
+			author: c.author,
+			created: c.created,
+			body: adfToMarkdown(c.body, { resolveMedia }),
+		})),
+		attachments: downloaded,
 	});
-
-	const document = joinSections([
-		meta,
-		`# ${issue.summary}`,
-		adfToMarkdown(issue.description, { resolveMedia }),
-		commentsSection(issue.comments, resolveMedia),
-		attachmentsSection(downloaded),
-	]);
 
 	await writeFile(target.filePath, document, "utf8");
 	report(target.filePath, downloaded.length);

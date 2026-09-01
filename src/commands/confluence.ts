@@ -23,13 +23,7 @@ import {
 	uploadAttachment,
 } from "../api/confluence.ts";
 import { requireAuth } from "../credentials.ts";
-import {
-	attachmentsSection,
-	commentsSection,
-	frontmatter,
-	joinSections,
-} from "../markdown/document.ts";
-import { parsePageUpdateSource } from "../markdown/update-source.ts";
+import { parsePageSource, render } from "../markdown/copied-document.ts";
 import { resolveOutput, slugify } from "../util/output-path.ts";
 import { isExternalHref, parseLimit, parsePageId } from "../util/parse.ts";
 import { runSearch } from "./search-run.ts";
@@ -63,7 +57,7 @@ export async function confluenceUpdate(
 ): Promise<void> {
 	const file =
 		arg ?? (await input({ message: "Path to the page Markdown file:", required: true }));
-	const src = parsePageUpdateSource(await readFile(file, "utf8"));
+	const src = parsePageSource(await readFile(file, "utf8"));
 
 	const auth = await requireAuth();
 	const client = new AtlassianClient(auth);
@@ -82,7 +76,7 @@ export async function confluenceUpdate(
 
 	const lossy = findLossyNodes(state.body);
 	const nextVersion = state.version + 1;
-	const newTitle = options.title && src.h1Title ? src.h1Title : state.title;
+	const newTitle = options.title && src.title ? src.title : state.title;
 
 	if (options.dryRun) {
 		printDryRun(src.id, state.title, newTitle, state.version, nextVersion, lossy, plan);
@@ -190,24 +184,26 @@ async function copyPage(
 	);
 	const resolveMedia = mediaResolver(downloaded);
 
-	const meta = frontmatter({
+	const document = render({
+		fields: {
+			title: page.title,
+			id: page.id,
+			space: page.spaceKey,
+			version: page.version,
+			author: page.author,
+			created: page.createdAt,
+			updated: page.updatedAt,
+			url: page.url,
+		},
 		title: page.title,
-		id: page.id,
-		space: page.spaceKey,
-		version: page.version,
-		author: page.author,
-		created: page.createdAt,
-		updated: page.updatedAt,
-		url: page.url,
+		body: adfToMarkdown(page.body, { resolveMedia }),
+		comments: page.comments.map((c) => ({
+			author: c.author,
+			created: c.created,
+			body: adfToMarkdown(c.body, { resolveMedia }),
+		})),
+		attachments: downloaded,
 	});
-
-	const document = joinSections([
-		meta,
-		`# ${page.title}`,
-		adfToMarkdown(page.body, { resolveMedia }),
-		commentsSection(page.comments, resolveMedia),
-		attachmentsSection(downloaded),
-	]);
 
 	await writeFile(target.filePath, document, "utf8");
 	const suffix =
