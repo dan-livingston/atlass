@@ -172,8 +172,6 @@ export async function confluenceSearch(
 	);
 }
 
-// Fetch one page and write it to Markdown. Shared by the copy command and the
-// search picker.
 async function copyPage(
 	client: AtlassianClient,
 	site: string,
@@ -226,14 +224,11 @@ async function resolveId(arg: string | undefined): Promise<string> {
 	return id;
 }
 
-// ---- update helpers ----
-
 type ImagePlan =
 	| { kind: "external" }
 	| { kind: "reuse"; fileId: string; filename: string }
 	| { kind: "upload"; path: string; filename: string; existed: boolean };
 
-// Collect the distinct image hrefs referenced in the body Markdown.
 function collectImageHrefs(md: string): string[] {
 	const hrefs = new Set<string>();
 	void marked.walkTokens(marked.lexer(md), (token) => {
@@ -242,9 +237,6 @@ function collectImageHrefs(md: string): string[] {
 	return [...hrefs];
 }
 
-// Decide what to do with each image before any upload: external URLs pass
-// through, local files are reused when an attachment of the same name and size
-// already exists, otherwise uploaded. Missing local files abort the update.
 async function planImages(
 	dir: string,
 	hrefs: string[],
