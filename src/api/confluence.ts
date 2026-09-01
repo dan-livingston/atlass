@@ -20,7 +20,6 @@ export interface ConfluencePage {
 	updatedAt: string;
 	url: string;
 	body: AdfNode | null;
-	// attachment id is the media fileId, so media nodes match by attrs.id
 	attachments: RemoteAttachment[];
 	comments: ConfluenceComment[];
 }
@@ -40,14 +39,16 @@ interface SpaceResponse {
 	key?: string;
 }
 
+interface AttachmentResponse {
+	fileId?: string;
+	id: string;
+	title?: string;
+	downloadLink?: string;
+	fileSize?: number;
+}
+
 interface AttachmentsResponse {
-	results: {
-		fileId?: string;
-		id: string;
-		title?: string;
-		downloadLink?: string;
-		fileSize?: number;
-	}[];
+	results: AttachmentResponse[];
 }
 
 interface CommentsResponse {
@@ -87,15 +88,12 @@ export async function fetchPage(
 		createdAt: page.createdAt ?? "",
 		updatedAt: page.version?.createdAt ?? "",
 		url: webui ? `${site}/wiki${webui}` : "",
-		body: parseAdf(page.body?.atlas_doc_format?.value),
+		body: parseAdfJson(page.body?.atlas_doc_format?.value),
 		attachments,
 		comments,
 	};
 }
 
-// The current server state needed before an update: the version to bump and
-// the live body, which the caller scans for content that Markdown cannot round
-// trip.
 export interface PageState {
 	version: number;
 	title: string;
@@ -109,17 +107,17 @@ export async function fetchPageState(client: AtlassianClient, id: string): Promi
 	return {
 		version: page.version?.number ?? 0,
 		title: page.title,
-		body: parseAdf(page.body?.atlas_doc_format?.value),
+		body: parseAdfJson(page.body?.atlas_doc_format?.value),
 	};
 }
 
 export interface AttachmentInfo {
 	filename: string;
-	// media fileId, used both to match an image and as the ADF media node id
 	fileId: string;
-	// byte size, or -1 when the server did not report it
 	size: number;
 }
+
+const UNKNOWN_SIZE = -1;
 
 export async function listAttachments(
 	client: AtlassianClient,
@@ -130,8 +128,8 @@ export async function listAttachments(
 	);
 	return res.results.map((a) => ({
 		filename: a.title ?? a.id,
-		fileId: a.fileId ?? a.id,
-		size: typeof a.fileSize === "number" ? a.fileSize : -1,
+		fileId: mediaNodeId(a),
+		size: typeof a.fileSize === "number" ? a.fileSize : UNKNOWN_SIZE,
 	}));
 }
 
@@ -139,8 +137,6 @@ interface UploadResponse {
 	results?: { title?: string; extensions?: { fileId?: string } }[];
 }
 
-// Upload (or version) an attachment and return its media fileId. Uses the v1
-// endpoint, the only one that creates attachments; it upserts by filename.
 export async function uploadAttachment(
 	client: AtlassianClient,
 	pageId: string,
@@ -152,9 +148,16 @@ export async function uploadAttachment(
 		filename,
 		bytes,
 	);
-	const fileId = res.results?.[0]?.extensions?.fileId;
-	if (fileId) return fileId;
-	// some responses omit the fileId; recover it by re-listing attachments
+	return (
+		res.results?.[0]?.extensions?.fileId ?? (await fileIdByListing(client, pageId, filename))
+	);
+}
+
+async function fileIdByListing(
+	client: AtlassianClient,
+	pageId: string,
+	filename: string,
+): Promise<string> {
 	const listed = await listAttachments(client, pageId);
 	const match = listed.find((a) => a.filename === filename);
 	if (match) return match.fileId;
@@ -163,12 +166,11 @@ export async function uploadAttachment(
 
 export interface UpdatePageParams {
 	title: string;
-	version: number;
+	nextVersion: number;
 	body: AdfNode;
 	message?: string;
 }
 
-// Replace a page body. version.number must be the current version plus one.
 export async function updatePage(
 	client: AtlassianClient,
 	id: string,
@@ -182,9 +184,9 @@ export async function updatePage(
 			representation: "atlas_doc_format",
 			value: JSON.stringify(params.body),
 		},
-		version: { number: params.version, message: params.message },
+		version: { number: params.nextVersion, message: params.message },
 	});
-	return res.version?.number ?? params.version;
+	return res.version?.number ?? params.nextVersion;
 }
 
 export interface PageSummary {
@@ -213,7 +215,6 @@ interface SearchResponse {
 
 export interface PageSearchResult {
 	pages: PageSummary[];
-	// the API returned a full page, so more matches may exist
 	hasMore: boolean;
 }
 
@@ -230,8 +231,7 @@ export async function searchPages(
 	});
 	const res = await client.getJson<SearchResponse>(`/wiki/rest/api/search?${query.toString()}`);
 	const results = res.results ?? [];
-	// count against the raw results: some rows are dropped below for lacking a
-	// content id, which must not hide that the server had a full page.
+	const serverPageWasFull = results.length === params.limit;
 	const pages = results
 		.filter((r) => r.content?.id)
 		.map((r) => ({
@@ -240,21 +240,18 @@ export async function searchPages(
 			title: decodeEntities(r.content?.title ?? r.title ?? ""),
 			url: r.url ? `${site}/wiki${r.url}` : "",
 		}));
-	return { pages, hasMore: results.length === params.limit };
+	return { pages, hasMore: serverPageWasFull };
 }
 
-// Build CQL from friendly params, or return the raw --cql verbatim. Friendly
-// mode always constrains to pages so every result is copy-able.
 export function buildCql(params: PageSearchParams): string {
 	if (params.cql) return params.cql;
 	const clauses = ["type = page"];
-	if (params.space) clauses.push(`space = ${cqlValue(params.space)}`);
-	if (params.text) clauses.push(`text ~ ${cqlValue(params.text)}`);
+	if (params.space) clauses.push(`space = ${cqlStringLiteral(params.space)}`);
+	if (params.text) clauses.push(`text ~ ${cqlStringLiteral(params.text)}`);
 	return `${clauses.join(" AND ")} ORDER BY lastmodified DESC`;
 }
 
-// Quote and escape a value for use in a CQL string literal.
-function cqlValue(value: string): string {
+function cqlStringLiteral(value: string): string {
 	return `"${value.replace(/(["\\])/g, "\\$1")}"`;
 }
 
@@ -277,11 +274,14 @@ async function fetchAttachments(client: AtlassianClient, id: string): Promise<Re
 	return res.results
 		.filter((a) => a.downloadLink)
 		.map((a) => ({
-			// match media nodes by fileId; fall back to attachment id
-			id: a.fileId ?? a.id,
+			id: mediaNodeId(a),
 			filename: a.title ?? a.id,
-			url: normalizeDownloadLink(a.downloadLink ?? ""),
+			url: withWikiContextPath(a.downloadLink ?? ""),
 		}));
+}
+
+function mediaNodeId(a: AttachmentResponse): string {
+	return a.fileId ?? a.id;
 }
 
 async function fetchComments(
@@ -296,19 +296,17 @@ async function fetchComments(
 		res.results.map(async (c) => ({
 			author: await names.resolve(c.version?.authorId),
 			created: c.version?.createdAt ?? "",
-			body: parseAdf(c.body?.atlas_doc_format?.value),
+			body: parseAdfJson(c.body?.atlas_doc_format?.value),
 		})),
 	);
 }
 
-// Confluence download links are relative to the /wiki context path.
-function normalizeDownloadLink(link: string): string {
+function withWikiContextPath(link: string): string {
 	if (link.startsWith("http") || link.startsWith("/wiki")) return link;
 	return `/wiki${link}`;
 }
 
-// The atlas_doc_format body is delivered as a JSON string.
-function parseAdf(value: string | undefined): AdfNode | null {
+function parseAdfJson(value: string | undefined): AdfNode | null {
 	if (!value) return null;
 	try {
 		return JSON.parse(value) as AdfNode;
@@ -317,7 +315,6 @@ function parseAdf(value: string | undefined): AdfNode | null {
 	}
 }
 
-// Resolves account ids to display names, cached and failure-tolerant.
 class UserNames {
 	private readonly cache = new Map<string, string>();
 
@@ -327,16 +324,19 @@ class UserNames {
 		if (!accountId) return "";
 		const cached = this.cache.get(accountId);
 		if (cached !== undefined) return cached;
-		let name = accountId;
+		const name = (await this.fetchDisplayName(accountId)) ?? accountId;
+		this.cache.set(accountId, name);
+		return name;
+	}
+
+	private async fetchDisplayName(accountId: string): Promise<string | null> {
 		try {
 			const user = await this.client.getJson<UserResponse>(
 				`/wiki/rest/api/user?accountId=${encodeURIComponent(accountId)}`,
 			);
-			if (user.displayName) name = user.displayName;
+			return user.displayName || null;
 		} catch {
-			// fall back to the account id
+			return null;
 		}
-		this.cache.set(accountId, name);
-		return name;
 	}
 }

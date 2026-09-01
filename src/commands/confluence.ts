@@ -131,7 +131,7 @@ export async function confluenceUpdate(
 
 	const version = await updatePage(client, src.id, {
 		title: newTitle,
-		version: nextVersion,
+		nextVersion,
 		body,
 		message: options.message ?? "Updated via atlass",
 	});

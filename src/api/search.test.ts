@@ -1,6 +1,8 @@
 import { expect, test } from "vite-plus/test";
 
-import { buildCql } from "./confluence.ts";
+import type { AtlassianClient } from "./client.ts";
+
+import { buildCql, searchPages } from "./confluence.ts";
 import { buildJql, dedupeAndSortStatuses, projectSearchQuery } from "./jira.ts";
 
 test("jql: empty query falls back to recent issues, since the search endpoint rejects unbounded queries", () => {
@@ -108,4 +110,15 @@ test("cql: raw cql is used verbatim", () => {
 	expect(buildCql({ cql: "type = blogpost", space: "IGNORED", limit: 25 })).toBe(
 		"type = blogpost",
 	);
+});
+
+test("cql search: a full server page means more results, even when rows without a content id are dropped", async () => {
+	const client = {
+		getJson: async () => ({
+			results: [{ content: { id: "1", title: "A" } }, { title: "orphan result" }],
+		}),
+	} as unknown as AtlassianClient;
+	const res = await searchPages(client, "https://acme.atlassian.net", { limit: 2 });
+	expect(res.pages.map((p) => p.id)).toEqual(["1"]);
+	expect(res.hasMore).toBe(true);
 });
