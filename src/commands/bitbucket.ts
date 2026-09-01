@@ -33,9 +33,6 @@ export async function bitbucketLogin(): Promise<void> {
 		mask: true,
 	});
 
-	// verify the token + workspace before persisting so we never save a broken
-	// credential. this proves the token and workspace are valid, though not that
-	// it carries the pipeline scope (that surfaces on the first pipelines call).
 	const client = new AtlassianClient({ site: BITBUCKET_ORIGIN, email, token });
 	const ws = await verifyWorkspace(client, workspace);
 
@@ -51,12 +48,10 @@ export async function bitbucketLogin(): Promise<void> {
 export async function bitbucketLogout(): Promise<void> {
 	const config = await readConfig();
 	if (config?.email) deleteBitbucketToken(config.email);
-	// keep a Jira login intact if present; only drop the Bitbucket parts.
-	if (config?.site && config.email) {
-		await writeConfig({ site: config.site, email: config.email });
-	} else {
-		await clearConfig();
-	}
+	const jiraLogin =
+		config?.site && config.email ? { site: config.site, email: config.email } : null;
+	if (jiraLogin) await writeConfig(jiraLogin);
+	else await clearConfig();
 	console.log("Logged out of Bitbucket. Credentials removed.");
 }
 
@@ -116,8 +111,6 @@ export async function bitbucketPipeline(
 	printPipelineDetail(detail, steps, Date.now());
 }
 
-// Align each column so the rows read as a table. Time is relative to nowMs.
-// Pure; exported for testing.
 export function formatPipelineRows(pipelines: PipelineSummary[], nowMs: number): string[] {
 	const rows = pipelines.map((p) => ({
 		num: `#${p.buildNumber}`,
@@ -140,8 +133,6 @@ export function formatPipelineRows(pipelines: PipelineSummary[], nowMs: number):
 	);
 }
 
-// Indented step lines (name / status / duration) under the detail summary.
-// Pure; exported for testing.
 export function formatStepRows(steps: StepSummary[]): string[] {
 	const rows = steps.map((s) => ({
 		name: s.name || "-",
@@ -156,14 +147,7 @@ export function formatStepRows(steps: StepSummary[]): string[] {
 function printPipelineDetail(detail: PipelineDetail, steps: StepSummary[], nowMs: number): void {
 	console.log(`Pipeline #${detail.buildNumber}  ${detail.status || "-"}`);
 	if (detail.repo) console.log(`Repo:     ${detail.repo}`);
-	// a run with a branch/tag shows "ref (commit)"; a commit-target run shows just
-	// the commit.
-	const refLine = detail.ref
-		? detail.commit
-			? `${detail.ref} (${detail.commit})`
-			: detail.ref
-		: detail.commit || "-";
-	console.log(`Ref:      ${refLine}`);
+	console.log(`Ref:      ${refWithCommit(detail)}`);
 	if (detail.trigger) console.log(`Trigger:  ${detail.trigger}`);
 	console.log(`Duration: ${formatDuration(detail.durationSeconds)}`);
 	const by = detail.creator ? ` by ${detail.creator}` : "";
@@ -175,9 +159,11 @@ function printPipelineDetail(detail: PipelineDetail, steps: StepSummary[], nowMs
 	}
 }
 
-// Verify the workspace + token at login, turning the generic auth failure (which
-// tells the user to run `atlass auth login`, the wrong command) into a Bitbucket
-// hint. A 404 means the workspace slug is wrong.
+function refWithCommit(detail: PipelineDetail): string {
+	if (!detail.ref) return detail.commit || "-";
+	return detail.commit ? `${detail.ref} (${detail.commit})` : detail.ref;
+}
+
 async function verifyWorkspace(client: AtlassianClient, workspace: string): Promise<Workspace> {
 	try {
 		return await client.getJson<Workspace>(`/2.0/workspaces/${encodeURIComponent(workspace)}`);
@@ -205,9 +191,6 @@ function parseBuildNumber(arg: string | undefined): number {
 	return Number.parseInt(raw, 10);
 }
 
-// Bitbucket auth errors otherwise map to the generic "run atlass auth login"
-// message, which points at the wrong command and misses the common cause: a
-// token without the pipeline scope.
 async function withScopeHint<T>(fn: () => Promise<T>): Promise<T> {
 	try {
 		return await fn();
