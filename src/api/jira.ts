@@ -98,7 +98,7 @@ export async function fetchIssue(
 		description: f.description ?? null,
 		comments,
 		attachments: (f.attachment ?? []).map((a) => ({
-			id: a.id,
+			mediaId: a.id,
 			filename: a.filename,
 			url: a.content,
 		})),

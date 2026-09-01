@@ -15,7 +15,7 @@ export interface Comment {
 export function mediaResolver(
 	downloaded: DownloadedAttachment[],
 ): (media: MediaAttrs) => string | undefined {
-	const byId = new Map(downloaded.map((d) => [d.id, d.relativePath]));
+	const byId = new Map(downloaded.map((d) => [d.mediaId, d.relativePath]));
 	const byName = new Map(downloaded.map((d) => [d.filename, d.relativePath]));
 	return (media) => {
 		if (media.id && byId.has(media.id)) return byId.get(media.id);

@@ -274,7 +274,7 @@ async function fetchAttachments(client: AtlassianClient, id: string): Promise<Re
 	return res.results
 		.filter((a) => a.downloadLink)
 		.map((a) => ({
-			id: mediaNodeId(a),
+			mediaId: mediaNodeId(a),
 			filename: a.title ?? a.id,
 			url: withWikiContextPath(a.downloadLink ?? ""),
 		}));

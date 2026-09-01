@@ -27,7 +27,7 @@ test("frontmatter renders empty array inline", () => {
 
 test("mediaResolver matches by id then by alt filename", () => {
 	const downloaded: DownloadedAttachment[] = [
-		{ id: "file-1", filename: "shot.png", url: "", relativePath: "x.assets/shot.png" },
+		{ mediaId: "file-1", filename: "shot.png", url: "", relativePath: "x.assets/shot.png" },
 	];
 	const resolve = mediaResolver(downloaded);
 	expect(resolve({ id: "file-1" })).toBe("x.assets/shot.png");
@@ -37,7 +37,7 @@ test("mediaResolver matches by id then by alt filename", () => {
 
 test("attachmentsSection lists downloaded files", () => {
 	const downloaded: DownloadedAttachment[] = [
-		{ id: "1", filename: "a.png", url: "", relativePath: "x.assets/a.png" },
+		{ mediaId: "1", filename: "a.png", url: "", relativePath: "x.assets/a.png" },
 	];
 	expect(attachmentsSection(downloaded)).toBe("## Attachments\n\n- [a.png](x.assets/a.png)");
 	expect(attachmentsSection([])).toBe("");
