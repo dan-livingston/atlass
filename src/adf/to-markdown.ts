@@ -1,12 +1,9 @@
 import type { AdfMark, AdfNode, MediaAttrs } from "./types.ts";
 
 export interface ToMarkdownOptions {
-	// Map an ADF media node to a relative path (e.g. "PROJ-1.assets/img.png").
-	// Return undefined to emit a text placeholder instead of an image link.
 	resolveMedia?: (media: MediaAttrs) => string | undefined;
 }
 
-// Convert an ADF document (or any ADF node) to Markdown.
 export function adfToMarkdown(
 	doc: AdfNode | undefined | null,
 	options: ToMarkdownOptions = {},
@@ -22,7 +19,6 @@ interface Ctx {
 	resolveMedia?: (media: MediaAttrs) => string | undefined;
 }
 
-// Render a list of block nodes, separated by blank lines.
 function renderBlocks(nodes: AdfNode[], ctx: Ctx, indent: string): string {
 	return nodes
 		.map((n) => renderBlock(n, ctx, indent))
@@ -67,7 +63,6 @@ function renderBlock(node: AdfNode, ctx: Ctx, indent: string): string {
 		case "nestedExpand":
 			return renderExpand(node, ctx, indent);
 		default:
-			// Unknown block: render children if any, else drop with a marker.
 			if (node.content?.length) return renderBlocks(node.content, ctx, indent);
 			return node.text ? indent + node.text : "";
 	}
@@ -84,18 +79,15 @@ function renderList(node: AdfNode, ctx: Ctx, indent: string, kind: "bullet" | "o
 		.join("\n");
 }
 
-// A list item's first block sits on the marker line; later blocks (including
-// nested lists) are indented to line up under it.
 function renderListItem(item: AdfNode, ctx: Ctx, indent: string, marker: string): string {
-	const childIndent = `${indent}${" ".repeat(marker.length)}`;
-	const blocks = item.content ?? [];
-	const rendered = blocks.map((b, i) => renderBlock(b, ctx, i === 0 ? "" : childIndent));
-	const parts: string[] = [];
-	rendered.forEach((text, i) => {
-		if (i === 0) parts.push(`${indent}${marker}${text}`);
-		else parts.push(text);
-	});
-	return parts.join("\n");
+	const continuationIndent = `${indent}${" ".repeat(marker.length)}`;
+	return (item.content ?? [])
+		.map((block, i) =>
+			i === 0
+				? `${indent}${marker}${renderBlock(block, ctx, "")}`
+				: renderBlock(block, ctx, continuationIndent),
+		)
+		.join("\n");
 }
 
 function renderTaskList(node: AdfNode, ctx: Ctx, indent: string): string {
@@ -151,7 +143,9 @@ function renderExpand(node: AdfNode, ctx: Ctx, indent: string): string {
 function renderTable(node: AdfNode, ctx: Ctx): string {
 	const rows = (node.content ?? []).filter((n) => n.type === "tableRow");
 	if (rows.length === 0) return "";
-	const grid = rows.map((row) => (row.content ?? []).map((cell) => renderCell(cell, ctx)));
+	const grid = rows.map((row) =>
+		(row.content ?? []).map((cell) => renderCellOnOneLine(cell, ctx)),
+	);
 	const cols = Math.max(...grid.map((r) => r.length));
 	const pad = (r: string[]): string[] => {
 		const copy = [...r];
@@ -164,14 +158,11 @@ function renderTable(node: AdfNode, ctx: Ctx): string {
 	return lines.join("\n");
 }
 
-// Table cells can hold block content, but Markdown cells are inline-only, so
-// flatten to a single line and escape pipes.
-function renderCell(cell: AdfNode, ctx: Ctx): string {
-	const text = renderBlocks(cell.content ?? [], ctx, "")
+function renderCellOnOneLine(cell: AdfNode, ctx: Ctx): string {
+	return renderBlocks(cell.content ?? [], ctx, "")
 		.replace(/\n+/g, " ")
 		.replace(/\|/g, "\\|")
 		.trim();
-	return text;
 }
 
 function renderMedia(node: AdfNode, ctx: Ctx): string {
@@ -182,8 +173,6 @@ function renderMedia(node: AdfNode, ctx: Ctx): string {
 	const label = alt || attrs.id || "media";
 	return `[embedded media: ${label}]`;
 }
-
-// ---- inline rendering ----
 
 function renderInline(nodes: AdfNode[], ctx: Ctx): string {
 	return nodes.map((n) => renderInlineNode(n, ctx)).join("");
@@ -225,7 +214,6 @@ function renderInlineNode(node: AdfNode, ctx: Ctx): string {
 	}
 }
 
-// Wrap text in Markdown marks. Order matters: code innermost, link outermost.
 function applyMarks(text: string, marks: AdfMark[]): string {
 	if (text.length === 0) return text;
 	let out = text;
@@ -256,8 +244,6 @@ function applyMarks(text: string, marks: AdfMark[]): string {
 	if (href) out = `[${out}](${href})`;
 	return out;
 }
-
-// ---- helpers ----
 
 function prefixLines(text: string, prefix: string): string {
 	return text

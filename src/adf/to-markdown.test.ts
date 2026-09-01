@@ -43,6 +43,28 @@ test("inline marks", () => {
 	expect(adfToMarkdown(d)).toBe("**a** *b* `c` ~~d~~");
 });
 
+test("link mark wraps other marks, whatever order the marks arrive in", () => {
+	const doc = {
+		type: "doc",
+		content: [
+			{
+				type: "paragraph",
+				content: [
+					{
+						type: "text",
+						text: "x",
+						marks: [
+							{ type: "link", attrs: { href: "https://a.test" } },
+							{ type: "code" },
+						],
+					},
+				],
+			},
+		],
+	};
+	expect(adfToMarkdown(doc)).toBe("[`x`](https://a.test)");
+});
+
 test("link mark wraps other marks", () => {
 	const d = doc(
 		para(
