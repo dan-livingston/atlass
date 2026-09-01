@@ -153,8 +153,7 @@ test("html blocks are dropped", () => {
 	expect(markdownToAdf("<div>raw</div>").content).toEqual([]);
 });
 
-// round-trips: ADF -> Markdown -> ADF returns to the same clean-subset shape
-test("round-trip through to-markdown for the clean subset", () => {
+test("the clean subset round-trips: Markdown to ADF and back reproduces the source", () => {
 	const md = [
 		"# Title",
 		"",
@@ -183,7 +182,5 @@ test("round-trip through to-markdown for the clean subset", () => {
 		"---",
 	].join("\n");
 
-	const adf = markdownToAdf(md);
-	// converting the produced ADF back to Markdown reproduces the source
-	expect(adfToMarkdown(adf).trim()).toBe(md.trim());
+	expect(adfToMarkdown(markdownToAdf(md)).trim()).toBe(md.trim());
 });
