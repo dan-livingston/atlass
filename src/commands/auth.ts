@@ -22,11 +22,9 @@ export async function login(): Promise<void> {
 		mask: true,
 	});
 
-	// verify before persisting so we never save a broken credential.
 	const client = new AtlassianClient({ site, email, token });
 	const me = await client.getJson<Myself>("/rest/api/3/myself");
 
-	// merge so a Bitbucket block (if any) survives a Jira login.
 	const existing = (await readConfig()) ?? {};
 	await writeConfig({ ...existing, site, email });
 	saveToken(email, token);
@@ -36,12 +34,12 @@ export async function login(): Promise<void> {
 export async function logout(): Promise<void> {
 	const config = await readConfig();
 	if (config?.email) deleteToken(config.email);
-	// keep the Bitbucket login intact if present; only drop the Jira parts.
-	if (config?.bitbucket && config.email) {
-		await writeConfig({ email: config.email, bitbucket: config.bitbucket });
-	} else {
-		await clearConfig();
-	}
+	const bitbucketLogin =
+		config?.bitbucket && config.email
+			? { email: config.email, bitbucket: config.bitbucket }
+			: null;
+	if (bitbucketLogin) await writeConfig(bitbucketLogin);
+	else await clearConfig();
 	console.log("Logged out. Credentials removed.");
 }
 
