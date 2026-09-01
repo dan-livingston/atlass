@@ -108,9 +108,10 @@ bitbucket
 	.option("-r, --repo <repo>", "workspace/slug, or a bare slug (defaults to config)")
 	.action(run(bitbucketPipeline));
 
+const SIGINT_EXIT_CODE = 130;
+
 program.parseAsync().catch(fail);
 
-// Wrap a command action so errors print cleanly and exit non-zero.
 function run<A extends unknown[]>(
 	fn: (...args: A) => Promise<void>,
 ): (...args: A) => Promise<void> {
@@ -124,8 +125,11 @@ function run<A extends unknown[]>(
 }
 
 function fail(err: unknown): never {
-	// a clean Ctrl+C out of an inquirer prompt should not look like a crash
-	if (err instanceof Error && err.name === "ExitPromptError") process.exit(130);
+	if (isPromptInterrupt(err)) process.exit(SIGINT_EXIT_CODE);
 	console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
 	process.exit(1);
+}
+
+function isPromptInterrupt(err: unknown): boolean {
+	return err instanceof Error && err.name === "ExitPromptError";
 }
