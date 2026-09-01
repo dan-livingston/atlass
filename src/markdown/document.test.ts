@@ -25,7 +25,7 @@ test("frontmatter renders empty array inline", () => {
 	expect(frontmatter({ labels: [] })).toContain("labels: []");
 });
 
-test("mediaResolver matches by id then by alt filename", () => {
+test("mediaResolver matches by id, then by alt filename since jira media nodes often carry only that", () => {
 	const downloaded: DownloadedAttachment[] = [
 		{ mediaId: "file-1", filename: "shot.png", url: "", relativePath: "x.assets/shot.png" },
 	];
