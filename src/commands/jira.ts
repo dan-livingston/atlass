@@ -67,7 +67,6 @@ export async function jiraProjects(
 	for (const line of formatProjectRows(projects)) console.log(line);
 }
 
-// Align the key column so names line up. Pure; exported for testing.
 export function formatProjectRows(projects: Pick<ProjectSummary, "key" | "name">[]): string[] {
 	const width = Math.max(...projects.map((p) => p.key.length));
 	return projects.map((p) => `${p.key.padEnd(width)}  ${p.name}`);
@@ -102,7 +101,6 @@ export async function jiraStatuses(
 	for (const line of formatStatusRows(statuses)) console.log(line);
 }
 
-// Align the name column so categories line up. Pure; exported for testing.
 export function formatStatusRows(statuses: Pick<StatusSummary, "name" | "category">[]): string[] {
 	const width = Math.max(...statuses.map((s) => s.name.length));
 	return statuses.map((s) => `${s.name.padEnd(width)}  ${s.category}`);
@@ -140,8 +138,6 @@ export async function jiraUpdate(arg: string | undefined, options: UpdateOptions
 		return;
 	}
 
-	// image changes are not supported yet; external URLs pass through as external
-	// media, but a local image cannot be uploaded, so refuse rather than drop it.
 	if (local.length > 0) {
 		throw new Error(
 			`jira update does not support image changes yet. ` +
@@ -221,8 +217,6 @@ export async function jiraSearch(query: string | undefined, options: SearchOptio
 	);
 }
 
-// Fetch one issue and write it to Markdown. Shared by the copy command and the
-// search picker.
 async function copyIssue(
 	client: AtlassianClient,
 	site: string,
@@ -279,10 +273,6 @@ function report(filePath: string, assetCount: number): void {
 	console.log(`Wrote ${filePath}${suffix}`);
 }
 
-// ---- update helpers ----
-
-// Split the distinct image hrefs in the body into external URLs (pass through as
-// external media) and local paths (unsupported, refused before an update).
 function classifyImages(md: string): { local: string[]; external: string[] } {
 	const local: string[] = [];
 	const external: string[] = [];
