@@ -1,6 +1,5 @@
-// Jira and Confluence search return summaries/titles HTML-escaped. Decode the
-// common named entities plus numeric ones so printed and JSON output is plain
-// text.
+const MAX_CODE_POINT = 0x10ffff;
+
 const NAMED: Record<string, string> = {
 	amp: "&",
 	lt: "<",
@@ -17,13 +16,13 @@ export function decodeEntities(text: string): string {
 				body[1] === "x" || body[1] === "X"
 					? Number.parseInt(body.slice(2), 16)
 					: Number.parseInt(body.slice(1), 10);
-			// String.fromCodePoint throws RangeError outside 0..0x10FFFF; leave
-			// out-of-range entities as-is rather than crash the whole result set.
-			return Number.isFinite(code) && code >= 0 && code <= 0x10ffff
-				? String.fromCodePoint(code)
-				: match;
+			return isCodePoint(code) ? String.fromCodePoint(code) : match;
 		}
 		const named = NAMED[body.toLowerCase()];
 		return named ?? match;
 	});
+}
+
+function isCodePoint(code: number): boolean {
+	return Number.isFinite(code) && code >= 0 && code <= MAX_CODE_POINT;
 }
