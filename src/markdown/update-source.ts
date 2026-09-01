@@ -3,7 +3,6 @@ import type { AdfNode } from "../adf/types.ts";
 export interface PageUpdateSource {
 	id: string;
 	version: number;
-	frontmatterTitle: string;
 	h1Title: string;
 	body: string;
 }
@@ -35,7 +34,7 @@ export function parsePageUpdateSource(content: string): PageUpdateSource {
 		throw new Error("Frontmatter is missing a numeric `version`; re-copy the page.");
 	}
 
-	return { id, version, frontmatterTitle: fields["title"] ?? "", h1Title, body };
+	return { id, version, h1Title, body };
 }
 
 export function parseJiraUpdateSource(content: string): JiraUpdateSource {

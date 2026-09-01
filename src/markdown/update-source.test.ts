@@ -40,7 +40,6 @@ test("parses identity from frontmatter", () => {
 	const src = parsePageUpdateSource(file);
 	expect(src.id).toBe("123456");
 	expect(src.version).toBe(7);
-	expect(src.frontmatterTitle).toBe("My Page");
 	expect(src.h1Title).toBe("My Page");
 });
 
@@ -52,7 +51,6 @@ test("body excludes frontmatter, H1, comments, and attachments", () => {
 test("captures an edited H1 as the body title", () => {
 	const src = parsePageUpdateSource(file.replace("# My Page", "# Renamed Page"));
 	expect(src.h1Title).toBe("Renamed Page");
-	expect(src.frontmatterTitle).toBe("My Page");
 });
 
 test("body with no trailing sections runs to end of file", () => {
