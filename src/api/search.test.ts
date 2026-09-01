@@ -3,7 +3,7 @@ import { expect, test } from "vite-plus/test";
 import { buildCql } from "./confluence.ts";
 import { buildJql, dedupeAndSortStatuses, projectSearchQuery } from "./jira.ts";
 
-test("jql: empty query falls back to a bounded recent query", () => {
+test("jql: empty query falls back to recent issues, since the search endpoint rejects unbounded queries", () => {
 	expect(buildJql({ limit: 25 })).toBe("updated >= -30d ORDER BY updated DESC");
 });
 

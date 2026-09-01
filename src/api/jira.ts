@@ -67,8 +67,8 @@ const FIELDS = [
 	"attachment",
 ].join(",");
 
-// Canonical short link for any Jira key (issue or project). Jira redirects
-// /browse/<key> to the right place regardless of type.
+const RECENT_ISSUES_CLAUSE = "updated >= -30d";
+
 function browseUrl(site: string, key: string): string {
 	return `${site}/browse/${key}`;
 }
@@ -107,12 +107,9 @@ export async function fetchIssue(
 
 export interface IssueUpdate {
 	description: AdfNode;
-	// pushed as the new issue summary only when set
 	summary?: string;
 }
 
-// Update an issue's description (and optionally summary). The edit endpoint
-// returns 204 No Content, so nothing is parsed back.
 export async function updateIssue(
 	client: AtlassianClient,
 	key: string,
@@ -166,24 +163,20 @@ export async function searchIssues(
 	}));
 }
 
-// Build JQL from friendly params, or return the raw --jql verbatim. Friendly
-// clauses are AND'd; ordering defaults to most recently updated.
 export function buildJql(params: IssueSearchParams): string {
 	if (params.jql) return params.jql;
 	const clauses: string[] = [];
-	if (params.project) clauses.push(`project = ${jqlValue(params.project)}`);
+	if (params.project) clauses.push(`project = ${jqlStringLiteral(params.project)}`);
 	if (params.assignee) {
 		clauses.push(
 			params.assignee === "me"
 				? "assignee = currentUser()"
-				: `assignee = ${jqlValue(params.assignee)}`,
+				: `assignee = ${jqlStringLiteral(params.assignee)}`,
 		);
 	}
-	if (params.status) clauses.push(`status = ${jqlValue(params.status)}`);
-	if (params.text) clauses.push(`text ~ ${jqlValue(params.text)}`);
-	// the search endpoint rejects unbounded queries, so a bare search falls back
-	// to recently updated issues.
-	if (clauses.length === 0) clauses.push("updated >= -30d");
+	if (params.status) clauses.push(`status = ${jqlStringLiteral(params.status)}`);
+	if (params.text) clauses.push(`text ~ ${jqlStringLiteral(params.text)}`);
+	if (clauses.length === 0) clauses.push(RECENT_ISSUES_CLAUSE);
 	return `${clauses.join(" AND ")} ORDER BY updated DESC`;
 }
 
@@ -207,8 +200,6 @@ interface ProjectSearchResponse {
 
 const PROJECT_PAGE_SIZE = 50;
 
-// Fetch every project the account can browse, following pagination until the
-// last page. Ordered by key so the printed list is predictable.
 export async function listProjects(
 	client: AtlassianClient,
 	site: string,
@@ -235,7 +226,6 @@ export async function listProjects(
 	return projects;
 }
 
-// Build the project/search query string for one page. Exported for testing.
 export function projectSearchQuery(query: string | undefined, startAt: number): string {
 	const params = new URLSearchParams({
 		orderBy: "key",
@@ -249,9 +239,7 @@ export function projectSearchQuery(query: string | undefined, startAt: number): 
 export interface StatusSummary {
 	name: string;
 	id: string;
-	// statusCategory display name, e.g. "In Progress"
 	category: string;
-	// stable statusCategory key, e.g. "indeterminate"; language independent
 	categoryKey: string;
 }
 
@@ -261,14 +249,10 @@ interface StatusResponse {
 	statusCategory?: { key?: string; name?: string };
 }
 
-// project/{key}/statuses groups statuses under each issue type
-interface ProjectStatusResponse {
+interface IssueTypeStatusesResponse {
 	statuses?: StatusResponse[];
 }
 
-// List statuses for the whole site, or just those used by one project. The
-// project endpoint groups statuses by issue type, so its results are flattened
-// and de-duplicated. A missing project surfaces as a friendly error.
 export async function listStatuses(
 	client: AtlassianClient,
 	project?: string,
@@ -283,9 +267,9 @@ async function fetchProjectStatuses(
 	client: AtlassianClient,
 	project: string,
 ): Promise<StatusResponse[]> {
-	let groups: ProjectStatusResponse[];
+	let groups: IssueTypeStatusesResponse[];
 	try {
-		groups = await client.getJson<ProjectStatusResponse[]>(
+		groups = await client.getJson<IssueTypeStatusesResponse[]>(
 			`/rest/api/3/project/${encodeURIComponent(project)}/statuses`,
 		);
 	} catch (err) {
@@ -307,12 +291,8 @@ function toStatusSummary(s: StatusResponse): StatusSummary {
 }
 
 const CATEGORY_ORDER: Record<string, number> = { new: 0, indeterminate: 1, done: 2 };
-// unknown categories sort after the known lifecycle buckets
-const CATEGORY_LAST = Object.keys(CATEGORY_ORDER).length;
+const UNKNOWN_CATEGORY_RANK = Object.keys(CATEGORY_ORDER).length;
 
-// Order statuses by workflow lifecycle (To Do, In Progress, Done) then name,
-// collapsing statuses that share a name and category (the same name can exist
-// under many ids across workflows). Pure; exported for testing.
 export function dedupeAndSortStatuses(statuses: StatusSummary[]): StatusSummary[] {
 	const byNameCategory = new Map<string, StatusSummary>();
 	for (const s of statuses) {
@@ -320,13 +300,12 @@ export function dedupeAndSortStatuses(statuses: StatusSummary[]): StatusSummary[
 		if (!byNameCategory.has(key)) byNameCategory.set(key, s);
 	}
 	return [...byNameCategory.values()].sort((a, b) => {
-		const rank = (s: StatusSummary) => CATEGORY_ORDER[s.categoryKey] ?? CATEGORY_LAST;
+		const rank = (s: StatusSummary) => CATEGORY_ORDER[s.categoryKey] ?? UNKNOWN_CATEGORY_RANK;
 		return rank(a) - rank(b) || a.name.localeCompare(b.name);
 	});
 }
 
-// Quote and escape a value for use in a JQL string literal.
-function jqlValue(value: string): string {
+function jqlStringLiteral(value: string): string {
 	return `"${value.replace(/(["\\])/g, "\\$1")}"`;
 }
 
