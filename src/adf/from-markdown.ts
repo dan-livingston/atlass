@@ -3,7 +3,7 @@ import type { Token, Tokens } from "marked";
 import { marked } from "marked";
 import { randomUUID } from "node:crypto";
 
-import type { AdfMark, AdfNode } from "./types.ts";
+import type { AdfDoc, AdfMark, AdfNode } from "./types.ts";
 
 export interface FromMarkdownOptions {
 	// Turn an image into a block-level ADF node (typically a mediaSingle). Return
@@ -21,7 +21,7 @@ interface Ctx {
 // blockquotes, rules, tables, and inline marks). Anything richer is passed
 // through as its plain-Markdown meaning; it is not reverse-engineered back into
 // panels, expands, or macros.
-export function markdownToAdf(md: string, options: FromMarkdownOptions = {}): AdfNode {
+export function markdownToAdf(md: string, options: FromMarkdownOptions = {}): AdfDoc {
 	const ctx: Ctx = { resolveImage: options.resolveImage ?? defaultResolveImage };
 	const content = blocks(marked.lexer(md), ctx);
 	return { type: "doc", version: 1, content };
