@@ -3,13 +3,17 @@ import type { AtlassianClient } from "./client.ts";
 
 import { HttpError } from "./client.ts";
 
-// ---- API response shapes (subset of the fields atlass uses) ----
-
-interface PipelineState {
-	name?: string;
-	// present when name is COMPLETED
+interface CompletedState {
+	name: "COMPLETED";
 	result?: { name?: string };
 }
+
+interface LifecycleState {
+	name?: string;
+	result?: undefined;
+}
+
+type PipelineState = CompletedState | LifecycleState;
 
 interface PipelineValue {
 	uuid: string;
@@ -36,13 +40,10 @@ interface Paginated<T> {
 	next?: string;
 }
 
-// ---- mapped summaries (also what --json emits) ----
-
 export interface PipelineSummary {
 	buildNumber: number;
 	status: string;
 	ref: string;
-	// short commit hash; shown when a run has no branch/tag ref (commit target)
 	commit: string;
 	durationSeconds: number | null;
 	createdOn: string;
@@ -61,29 +62,21 @@ export interface StepSummary {
 	durationSeconds: number | null;
 }
 
-// ---- pure helpers ----
+const BITBUCKET_MAX_PAGELEN = 100;
+const BUILD_NUMBER_SCAN_LIMIT = 1000;
 
-// A pipeline's state is COMPLETED + a result (SUCCESSFUL/FAILED/...) once done,
-// otherwise a lifecycle name (PENDING/IN_PROGRESS/...). Show the result when
-// complete, else the state name.
 export function pipelineStatus(state: PipelineState | undefined): string {
 	if (!state) return "";
 	if (state.name === "COMPLETED") return state.result?.name ?? "COMPLETED";
 	return state.name ?? "";
 }
 
-// The list endpoint is unusual in taking query params: newest first, page size
-// clamped to the requested limit (Bitbucket caps pagelen at 100).
 export function pipelinesQuery(limit: number): string {
-	const pagelen = Math.min(Math.max(limit, 1), 100);
+	const pagelen = Math.min(Math.max(limit, 1), BITBUCKET_MAX_PAGELEN);
 	return new URLSearchParams({ sort: "-created_on", pagelen: String(pagelen) }).toString();
 }
 
-// Whole elapsed seconds between two ISO timestamps, or null if either is missing
-// or unparseable. Used for a step's runtime and a pipeline's wall-clock duration
-// (build_seconds_used counts billable minutes, which are 0 on self-hosted
-// runners, so it is not a reliable duration).
-export function elapsedSeconds(
+export function wallClockSeconds(
 	startOn: string | undefined,
 	endOn: string | undefined,
 ): number | null {
@@ -94,57 +87,57 @@ export function elapsedSeconds(
 	return Math.floor((end - start) / 1000);
 }
 
-// ---- endpoints ----
-
-// upper bound on the build-number fallback scan, so a missing number never pages
-// forever through history.
-const MAX_SCAN = 1000;
-
-function repoPath(ref: RepoRef): string {
-	return `/2.0/repositories/${encodeURIComponent(ref.workspace)}/${encodeURIComponent(ref.repo)}/pipelines`;
+function shortHash(hash: string | undefined): string {
+	return hash?.slice(0, 7) ?? "";
 }
 
-// A Bitbucket `next` link is an absolute URL on the same host; reduce it to the
-// path+query the client appends to its origin.
-function toPath(url: string): string {
-	const u = new URL(url);
-	return u.pathname + u.search;
-}
-
-// Walk a paginated 2.0 collection, yielding each value across pages by following
-// the `next` link until it disappears. Callers decide when to stop.
-async function* paginate<T>(client: AtlassianClient, firstPath: string): AsyncGenerator<T> {
-	let path: string | null = firstPath;
-	while (path) {
-		const page: Paginated<T> = await client.getJson(path);
-		for (const value of page.values ?? []) yield value;
-		path = page.next ? toPath(page.next) : null;
-	}
-}
-
-function mapPipeline(p: PipelineValue): PipelineSummary {
+export function toPipelineSummary(p: PipelineValue): PipelineSummary {
 	return {
 		buildNumber: p.build_number,
 		status: pipelineStatus(p.state),
 		ref: p.target?.ref_name ?? "",
-		commit: p.target?.commit?.hash?.slice(0, 7) ?? "",
-		durationSeconds: elapsedSeconds(p.created_on, p.completed_on),
+		commit: shortHash(p.target?.commit?.hash),
+		durationSeconds: wallClockSeconds(p.created_on, p.completed_on),
 		createdOn: p.created_on ?? "",
 		creator: p.creator?.display_name ?? "",
 		uuid: p.uuid,
 	};
 }
 
-function mapDetail(p: PipelineValue): PipelineDetail {
+function toPipelineDetail(p: PipelineValue): PipelineDetail {
 	return {
-		...mapPipeline(p),
+		...toPipelineSummary(p),
 		repo: p.repository?.full_name ?? "",
 		trigger: p.trigger?.name ?? "",
 	};
 }
 
-// List recent pipelines, newest first, following pagination until `limit` rows
-// are gathered (or the results run out).
+function toStepSummary(step: StepValue): StepSummary {
+	return {
+		name: step.name ?? "",
+		status: pipelineStatus(step.state),
+		durationSeconds: wallClockSeconds(step.started_on, step.completed_on),
+	};
+}
+
+function repoPath(ref: RepoRef): string {
+	return `/2.0/repositories/${encodeURIComponent(ref.workspace)}/${encodeURIComponent(ref.repo)}/pipelines`;
+}
+
+function pathAndQuery(absoluteUrl: string): string {
+	const u = new URL(absoluteUrl);
+	return u.pathname + u.search;
+}
+
+async function* walkPages<T>(client: AtlassianClient, firstPath: string): AsyncGenerator<T> {
+	let path: string | null = firstPath;
+	while (path) {
+		const page: Paginated<T> = await client.getJson(path);
+		for (const value of page.values ?? []) yield value;
+		path = page.next ? pathAndQuery(page.next) : null;
+	}
+}
+
 export async function listPipelines(
 	client: AtlassianClient,
 	ref: RepoRef,
@@ -152,54 +145,56 @@ export async function listPipelines(
 ): Promise<PipelineSummary[]> {
 	const out: PipelineSummary[] = [];
 	const first = `${repoPath(ref)}?${pipelinesQuery(limit)}`;
-	for await (const value of paginate<PipelineValue>(client, first)) {
-		out.push(mapPipeline(value));
+	for await (const value of walkPages<PipelineValue>(client, first)) {
+		out.push(toPipelineSummary(value));
 		if (out.length >= limit) break;
 	}
 	return out;
 }
 
-// Fetch one pipeline by its human build number. The path officially wants the
-// pipeline uuid, but usually accepts the build number directly; try that first
-// and fall back to scanning the (newest-first) list when the API rejects it.
 export async function getPipeline(
 	client: AtlassianClient,
 	ref: RepoRef,
 	buildNumber: number,
 ): Promise<PipelineDetail> {
-	const base = repoPath(ref);
-	try {
-		const direct: PipelineValue = await client.getJson(
-			`${base}/${encodeURIComponent(String(buildNumber))}`,
-		);
-		return mapDetail(direct);
-	} catch (err) {
-		if (!(err instanceof HttpError) || (err.status !== 400 && err.status !== 404)) throw err;
-	}
-	const found = await scanForBuild(client, ref, buildNumber);
+	const found =
+		(await fetchByBuildNumber(client, ref, buildNumber)) ??
+		(await findInRecentRuns(client, ref, buildNumber));
 	if (!found) {
 		throw new Error(
-			`Could not find pipeline #${buildNumber} in the ${MAX_SCAN} most recent runs. It may be too old.`,
+			`Could not find pipeline #${buildNumber} in the ${BUILD_NUMBER_SCAN_LIMIT} most recent runs. It may be too old.`,
 		);
 	}
-	return mapDetail(found);
+	return toPipelineDetail(found);
 }
 
-async function scanForBuild(
+async function fetchByBuildNumber(
 	client: AtlassianClient,
 	ref: RepoRef,
 	buildNumber: number,
 ): Promise<PipelineValue | null> {
-	const first = `${repoPath(ref)}?${pipelinesQuery(100)}`;
+	try {
+		return await client.getJson(`${repoPath(ref)}/${encodeURIComponent(String(buildNumber))}`);
+	} catch (err) {
+		if (err instanceof HttpError && (err.status === 400 || err.status === 404)) return null;
+		throw err;
+	}
+}
+
+async function findInRecentRuns(
+	client: AtlassianClient,
+	ref: RepoRef,
+	buildNumber: number,
+): Promise<PipelineValue | null> {
+	const first = `${repoPath(ref)}?${pipelinesQuery(BITBUCKET_MAX_PAGELEN)}`;
 	let scanned = 0;
-	for await (const pipeline of paginate<PipelineValue>(client, first)) {
+	for await (const pipeline of walkPages<PipelineValue>(client, first)) {
 		if (pipeline.build_number === buildNumber) return pipeline;
-		if (++scanned >= MAX_SCAN) break;
+		if (++scanned >= BUILD_NUMBER_SCAN_LIMIT) break;
 	}
 	return null;
 }
 
-// List the steps of a pipeline, in order, following pagination to the end.
 export async function listSteps(
 	client: AtlassianClient,
 	ref: RepoRef,
@@ -207,12 +202,8 @@ export async function listSteps(
 ): Promise<StepSummary[]> {
 	const out: StepSummary[] = [];
 	const first = `${repoPath(ref)}/${encodeURIComponent(pipelineId)}/steps`;
-	for await (const step of paginate<StepValue>(client, first)) {
-		out.push({
-			name: step.name ?? "",
-			status: pipelineStatus(step.state),
-			durationSeconds: elapsedSeconds(step.started_on, step.completed_on),
-		});
+	for await (const step of walkPages<StepValue>(client, first)) {
+		out.push(toStepSummary(step));
 	}
 	return out;
 }
