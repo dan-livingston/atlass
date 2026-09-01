@@ -10,6 +10,7 @@ import type { AttachmentInfo } from "../api/confluence.ts";
 import type { CopyOptions } from "./jira.ts";
 
 import { markdownToAdf } from "../adf/from-markdown.ts";
+import { findLossyNodes, formatLossy } from "../adf/lossy.ts";
 import { adfToMarkdown } from "../adf/to-markdown.ts";
 import { downloadAttachments } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
@@ -29,7 +30,7 @@ import {
 	joinSections,
 	mediaResolver,
 } from "../markdown/document.ts";
-import { findLossyNodes, formatLossy, parsePageUpdateSource } from "../markdown/update-source.ts";
+import { parsePageUpdateSource } from "../markdown/update-source.ts";
 import { resolveOutput, slugify } from "../util/output-path.ts";
 import { isExternalHref, parseLimit, parsePageId } from "../util/parse.ts";
 import { runSearch } from "./search-run.ts";

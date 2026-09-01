@@ -7,6 +7,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import type { ProjectSummary, StatusSummary } from "../api/jira.ts";
 
 import { markdownToAdf } from "../adf/from-markdown.ts";
+import { findLossyNodes, formatLossy, JIRA_LOSSY_LABELS } from "../adf/lossy.ts";
 import { adfToMarkdown } from "../adf/to-markdown.ts";
 import { downloadAttachments } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
@@ -19,12 +20,7 @@ import {
 	joinSections,
 	mediaResolver,
 } from "../markdown/document.ts";
-import {
-	findLossyNodes,
-	formatLossy,
-	JIRA_LOSSY_LABELS,
-	parseJiraUpdateSource,
-} from "../markdown/update-source.ts";
+import { parseJiraUpdateSource } from "../markdown/update-source.ts";
 import { resolveOutput } from "../util/output-path.ts";
 import { isExternalHref, parseIssueKey, parseLimit } from "../util/parse.ts";
 import { runSearch } from "./search-run.ts";
