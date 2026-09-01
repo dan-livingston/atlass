@@ -16,6 +16,10 @@ export default defineConfig({
 			typeAware: true,
 			typeCheck: true,
 		},
+		jsPlugins: ["./lint/no-comments.ts"],
+		rules: {
+			"atlass/no-comments": "error",
+		},
 	},
 	fmt: {
 		tabWidth: 4,
