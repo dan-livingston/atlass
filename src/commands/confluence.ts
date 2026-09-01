@@ -29,7 +29,7 @@ import {
 	joinSections,
 	mediaResolver,
 } from "../markdown/document.ts";
-import { findLossyNodes, formatLossy, parseUpdateSource } from "../markdown/update-source.ts";
+import { findLossyNodes, formatLossy, parsePageUpdateSource } from "../markdown/update-source.ts";
 import { resolveOutput, slugify } from "../util/output-path.ts";
 import { parseLimit, parsePageId } from "../util/parse.ts";
 import { runSearch } from "./search-run.ts";
@@ -63,7 +63,7 @@ export async function confluenceUpdate(
 ): Promise<void> {
 	const file =
 		arg ?? (await input({ message: "Path to the page Markdown file:", required: true }));
-	const src = parseUpdateSource(await readFile(file, "utf8"));
+	const src = parsePageUpdateSource(await readFile(file, "utf8"));
 
 	const auth = await requireAuth();
 	const client = new AtlassianClient(auth);
@@ -82,7 +82,7 @@ export async function confluenceUpdate(
 
 	const lossy = findLossyNodes(state.body);
 	const nextVersion = state.version + 1;
-	const newTitle = options.title && src.bodyTitle ? src.bodyTitle : state.title;
+	const newTitle = options.title && src.h1Title ? src.h1Title : state.title;
 
 	if (options.dryRun) {
 		printDryRun(src.id, state.title, newTitle, state.version, nextVersion, lossy, plan);

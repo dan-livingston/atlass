@@ -1,38 +1,32 @@
 import type { AdfNode } from "../adf/types.ts";
 
-// The parts of a copied Markdown file that an update needs: the page identity
-// from frontmatter and the body between the H1 and the trailing sections.
-export interface UpdateSource {
+export interface PageUpdateSource {
 	id: string;
 	version: number;
-	// title from frontmatter (current server title at copy time)
-	frontTitle: string;
-	// text of the H1, pushed as the new title only when --title is set
-	bodyTitle: string;
-	// Markdown body, with frontmatter, the H1, and the Comments/Attachments
-	// sections removed
+	frontmatterTitle: string;
+	h1Title: string;
 	body: string;
 }
 
-// The parts of a copied Jira issue file that an update needs: the issue key and
-// the copy-time `updated` timestamp (used to detect a stale copy), plus the body
-// between the H1 and the trailing sections.
 export interface JiraUpdateSource {
 	key: string;
-	// server `updated` timestamp at copy time; compared against the live issue to
-	// refuse a stale update
-	updated: string;
-	// text of the H1, pushed as the new summary only when --summary is set
-	bodyTitle: string;
-	// Markdown body, with frontmatter, the H1, and the Comments/Attachments
-	// sections removed
+	updatedAtCopy: string;
+	h1Title: string;
 	body: string;
 }
 
-// Parse a copied Confluence page file back into its identity and body. Throws if
-// the file is not a page copied by this tool (no frontmatter, missing id).
-export function parseUpdateSource(content: string): UpdateSource {
-	const { fields, bodyTitle, body } = splitFile(content);
+interface CopiedFile {
+	fields: Record<string, string>;
+	h1Title: string;
+	body: string;
+}
+
+const FRONTMATTER_BLOCK = /^---\n([\s\S]*?)\n---\n?/;
+const FRONTMATTER_SCALAR = /^([A-Za-z0-9_]+):\s*(.*)$/;
+const TRAILING_SECTION_HEADING = /^## (Comments|Attachments)\s*$/;
+
+export function parsePageUpdateSource(content: string): PageUpdateSource {
+	const { fields, h1Title, body } = splitCopiedFile(content);
 
 	const id = fields["id"];
 	if (!id) throw new Error("Frontmatter is missing the page `id`; re-copy the page.");
@@ -41,88 +35,63 @@ export function parseUpdateSource(content: string): UpdateSource {
 		throw new Error("Frontmatter is missing a numeric `version`; re-copy the page.");
 	}
 
-	return { id, version, frontTitle: fields["title"] ?? "", bodyTitle, body };
+	return { id, version, frontmatterTitle: fields["title"] ?? "", h1Title, body };
 }
 
-// Parse a copied Jira issue file back into its identity and body. Throws if the
-// file is not an issue copied by this tool (no frontmatter, missing key).
 export function parseJiraUpdateSource(content: string): JiraUpdateSource {
-	const { fields, bodyTitle, body } = splitFile(content);
+	const { fields, h1Title, body } = splitCopiedFile(content);
 
 	const key = fields["key"];
 	if (!key) throw new Error("Frontmatter is missing the issue `key`; re-copy the issue.");
 
-	return { key, updated: fields["updated"] ?? "", bodyTitle, body };
+	return { key, updatedAtCopy: fields["updated"] ?? "", h1Title, body };
 }
 
-// Split a copied file into its frontmatter fields, H1 title, and body. Shared by
-// the Confluence and Jira update parsers, which layer their own identity checks
-// on top.
-function splitFile(content: string): {
-	fields: Record<string, string>;
-	bodyTitle: string;
-	body: string;
-} {
-	const match = content.match(/^---\n([\s\S]*?)\n---\n?/);
+function splitCopiedFile(content: string): CopiedFile {
+	const match = content.match(FRONTMATTER_BLOCK);
 	if (!match) {
 		throw new Error("Not an atlass file: no YAML frontmatter found.");
 	}
-	const fields = parseFrontmatter(match[1] ?? "");
+	const fields = parseScalarFrontmatter(match[1] ?? "");
 	const rest = content.slice(match[0].length);
-	const { bodyTitle, body } = splitBody(rest, fields["title"] ?? "");
-	return { fields, bodyTitle, body };
+	const { h1Title, body } = splitTitleAndBody(rest, fields["title"] ?? "");
+	return { fields, h1Title, body };
 }
 
-// Minimal frontmatter reader for the scalars this tool writes: quoted strings
-// and bare numbers. Arrays (e.g. Jira labels) are ignored; pages have none.
-function parseFrontmatter(block: string): Record<string, string> {
+function parseScalarFrontmatter(block: string): Record<string, string> {
 	const out: Record<string, string> = {};
 	for (const line of block.split("\n")) {
-		const m = line.match(/^([A-Za-z0-9_]+):\s*(.*)$/);
+		const m = line.match(FRONTMATTER_SCALAR);
 		if (!m) continue;
-		const key = m[1] ?? "";
-		let value = (m[2] ?? "").trim();
-		if (value.startsWith('"') && value.endsWith('"')) {
-			value = value.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
-		}
-		out[key] = value;
+		out[m[1] ?? ""] = unquote((m[2] ?? "").trim());
 	}
 	return out;
 }
 
-// Separate the H1 title from the body and drop the trailing Comments and
-// Attachments sections that the copy appended (they are not page content).
-function splitBody(rest: string, fallbackTitle: string): { bodyTitle: string; body: string } {
-	const lines = rest.split("\n");
-	let bodyTitle = fallbackTitle;
-	let start = 0;
-
-	// find the H1; everything before it is blank
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i] ?? "";
-		if (line.startsWith("# ")) {
-			bodyTitle = line.slice(2).trim();
-			start = i + 1;
-			break;
-		}
-		if (line.trim().length > 0) break; // content before any H1: no title line
-	}
-
-	// cut at the first trailing section heading
-	let end = lines.length;
-	for (let i = start; i < lines.length; i++) {
-		if (/^## (Comments|Attachments)\s*$/.test(lines[i] ?? "")) {
-			end = i;
-			break;
-		}
-	}
-
-	const body = lines.slice(start, end).join("\n").trim();
-	return { bodyTitle, body };
+function unquote(value: string): string {
+	if (!value.startsWith('"') || !value.endsWith('"')) return value;
+	return value.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
 }
 
-// ADF node types that flatten to ordinary Markdown on copy and so cannot round
-// trip. Mapped to a human label; several ADF types share one label.
+function splitTitleAndBody(rest: string, fallbackTitle: string): { h1Title: string; body: string } {
+	const lines = rest.split("\n");
+	const h1 = leadingH1(lines);
+	const start = h1 ? h1.index + 1 : 0;
+	const trailing = lines.findIndex(
+		(line, i) => i >= start && TRAILING_SECTION_HEADING.test(line),
+	);
+	const end = trailing === -1 ? lines.length : trailing;
+	return { h1Title: h1?.title ?? fallbackTitle, body: lines.slice(start, end).join("\n").trim() };
+}
+
+function leadingH1(lines: string[]): { index: number; title: string } | null {
+	for (const [index, line] of lines.entries()) {
+		if (line.startsWith("# ")) return { index, title: line.slice(2).trim() };
+		if (line.trim().length > 0) return null;
+	}
+	return null;
+}
+
 const LOSSY_LABELS: Record<string, string> = {
 	panel: "panel",
 	expand: "expand",
@@ -134,27 +103,19 @@ const LOSSY_LABELS: Record<string, string> = {
 	inlineExtension: "macro",
 };
 
-// Jira update does not yet re-upload images, so a server description that embeds
-// media would silently lose it on a Markdown round trip. Count the leaf media
-// nodes (not the mediaSingle/mediaGroup wrappers, which would double count) so
-// the update warns before dropping them.
 export const JIRA_LOSSY_LABELS: Record<string, string> = {
 	...LOSSY_LABELS,
 	media: "image",
 	mediaInline: "image",
 };
 
-// Walk a server ADF body and count the structural nodes that a Markdown update
-// would drop, keyed by label so an update can warn "panel, 2 macros". The label
-// set varies by product (Jira also treats media as lossy); defaults to the
-// Confluence set.
 export function findLossyNodes(
 	node: AdfNode | null | undefined,
-	labels: Record<string, string> = LOSSY_LABELS,
+	lossyLabels: Record<string, string> = LOSSY_LABELS,
 ): Map<string, number> {
 	const counts = new Map<string, number>();
 	const visit = (n: AdfNode): void => {
-		const label = labels[n.type];
+		const label = lossyLabels[n.type];
 		if (label) counts.set(label, (counts.get(label) ?? 0) + 1);
 		for (const child of n.content ?? []) visit(child);
 	};
@@ -162,7 +123,6 @@ export function findLossyNodes(
 	return counts;
 }
 
-// Format the lossy counts for a warning line, e.g. "1 panel, 2 macros".
 export function formatLossy(counts: Map<string, number>): string {
 	return [...counts.entries()]
 		.map(([label, n]) => `${n} ${label}${n === 1 ? "" : "s"}`)

@@ -5,7 +5,7 @@ import {
 	formatLossy,
 	JIRA_LOSSY_LABELS,
 	parseJiraUpdateSource,
-	parseUpdateSource,
+	parsePageUpdateSource,
 } from "./update-source.ts";
 
 const file = [
@@ -37,41 +37,41 @@ const file = [
 ].join("\n");
 
 test("parses identity from frontmatter", () => {
-	const src = parseUpdateSource(file);
+	const src = parsePageUpdateSource(file);
 	expect(src.id).toBe("123456");
 	expect(src.version).toBe(7);
-	expect(src.frontTitle).toBe("My Page");
-	expect(src.bodyTitle).toBe("My Page");
+	expect(src.frontmatterTitle).toBe("My Page");
+	expect(src.h1Title).toBe("My Page");
 });
 
 test("body excludes frontmatter, H1, comments, and attachments", () => {
-	const src = parseUpdateSource(file);
+	const src = parsePageUpdateSource(file);
 	expect(src.body).toBe("Body paragraph.\n\n- a\n- b");
 });
 
 test("captures an edited H1 as the body title", () => {
-	const src = parseUpdateSource(file.replace("# My Page", "# Renamed Page"));
-	expect(src.bodyTitle).toBe("Renamed Page");
-	expect(src.frontTitle).toBe("My Page");
+	const src = parsePageUpdateSource(file.replace("# My Page", "# Renamed Page"));
+	expect(src.h1Title).toBe("Renamed Page");
+	expect(src.frontmatterTitle).toBe("My Page");
 });
 
 test("body with no trailing sections runs to end of file", () => {
 	const min = ["---", 'id: "9"', "version: 1", "---", "", "# T", "", "just body"].join("\n");
-	expect(parseUpdateSource(min).body).toBe("just body");
+	expect(parsePageUpdateSource(min).body).toBe("just body");
 });
 
 test("throws without frontmatter", () => {
-	expect(() => parseUpdateSource("# Title\n\nbody")).toThrow(/frontmatter/);
+	expect(() => parsePageUpdateSource("# Title\n\nbody")).toThrow(/frontmatter/);
 });
 
 test("throws without an id", () => {
 	const noId = ["---", "version: 1", "---", "", "# T", "", "body"].join("\n");
-	expect(() => parseUpdateSource(noId)).toThrow(/id/);
+	expect(() => parsePageUpdateSource(noId)).toThrow(/id/);
 });
 
 test("throws without a numeric version", () => {
 	const noVer = ["---", 'id: "9"', "---", "", "# T", "", "body"].join("\n");
-	expect(() => parseUpdateSource(noVer)).toThrow(/version/);
+	expect(() => parsePageUpdateSource(noVer)).toThrow(/version/);
 });
 
 const jiraFile = [
@@ -99,14 +99,14 @@ const jiraFile = [
 test("parses issue key and updated timestamp from frontmatter", () => {
 	const src = parseJiraUpdateSource(jiraFile);
 	expect(src.key).toBe("PROJ-123");
-	expect(src.updated).toBe("2025-07-01T10:30:00.000+0000");
-	expect(src.bodyTitle).toBe("Login button does nothing");
+	expect(src.updatedAtCopy).toBe("2025-07-01T10:30:00.000+0000");
+	expect(src.h1Title).toBe("Login button does nothing");
 	expect(src.body).toBe("Steps to reproduce.");
 });
 
-test("jira update defaults updated to empty when absent", () => {
+test("jira update defaults updatedAtCopy to empty when absent", () => {
 	const min = ["---", 'key: "PROJ-1"', "---", "", "# T", "", "body"].join("\n");
-	expect(parseJiraUpdateSource(min).updated).toBe("");
+	expect(parseJiraUpdateSource(min).updatedAtCopy).toBe("");
 });
 
 test("jira update throws without a key", () => {
@@ -139,7 +139,7 @@ test("no lossy nodes yields an empty map", () => {
 	expect(findLossyNodes(body).size).toBe(0);
 });
 
-test("jira lossy set counts leaf media as images without double counting", () => {
+test("jira lossy set counts leaf media as images, since jira update does not re-upload them", () => {
 	const body = {
 		type: "doc",
 		content: [

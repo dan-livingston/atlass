@@ -130,10 +130,10 @@ export async function jiraUpdate(arg: string | undefined, options: UpdateOptions
 	const client = new AtlassianClient(auth);
 
 	const issue = await fetchIssue(client, auth.site, src.key);
-	const stale = issue.updated !== src.updated;
+	const stale = issue.updated !== src.updatedAtCopy;
 	const { local, external } = classifyImages(src.body);
 	const lossy = findLossyNodes(issue.description, JIRA_LOSSY_LABELS);
-	const newSummary = options.summary && src.bodyTitle ? src.bodyTitle : issue.summary;
+	const newSummary = options.summary && src.h1Title ? src.h1Title : issue.summary;
 
 	if (options.dryRun) {
 		printDryRun(src.key, issue.summary, newSummary, stale, external.length, local, lossy);
@@ -152,7 +152,7 @@ export async function jiraUpdate(arg: string | undefined, options: UpdateOptions
 	if (stale && !options.force) {
 		throw new Error(
 			`Issue changed on the server since you copied it ` +
-				`(local ${src.updated || "unknown"}, server ${issue.updated}). ` +
+				`(local ${src.updatedAtCopy || "unknown"}, server ${issue.updated}). ` +
 				`Re-copy the issue or pass --force.`,
 		);
 	}
