@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { parseIssueKey, parsePageId, resolveRepo } from "./parse.ts";
+import { isExternalHref, parseIssueKey, parsePageId, resolveRepo } from "./parse.ts";
 
 test("parseIssueKey from bare key", () => {
 	expect(parseIssueKey("PROJ-123")).toBe("PROJ-123");
@@ -73,4 +73,11 @@ test("resolveRepo: malformed workspace/slug is rejected", () => {
 	expect(() => resolveRepo("acme/", { workspace: "acme" })).toThrow();
 	expect(() => resolveRepo("/web", { workspace: "acme" })).toThrow();
 	expect(() => resolveRepo("a/b/c", { workspace: "acme" })).toThrow();
+});
+
+test("isExternalHref: any scheme with // is external, paths are not", () => {
+	expect(isExternalHref("https://x.test/a.png")).toBe(true);
+	expect(isExternalHref("ftp://x.test/a.png")).toBe(true);
+	expect(isExternalHref("./a.png")).toBe(false);
+	expect(isExternalHref("C:/a.png")).toBe(false);
 });

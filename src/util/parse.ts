@@ -13,6 +13,10 @@ export function parsePageId(input: string): string | null {
 	return null;
 }
 
+export function isExternalHref(href: string): boolean {
+	return /^[a-z][a-z0-9+.-]*:\/\//i.test(href);
+}
+
 export interface RepoRef {
 	workspace: string;
 	repo: string;

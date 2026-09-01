@@ -31,7 +31,7 @@ import {
 } from "../markdown/document.ts";
 import { findLossyNodes, formatLossy, parsePageUpdateSource } from "../markdown/update-source.ts";
 import { resolveOutput, slugify } from "../util/output-path.ts";
-import { parseLimit, parsePageId } from "../util/parse.ts";
+import { isExternalHref, parseLimit, parsePageId } from "../util/parse.ts";
 import { runSearch } from "./search-run.ts";
 
 export interface SearchOptions {
@@ -246,7 +246,7 @@ async function planImages(
 	const plan = new Map<string, ImagePlan>();
 	const missing: string[] = [];
 	for (const href of hrefs) {
-		if (isExternal(href)) {
+		if (isExternalHref(href)) {
 			plan.set(href, { kind: "external" });
 			continue;
 		}
@@ -270,10 +270,6 @@ async function planImages(
 		throw new Error(`Image file(s) not found: ${missing.join(", ")}`);
 	}
 	return plan;
-}
-
-function isExternal(href: string): boolean {
-	return /^[a-z][a-z0-9+.-]*:\/\//i.test(href);
 }
 
 function externalMedia(href: string, alt: string): AdfNode {

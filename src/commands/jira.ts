@@ -26,7 +26,7 @@ import {
 	parseJiraUpdateSource,
 } from "../markdown/update-source.ts";
 import { resolveOutput } from "../util/output-path.ts";
-import { parseIssueKey, parseLimit } from "../util/parse.ts";
+import { isExternalHref, parseIssueKey, parseLimit } from "../util/parse.ts";
 import { runSearch } from "./search-run.ts";
 
 export interface CopyOptions {
@@ -282,7 +282,7 @@ function classifyImages(md: string): { local: string[]; external: string[] } {
 		const href = (token as Tokens.Image).href;
 		if (seen.has(href)) return;
 		seen.add(href);
-		if (/^[a-z][a-z0-9+.-]*:\/\//i.test(href)) external.push(href);
+		if (isExternalHref(href)) external.push(href);
 		else local.push(href);
 	});
 	return { local, external };
