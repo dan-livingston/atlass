@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
+import type { MediaAttrs } from "../adf/types.ts";
 import type { AtlassianClient } from "./client.ts";
 
 export interface RemoteAttachment {
@@ -11,6 +12,18 @@ export interface RemoteAttachment {
 
 export interface DownloadedAttachment extends RemoteAttachment {
 	relativePath: string;
+}
+
+export function mediaResolver(
+	downloaded: DownloadedAttachment[],
+): (media: MediaAttrs) => string | undefined {
+	const byMediaId = new Map(downloaded.map((d) => [d.mediaId, d.relativePath]));
+	const byFilename = new Map(downloaded.map((d) => [d.filename, d.relativePath]));
+	return (media) => {
+		if (media.id && byMediaId.has(media.id)) return byMediaId.get(media.id);
+		if (media.alt && byFilename.has(media.alt)) return byFilename.get(media.alt);
+		return undefined;
+	};
 }
 
 export async function downloadAttachments(

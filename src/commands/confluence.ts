@@ -12,7 +12,7 @@ import type { CopyOptions } from "./jira.ts";
 import { markdownToAdf } from "../adf/from-markdown.ts";
 import { findLossyNodes, formatLossy } from "../adf/lossy.ts";
 import { adfToMarkdown } from "../adf/to-markdown.ts";
-import { downloadAttachments } from "../api/attachments.ts";
+import { downloadAttachments, mediaResolver } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
 import {
 	fetchPage,
@@ -28,7 +28,6 @@ import {
 	commentsSection,
 	frontmatter,
 	joinSections,
-	mediaResolver,
 } from "../markdown/document.ts";
 import { parsePageUpdateSource } from "../markdown/update-source.ts";
 import { resolveOutput, slugify } from "../util/output-path.ts";

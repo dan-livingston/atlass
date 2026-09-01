@@ -9,7 +9,7 @@ import type { ProjectSummary, StatusSummary } from "../api/jira.ts";
 import { markdownToAdf } from "../adf/from-markdown.ts";
 import { findLossyNodes, formatLossy, JIRA_LOSSY_LABELS } from "../adf/lossy.ts";
 import { adfToMarkdown } from "../adf/to-markdown.ts";
-import { downloadAttachments } from "../api/attachments.ts";
+import { downloadAttachments, mediaResolver } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
 import { fetchIssue, listProjects, listStatuses, searchIssues, updateIssue } from "../api/jira.ts";
 import { requireAuth } from "../credentials.ts";
@@ -18,7 +18,6 @@ import {
 	commentsSection,
 	frontmatter,
 	joinSections,
-	mediaResolver,
 } from "../markdown/document.ts";
 import { parseJiraUpdateSource } from "../markdown/update-source.ts";
 import { resolveOutput } from "../util/output-path.ts";

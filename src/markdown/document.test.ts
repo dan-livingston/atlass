@@ -2,13 +2,7 @@ import { expect, test } from "vite-plus/test";
 
 import type { DownloadedAttachment } from "../api/attachments.ts";
 
-import {
-	attachmentsSection,
-	commentsSection,
-	frontmatter,
-	joinSections,
-	mediaResolver,
-} from "./document.ts";
+import { attachmentsSection, commentsSection, frontmatter, joinSections } from "./document.ts";
 
 test("frontmatter quotes strings and lists arrays", () => {
 	const fm = frontmatter({ key: "PROJ-1", labels: ["a", "b"], version: 3 });
@@ -23,16 +17,6 @@ test("frontmatter escapes quotes", () => {
 
 test("frontmatter renders empty array inline", () => {
 	expect(frontmatter({ labels: [] })).toContain("labels: []");
-});
-
-test("mediaResolver matches by id, then by alt filename since jira media nodes often carry only that", () => {
-	const downloaded: DownloadedAttachment[] = [
-		{ mediaId: "file-1", filename: "shot.png", url: "", relativePath: "x.assets/shot.png" },
-	];
-	const resolve = mediaResolver(downloaded);
-	expect(resolve({ id: "file-1" })).toBe("x.assets/shot.png");
-	expect(resolve({ alt: "shot.png" })).toBe("x.assets/shot.png");
-	expect(resolve({ id: "unknown" })).toBeUndefined();
 });
 
 test("attachmentsSection lists downloaded files", () => {

@@ -9,18 +9,6 @@ export interface Comment {
 	body: AdfNode | null;
 }
 
-export function mediaResolver(
-	downloaded: DownloadedAttachment[],
-): (media: MediaAttrs) => string | undefined {
-	const byMediaId = new Map(downloaded.map((d) => [d.mediaId, d.relativePath]));
-	const byFilename = new Map(downloaded.map((d) => [d.filename, d.relativePath]));
-	return (media) => {
-		if (media.id && byMediaId.has(media.id)) return byMediaId.get(media.id);
-		if (media.alt && byFilename.has(media.alt)) return byFilename.get(media.alt);
-		return undefined;
-	};
-}
-
 export function frontmatter(fields: Record<string, string | string[] | number>): string {
 	const lines: string[] = ["---"];
 	for (const [key, value] of Object.entries(fields)) {
