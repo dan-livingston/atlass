@@ -1,5 +1,3 @@
-// Format a pipeline duration (whole seconds) compactly. Null/missing (e.g. a
-// run still in progress) renders as a dash.
 export function formatDuration(seconds: number | null | undefined): string {
 	if (seconds == null) return "-";
 	if (seconds < 60) return `${seconds}s`;
@@ -14,9 +12,6 @@ const MINUTE = 60;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-// Human "3d ago" style age of an ISO timestamp relative to nowMs (epoch millis,
-// passed in so this stays pure). Future or unparseable inputs are handled
-// gracefully rather than showing negative ages.
 export function relativeTime(iso: string, nowMs: number): string {
 	if (!iso) return "-";
 	const then = Date.parse(iso);
