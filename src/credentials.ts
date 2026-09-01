@@ -4,15 +4,18 @@ import { readConfig } from "./config.ts";
 
 const SERVICE = "atlass";
 
-// Bitbucket Cloud has a single global API host, unlike the per-tenant
-// *.atlassian.net origin Jira/Confluence use.
 export const BITBUCKET_ORIGIN = "https://api.bitbucket.org";
 
-// the Jira/Confluence token is keyed by the account email. the Bitbucket token
-// is a distinct value (scoped for Bitbucket) under an ":bitbucket" sub-key so
-// the two never collide.
 function entry(key: string): Entry {
 	return new Entry(SERVICE, key);
+}
+
+function deleteEntryIfPresent(key: string): void {
+	try {
+		entry(key).deleteCredential();
+	} catch {
+		return;
+	}
 }
 
 export function saveToken(email: string, token: string): void {
@@ -24,11 +27,7 @@ export function readToken(email: string): string | null {
 }
 
 export function deleteToken(email: string): void {
-	try {
-		entry(email).deleteCredential();
-	} catch {
-		// no stored credential, nothing to remove
-	}
+	deleteEntryIfPresent(email);
 }
 
 function bitbucketKey(email: string): string {
@@ -44,22 +43,15 @@ export function readBitbucketToken(email: string): string | null {
 }
 
 export function deleteBitbucketToken(email: string): void {
-	try {
-		entry(bitbucketKey(email)).deleteCredential();
-	} catch {
-		// no stored credential, nothing to remove
-	}
+	deleteEntryIfPresent(bitbucketKey(email));
 }
 
-// what AtlassianClient needs: an origin, plus the Basic auth pair.
 export interface Auth {
 	site: string;
 	email: string;
 	token: string;
 }
 
-// resolve full Jira/Confluence auth (config + keyring). throws a friendly error
-// if missing.
 export async function requireAuth(): Promise<Auth> {
 	const config = await readConfig();
 	if (!config || !config.site || !config.email) {
@@ -77,9 +69,6 @@ export interface BitbucketAuth extends Auth {
 	defaultRepo?: string;
 }
 
-// resolve full Bitbucket auth. the origin is the fixed Bitbucket host; the Basic
-// auth username is the shared account email; the token is the Bitbucket-scoped
-// keyring entry.
 export async function requireBitbucketAuth(): Promise<BitbucketAuth> {
 	const config = await readConfig();
 	if (!config || !config.email || !config.bitbucket?.workspace) {
