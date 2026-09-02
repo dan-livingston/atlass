@@ -1,12 +1,12 @@
 import { expect, test } from "vite-plus/test";
 
-import type { AdfNode } from "../adf/types.ts";
-import type { AttachmentInfo, PageState } from "../api/confluence.ts";
-import type { JiraIssue } from "../api/jira.ts";
-import type { IssueSource, PageSource } from "../markdown/copied-document.ts";
-import type { LocalImage } from "./plan.ts";
+import type { AdfNode } from "#/adf/types.ts";
+import type { AttachmentInfo, PageState } from "#/api/confluence.ts";
+import type { JiraIssue } from "#/api/jira.ts";
+import type { IssueSource, PageSource } from "#/markdown/copied-document.ts";
+import type { LocalImage } from "#/update/plan.ts";
 
-import { formatPlan, planIssueUpdate, planPageUpdate, withUploadedIds } from "./plan.ts";
+import { formatPlan, planIssueUpdate, planPageUpdate, withUploadedIds } from "#/update/plan.ts";
 
 function paragraph(text: string): AdfNode {
 	return { type: "paragraph", content: [{ type: "text", text }] };

@@ -2,22 +2,22 @@ import { input } from "@inquirer/prompts";
 import kleur from "kleur";
 import { readFile } from "node:fs/promises";
 
-import type { RemoteAttachment } from "../api/attachments.ts";
-import type { JiraComment, JiraIssue, ProjectSummary, StatusSummary } from "../api/jira.ts";
+import type { RemoteAttachment } from "#/api/attachments.ts";
+import type { JiraComment, JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira.ts";
 
-import { adfToMarkdown } from "../adf/to-markdown.ts";
-import { AtlassianClient } from "../api/client.ts";
-import { fetchIssue, listProjects, listStatuses, searchIssues, updateIssue } from "../api/jira.ts";
-import { planIssueCopy } from "../copy/plan.ts";
-import { runCopy } from "../copy/run.ts";
-import { requireAuth } from "../credentials.ts";
-import { parseIssueSource } from "../markdown/copied-document.ts";
-import { planIssueUpdate } from "../update/plan.ts";
-import { runPlan } from "../update/run.ts";
-import { formatDateTime, relativeTime } from "../util/format.ts";
-import { parseIssueKey, parseLimit } from "../util/parse.ts";
-import { resolveRef } from "./resolve-ref.ts";
-import { runSearch } from "./search-run.ts";
+import { adfToMarkdown } from "#/adf/to-markdown.ts";
+import { AtlassianClient } from "#/api/client.ts";
+import { fetchIssue, listProjects, listStatuses, searchIssues, updateIssue } from "#/api/jira.ts";
+import { resolveRef } from "#/commands/resolve-ref.ts";
+import { runSearch } from "#/commands/search-run.ts";
+import { planIssueCopy } from "#/copy/plan.ts";
+import { runCopy } from "#/copy/run.ts";
+import { requireAuth } from "#/credentials.ts";
+import { parseIssueSource } from "#/markdown/copied-document.ts";
+import { planIssueUpdate } from "#/update/plan.ts";
+import { runPlan } from "#/update/run.ts";
+import { formatDateTime, relativeTime } from "#/util/format.ts";
+import { parseIssueKey, parseLimit } from "#/util/parse.ts";
 
 export interface CopyOptions {
 	out?: string;

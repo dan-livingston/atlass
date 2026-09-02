@@ -19,6 +19,17 @@ export default defineConfig({
 		jsPlugins: ["./lint/no-comments.ts"],
 		rules: {
 			"atlass/no-comments": "error",
+			"no-restricted-imports": [
+				"error",
+				{
+					patterns: [
+						{
+							group: ["./*", "../*"],
+							message: "Use #/ subpath imports instead of relative paths.",
+						},
+					],
+				},
+			],
 		},
 	},
 	fmt: {

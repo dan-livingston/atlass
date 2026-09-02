@@ -1,4 +1,4 @@
-import type { AdfMark, AdfNode, MediaAttrs } from "./types.ts";
+import type { AdfMark, AdfNode, MediaAttrs } from "#/adf/types.ts";
 
 export interface ToMarkdownOptions {
 	resolveMedia?: (media: MediaAttrs) => string | undefined;

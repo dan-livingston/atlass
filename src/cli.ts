@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 
-import pkg from "../package.json" with { type: "json" };
-import { login, logout, status } from "./commands/auth.ts";
+import { login, logout, status } from "#/commands/auth.ts";
 import {
 	bitbucketLogin,
 	bitbucketLogout,
 	bitbucketPipeline,
 	bitbucketPipelines,
 	bitbucketStatus,
-} from "./commands/bitbucket.ts";
-import { confluenceCopy, confluenceSearch, confluenceUpdate } from "./commands/confluence.ts";
+} from "#/commands/bitbucket.ts";
+import { confluenceCopy, confluenceSearch, confluenceUpdate } from "#/commands/confluence.ts";
 import {
 	jiraCopy,
 	jiraProjects,
@@ -18,7 +17,8 @@ import {
 	jiraStatuses,
 	jiraUpdate,
 	jiraView,
-} from "./commands/jira.ts";
+} from "#/commands/jira.ts";
+import pkg from "#package.json" with { type: "json" };
 
 const program = new Command();
 

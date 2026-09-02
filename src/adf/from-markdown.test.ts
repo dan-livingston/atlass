@@ -1,7 +1,7 @@
 import { expect, test } from "vite-plus/test";
 
-import { markdownToAdf } from "./from-markdown.ts";
-import { adfToMarkdown } from "./to-markdown.ts";
+import { markdownToAdf } from "#/adf/from-markdown.ts";
+import { adfToMarkdown } from "#/adf/to-markdown.ts";
 
 test("doc wrapper carries version 1", () => {
 	const doc = markdownToAdf("hello");

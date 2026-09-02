@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 
-import type { JiraIssue } from "../api/jira.ts";
+import type { JiraIssue } from "#/api/jira.ts";
 
-import { planIssueCopy } from "./plan.ts";
-import { runCopy } from "./run.ts";
+import { planIssueCopy } from "#/copy/plan.ts";
+import { runCopy } from "#/copy/run.ts";
 
 const ISSUE: JiraIssue = {
 	key: "PROJ-7",

@@ -2,11 +2,11 @@ import { input } from "@inquirer/prompts";
 import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 
-import type { LocalImage } from "../update/plan.ts";
-import type { CopyOptions } from "./jira.ts";
+import type { CopyOptions } from "#/commands/jira.ts";
+import type { LocalImage } from "#/update/plan.ts";
 
-import { imageHrefs } from "../adf/from-markdown.ts";
-import { AtlassianClient } from "../api/client.ts";
+import { imageHrefs } from "#/adf/from-markdown.ts";
+import { AtlassianClient } from "#/api/client.ts";
 import {
 	fetchPage,
 	fetchPageState,
@@ -14,16 +14,16 @@ import {
 	searchPages,
 	updatePage,
 	uploadAttachment,
-} from "../api/confluence.ts";
-import { planPageCopy } from "../copy/plan.ts";
-import { runCopy } from "../copy/run.ts";
-import { requireAuth } from "../credentials.ts";
-import { parsePageSource } from "../markdown/copied-document.ts";
-import { planPageUpdate, withUploadedIds } from "../update/plan.ts";
-import { runPlan } from "../update/run.ts";
-import { isExternalHref, parseLimit, parsePageId } from "../util/parse.ts";
-import { resolveRef } from "./resolve-ref.ts";
-import { runSearch } from "./search-run.ts";
+} from "#/api/confluence.ts";
+import { resolveRef } from "#/commands/resolve-ref.ts";
+import { runSearch } from "#/commands/search-run.ts";
+import { planPageCopy } from "#/copy/plan.ts";
+import { runCopy } from "#/copy/run.ts";
+import { requireAuth } from "#/credentials.ts";
+import { parsePageSource } from "#/markdown/copied-document.ts";
+import { planPageUpdate, withUploadedIds } from "#/update/plan.ts";
+import { runPlan } from "#/update/run.ts";
+import { isExternalHref, parseLimit, parsePageId } from "#/util/parse.ts";
 
 export interface SearchOptions {
 	space?: string;

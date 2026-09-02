@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { isExternalHref, parseIssueKey, parsePageId, resolveRepo } from "./parse.ts";
+import { isExternalHref, parseIssueKey, parsePageId, resolveRepo } from "#/util/parse.ts";
 
 test("parseIssueKey from bare key", () => {
 	expect(parseIssueKey("PROJ-123")).toBe("PROJ-123");

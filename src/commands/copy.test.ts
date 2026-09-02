@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 
-import type { AtlassianClient } from "../api/client.ts";
+import type { AtlassianClient } from "#/api/client.ts";
 
-import { copyPage } from "./confluence.ts";
-import { copyIssue } from "./jira.ts";
+import { copyPage } from "#/commands/confluence.ts";
+import { copyIssue } from "#/commands/jira.ts";
 
 const SITE = "https://acme.atlassian.net";
 

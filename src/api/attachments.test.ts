@@ -1,8 +1,8 @@
 import { expect, test } from "vite-plus/test";
 
-import type { DownloadedAttachment } from "./attachments.ts";
+import type { DownloadedAttachment } from "#/api/attachments.ts";
 
-import { mediaResolver } from "./attachments.ts";
+import { mediaResolver } from "#/api/attachments.ts";
 
 test("mediaResolver matches by id, then by alt filename since jira media nodes often carry only that", () => {
 	const downloaded: DownloadedAttachment[] = [

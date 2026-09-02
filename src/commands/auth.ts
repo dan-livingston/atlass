@@ -1,8 +1,8 @@
 import { input, password } from "@inquirer/prompts";
 
-import { AtlassianClient } from "../api/client.ts";
-import { clearConfig, siteOrigin, readConfig, writeConfig } from "../config.ts";
-import { deleteToken, readToken, saveToken } from "../credentials.ts";
+import { AtlassianClient } from "#/api/client.ts";
+import { clearConfig, siteOrigin, readConfig, writeConfig } from "#/config.ts";
+import { deleteToken, readToken, saveToken } from "#/credentials.ts";
 
 interface Myself {
 	displayName: string;

@@ -1,8 +1,8 @@
 import { expect, test } from "vite-plus/test";
 
-import type { PipelineSummary, StepSummary } from "../api/bitbucket.ts";
+import type { PipelineSummary, StepSummary } from "#/api/bitbucket.ts";
 
-import { formatPipelineRows, formatStepRows } from "./bitbucket.ts";
+import { formatPipelineRows, formatStepRows } from "#/commands/bitbucket.ts";
 
 const NOW = Date.parse("2026-07-17T12:00:00Z");
 

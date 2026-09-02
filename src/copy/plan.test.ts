@@ -1,10 +1,10 @@
 import { resolve } from "node:path";
 import { expect, test } from "vite-plus/test";
 
-import type { ConfluencePage } from "../api/confluence.ts";
-import type { JiraIssue } from "../api/jira.ts";
+import type { ConfluencePage } from "#/api/confluence.ts";
+import type { JiraIssue } from "#/api/jira.ts";
 
-import { planIssueCopy, planPageCopy, renderCopy } from "./plan.ts";
+import { planIssueCopy, planPageCopy, renderCopy } from "#/copy/plan.ts";
 
 function issue(overrides: Partial<JiraIssue> = {}): JiraIssue {
 	return {

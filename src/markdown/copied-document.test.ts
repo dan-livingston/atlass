@@ -1,8 +1,8 @@
 import { expect, test } from "vite-plus/test";
 
-import type { CopiedDoc, CopiedSource } from "./copied-document.ts";
+import type { CopiedDoc, CopiedSource } from "#/markdown/copied-document.ts";
 
-import { parse, parseIssueSource, parsePageSource, render } from "./copied-document.ts";
+import { parse, parseIssueSource, parsePageSource, render } from "#/markdown/copied-document.ts";
 
 function doc(over: Partial<CopiedDoc> = {}): CopiedDoc {
 	return {

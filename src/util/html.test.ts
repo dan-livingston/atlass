@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { decodeEntities } from "./html.ts";
+import { decodeEntities } from "#/util/html.ts";
 
 test("decodes named entities", () => {
 	expect(decodeEntities("Login &amp; account &lt;merge&gt;")).toBe("Login & account <merge>");

@@ -1,8 +1,8 @@
 import { confirm } from "@inquirer/prompts";
 
-import type { UpdatePlan } from "./plan.ts";
+import type { UpdatePlan } from "#/update/plan.ts";
 
-import { formatPlan } from "./plan.ts";
+import { formatPlan } from "#/update/plan.ts";
 
 export interface RunOptions {
 	dryRun?: boolean;

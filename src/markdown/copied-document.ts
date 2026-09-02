@@ -1,4 +1,4 @@
-import { formatDateTime } from "../util/format.ts";
+import { formatDateTime } from "#/util/format.ts";
 
 export type FrontmatterValue = string | number | string[];
 

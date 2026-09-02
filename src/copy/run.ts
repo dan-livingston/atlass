@@ -1,10 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
-import type { DownloadedAttachment } from "../api/attachments.ts";
-import type { CopyPlan } from "./plan.ts";
+import type { DownloadedAttachment } from "#/api/attachments.ts";
+import type { CopyPlan } from "#/copy/plan.ts";
 
-import { renderCopy } from "./plan.ts";
+import { renderCopy } from "#/copy/plan.ts";
 
 export type FetchBytes = (url: string) => Promise<Uint8Array>;
 

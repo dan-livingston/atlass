@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { formatDuration, relativeTime } from "./format.ts";
+import { formatDuration, relativeTime } from "#/util/format.ts";
 
 test("duration: null or missing renders as a dash", () => {
 	expect(formatDuration(null)).toBe("-");

@@ -1,14 +1,14 @@
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
-import type { AdfNode } from "../adf/types.ts";
-import type { DownloadedAttachment, RemoteAttachment } from "../api/attachments.ts";
-import type { ConfluencePage } from "../api/confluence.ts";
-import type { JiraIssue } from "../api/jira.ts";
-import type { FrontmatterValue } from "../markdown/copied-document.ts";
+import type { AdfNode } from "#/adf/types.ts";
+import type { DownloadedAttachment, RemoteAttachment } from "#/api/attachments.ts";
+import type { ConfluencePage } from "#/api/confluence.ts";
+import type { JiraIssue } from "#/api/jira.ts";
+import type { FrontmatterValue } from "#/markdown/copied-document.ts";
 
-import { adfToMarkdown } from "../adf/to-markdown.ts";
-import { mediaResolver } from "../api/attachments.ts";
-import { render } from "../markdown/copied-document.ts";
+import { adfToMarkdown } from "#/adf/to-markdown.ts";
+import { mediaResolver } from "#/api/attachments.ts";
+import { render } from "#/markdown/copied-document.ts";
 
 export interface CopiedCommentSource {
 	author: string;

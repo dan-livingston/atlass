@@ -1,4 +1,4 @@
-import type { MediaAttrs } from "../adf/types.ts";
+import type { MediaAttrs } from "#/adf/types.ts";
 
 export interface RemoteAttachment {
 	mediaId: string;

@@ -1,6 +1,6 @@
 import { Entry } from "@napi-rs/keyring";
 
-import { readConfig } from "./config.ts";
+import { readConfig } from "#/config.ts";
 
 const SERVICE = "atlass";
 

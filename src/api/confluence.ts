@@ -1,8 +1,8 @@
-import type { AdfNode } from "../adf/types.ts";
-import type { RemoteAttachment } from "./attachments.ts";
-import type { AtlassianClient } from "./client.ts";
+import type { AdfNode } from "#/adf/types.ts";
+import type { RemoteAttachment } from "#/api/attachments.ts";
+import type { AtlassianClient } from "#/api/client.ts";
 
-import { decodeEntities } from "../util/html.ts";
+import { decodeEntities } from "#/util/html.ts";
 
 export interface ConfluenceComment {
 	author: string;

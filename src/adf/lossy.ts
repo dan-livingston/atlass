@@ -1,4 +1,4 @@
-import type { AdfNode } from "./types.ts";
+import type { AdfNode } from "#/adf/types.ts";
 
 const LOSSY_LABELS: Record<string, string> = {
 	panel: "panel",

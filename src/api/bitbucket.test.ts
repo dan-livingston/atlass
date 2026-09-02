@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import type { AtlassianClient } from "./client.ts";
+import type { AtlassianClient } from "#/api/client.ts";
 
 import {
 	getPipeline,
@@ -8,8 +8,8 @@ import {
 	pipelineStatus,
 	toPipelineSummary,
 	wallClockSeconds,
-} from "./bitbucket.ts";
-import { HttpError } from "./client.ts";
+} from "#/api/bitbucket.ts";
+import { HttpError } from "#/api/client.ts";
 
 const repo = { workspace: "ws", repo: "app" };
 

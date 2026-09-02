@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { extractErrorMessage, pathAndQuery } from "./client.ts";
+import { extractErrorMessage, pathAndQuery } from "#/api/client.ts";
 
 test("error message: jira and confluence report errorMessages or message", () => {
 	expect(extractErrorMessage('{"errorMessages":["a","b"]}')).toBe("a; b");

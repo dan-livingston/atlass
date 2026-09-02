@@ -1,4 +1,4 @@
-import type { Auth } from "../credentials.ts";
+import type { Auth } from "#/credentials.ts";
 
 const DISABLE_XSRF_CHECK = { "X-Atlassian-Token": "nocheck" };
 

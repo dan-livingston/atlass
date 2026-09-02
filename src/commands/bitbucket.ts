@@ -1,19 +1,19 @@
 import { input, password } from "@inquirer/prompts";
 
-import type { PipelineDetail, PipelineSummary, StepSummary } from "../api/bitbucket.ts";
+import type { PipelineDetail, PipelineSummary, StepSummary } from "#/api/bitbucket.ts";
 
-import { getPipeline, listPipelines, listSteps } from "../api/bitbucket.ts";
-import { AtlassianClient, HttpError } from "../api/client.ts";
-import { clearConfig, readConfig, writeConfig } from "../config.ts";
+import { getPipeline, listPipelines, listSteps } from "#/api/bitbucket.ts";
+import { AtlassianClient, HttpError } from "#/api/client.ts";
+import { clearConfig, readConfig, writeConfig } from "#/config.ts";
 import {
 	BITBUCKET_ORIGIN,
 	deleteBitbucketToken,
 	readBitbucketToken,
 	requireBitbucketAuth,
 	saveBitbucketToken,
-} from "../credentials.ts";
-import { formatDuration, relativeTime } from "../util/format.ts";
-import { parseLimit, resolveRepo } from "../util/parse.ts";
+} from "#/credentials.ts";
+import { formatDuration, relativeTime } from "#/util/format.ts";
+import { parseLimit, resolveRepo } from "#/util/parse.ts";
 
 interface Workspace {
 	slug?: string;

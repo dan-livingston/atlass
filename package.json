@@ -14,6 +14,10 @@
 		"dist"
 	],
 	"type": "module",
+	"imports": {
+		"#/*": "./src/*",
+		"#package.json": "./package.json"
+	},
 	"exports": {
 		".": "./dist/cli.mjs",
 		"./package.json": "./package.json"

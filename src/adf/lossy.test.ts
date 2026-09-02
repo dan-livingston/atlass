@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { findLossyNodes, formatLossy, JIRA_LOSSY_LABELS } from "./lossy.ts";
+import { findLossyNodes, formatLossy, JIRA_LOSSY_LABELS } from "#/adf/lossy.ts";
 
 test("finds and labels lossy nodes", () => {
 	const body = {

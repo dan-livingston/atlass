@@ -1,8 +1,8 @@
 import { expect, test } from "vite-plus/test";
 
-import type { AdfNode } from "./types.ts";
+import type { AdfNode } from "#/adf/types.ts";
 
-import { adfToMarkdown } from "./to-markdown.ts";
+import { adfToMarkdown } from "#/adf/to-markdown.ts";
 
 function doc(...content: AdfNode[]): AdfNode {
 	return { type: "doc", content };

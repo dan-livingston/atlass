@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { resolveRef } from "./resolve-ref.ts";
+import { resolveRef } from "#/commands/resolve-ref.ts";
 
 const ISSUE_REF = {
 	message: "Jira issue key or URL:",

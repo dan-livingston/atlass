@@ -1,9 +1,9 @@
 import kleur from "kleur";
 import { expect, test } from "vite-plus/test";
 
-import type { JiraComment, JiraIssue } from "../api/jira.ts";
+import type { JiraComment, JiraIssue } from "#/api/jira.ts";
 
-import { formatIssueView, formatProjectRows, formatStatusRows } from "./jira.ts";
+import { formatIssueView, formatProjectRows, formatStatusRows } from "#/commands/jira.ts";
 
 kleur.enabled = false;
 

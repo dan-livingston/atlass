@@ -1,7 +1,7 @@
-import type { RepoRef } from "../util/parse.ts";
-import type { AtlassianClient } from "./client.ts";
+import type { AtlassianClient } from "#/api/client.ts";
+import type { RepoRef } from "#/util/parse.ts";
 
-import { HttpError, pathAndQuery } from "./client.ts";
+import { HttpError, pathAndQuery } from "#/api/client.ts";
 
 interface CompletedState {
 	name: "COMPLETED";

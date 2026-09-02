@@ -3,7 +3,7 @@ import type { Token, Tokens } from "marked";
 import { marked } from "marked";
 import { randomUUID } from "node:crypto";
 
-import type { AdfDoc, AdfMark, AdfNode } from "./types.ts";
+import type { AdfDoc, AdfMark, AdfNode } from "#/adf/types.ts";
 
 export interface FromMarkdownOptions {
 	resolveImage?: (href: string, alt: string) => AdfNode | undefined;
