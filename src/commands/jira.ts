@@ -14,6 +14,7 @@ import { planIssueCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
 import { requireAuth } from "#/credentials.ts";
 import { parseIssueSource } from "#/markdown/copied-document.ts";
+import { highlightMarkdown } from "#/markdown/highlight.ts";
 import { planIssueUpdate } from "#/update/plan.ts";
 import { runPlan } from "#/update/run.ts";
 import { formatDateTime, relativeTime } from "#/util/format.ts";
@@ -152,7 +153,7 @@ function dateWithAge(iso: string, nowMs: number): string {
 }
 
 function bodyLines(body: string): string[] {
-	return body ? ["", body] : [];
+	return body ? ["", highlightMarkdown(body)] : [];
 }
 
 function commentSection(comments: JiraComment[], allComments: boolean): string[] {
@@ -166,7 +167,7 @@ function commentSection(comments: JiraComment[], allComments: boolean): string[]
 	const lines = ["", kleur.bold(heading)];
 	for (const comment of visible) {
 		const body = adfToMarkdown(comment.body);
-		lines.push("", commentHeader(comment), ...(body ? [body] : []));
+		lines.push("", commentHeader(comment), ...(body ? [highlightMarkdown(body)] : []));
 	}
 	return lines;
 }

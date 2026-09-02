@@ -44,7 +44,8 @@ atlass jira view https://acme.atlassian.net/browse/PROJ-123
 
 Prints the issue to the terminal: fields, description, the last five comments
 (`--all-comments` for all of them), and attachment names. The status is colored
-by category; color turns off automatically when piping, or with `NO_COLOR`.
+by category and the Markdown is syntax highlighted, code blocks included; color
+turns off automatically when piping, or with `NO_COLOR`, leaving plain Markdown.
 
 ## Copy
 
