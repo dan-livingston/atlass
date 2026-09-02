@@ -243,3 +243,16 @@ test("list sort: unknown category sorts last", () => {
 		]).map((i) => i.key),
 	).toEqual(["D", "X"]);
 });
+
+test("cql search: last modified is carried through as updated", async () => {
+	const client = {
+		getJson: async () => ({
+			results: [
+				{ content: { id: "1", title: "A" }, lastModified: "2026-08-30T10:00:00.000Z" },
+				{ content: { id: "2", title: "B" } },
+			],
+		}),
+	} as unknown as AtlassianClient;
+	const res = await searchPages(client, "https://acme.atlassian.net", { limit: 25 });
+	expect(res.pages.map((p) => p.updated)).toEqual(["2026-08-30T10:00:00.000Z", ""]);
+});

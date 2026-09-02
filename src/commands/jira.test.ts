@@ -5,7 +5,7 @@ import type { IssueSummary, JiraComment, JiraIssue } from "#/api/jira.ts";
 
 import {
 	formatIssueView,
-	formatListRows,
+	formatIssueRows,
 	formatProjectRows,
 	formatStatusRows,
 } from "#/commands/jira.ts";
@@ -156,7 +156,7 @@ function listed(overrides: Partial<IssueSummary> = {}): IssueSummary {
 }
 
 test("list: key, status, and age columns are padded so summaries align", () => {
-	const rows = formatListRows(
+	const rows = formatIssueRows(
 		[
 			listed(),
 			listed({
@@ -178,7 +178,7 @@ test("list: key, status, and age columns are padded so summaries align", () => {
 });
 
 test("list: json carries the fetched fields", () => {
-	expect(formatListRows([listed()], NOW)[0]?.json).toEqual({
+	expect(formatIssueRows([listed()], NOW)[0]?.json).toEqual({
 		key: "PROJ-1",
 		status: "In Progress",
 		statusCategory: "indeterminate",

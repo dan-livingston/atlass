@@ -104,7 +104,7 @@ atlass confluence list --space DOCS
 In Progress first, then To Do, and the most recently updated at the top of each
 group. Done issues are left out; `--all` adds those updated in the last 30 days.
 
-`confluence list` shows the pages you starred as `ID  SPACE  Title`, most
+`confluence list` shows the pages you starred as `ID  SPACE  Age  Title`, most
 recently updated first. `--limit` works as for search.
 
 For both, `--json` and `--copy` work as for search.
@@ -119,10 +119,11 @@ atlass confluence search "onboarding" --space DOCS
 atlass confluence search --cql "label = runbook ORDER BY created DESC"
 ```
 
-Filters combine with AND and sort by most recently updated. `--jql` and `--cql`
-replace the friendly filters. `--limit` defaults to 25, max 100. `--json` prints
-machine output. Add `--copy` to pick results interactively and copy each one,
-with `--out` as the target directory.
+Filters combine with AND and sort by most recently updated. Rows use the same
+columns as `jira list` and `confluence list`. `--jql` and `--cql` replace the
+friendly filters. `--limit` defaults to 25, max 100. `--json` prints machine
+output. Add `--copy` to pick results interactively and copy each one, with
+`--out` as the target directory.
 
 Discovery aids for the filters:
 

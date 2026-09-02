@@ -1,4 +1,5 @@
 import { input } from "@inquirer/prompts";
+import kleur from "kleur";
 import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 
@@ -18,7 +19,7 @@ import {
 	uploadAttachment,
 } from "#/api/confluence.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
-import { runSearch, searchFooter } from "#/commands/search-run.ts";
+import { alignedRows, runSearch, searchFooter } from "#/commands/search-run.ts";
 import { planPageCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
 import { requireAuth } from "#/credentials.ts";
@@ -139,7 +140,7 @@ async function listPages(
 	const { pages, hasMore } = await searchPages(client, auth.site, { ...filter, limit });
 
 	await runSearch(
-		formatPageRows(pages),
+		formatPageRows(pages, Date.now()),
 		{
 			json: options.json,
 			copy: options.copy,
@@ -152,16 +153,21 @@ async function listPages(
 	);
 }
 
-export function formatPageRows(pages: PageSummary[]): SearchRow[] {
-	const width = (values: string[]) => Math.max(...values.map((v) => v.length));
-	const idWidth = width(pages.map((p) => p.id));
-	const spaceWidth = width(pages.map((p) => p.space));
-	return pages.map((p) => ({
+export function formatPageRows(pages: PageSummary[], nowMs: number): SearchRow[] {
+	return alignedRows(pages, nowMs, (p) => ({
 		id: p.id,
-		fixedColumns: `${p.id.padEnd(idWidth)}  ${p.space.padEnd(spaceWidth)}`,
-		freeText: p.title,
-		json: { id: p.id, space: p.space, title: p.title, url: p.url },
+		label: p.space,
+		color: colorForSpace(p.space),
+		text: p.title,
 	}));
+}
+
+const SPACE_COLORS = [kleur.cyan, kleur.yellow, kleur.green, kleur.magenta, kleur.blue];
+
+function colorForSpace(space: string): (text: string) => string {
+	let hash = 0;
+	for (const char of space) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
+	return SPACE_COLORS[hash % SPACE_COLORS.length] ?? kleur.cyan;
 }
 
 const PAGE_NOUN = { singular: "page", plural: "pages" };

@@ -24,7 +24,7 @@ import {
 	updateIssue,
 } from "#/api/jira.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
-import { runSearch, searchFooter } from "#/commands/search-run.ts";
+import { alignedRows, runSearch, searchFooter } from "#/commands/search-run.ts";
 import { planIssueCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
 import { requireAuth } from "#/credentials.ts";
@@ -256,12 +256,7 @@ export async function jiraSearch(query: string | undefined, options: SearchOptio
 	});
 
 	await runSearch(
-		issues.map((i) => ({
-			id: i.key,
-			fixedColumns: `${i.key}  ${i.status}`,
-			freeText: i.summary,
-			json: { key: i.key, status: i.status, summary: i.summary, url: i.url },
-		})),
+		formatIssueRows(issues, Date.now()),
 		{
 			json: options.json,
 			copy: options.copy,
@@ -295,7 +290,7 @@ export async function jiraList(options: ListOptions): Promise<void> {
 	});
 
 	await runSearch(
-		formatListRows(sortByCategoryThenUpdated(issues), Date.now()),
+		formatIssueRows(sortByCategoryThenUpdated(issues), Date.now()),
 		{
 			json: options.json,
 			copy: options.copy,
@@ -310,21 +305,13 @@ export async function jiraList(options: ListOptions): Promise<void> {
 	);
 }
 
-export function formatListRows(issues: IssueSummary[], nowMs: number): SearchRow[] {
-	const ages = issues.map((i) => relativeTime(i.updated, nowMs));
-	const width = (values: string[]) => Math.max(...values.map((v) => v.length));
-	const keyWidth = width(issues.map((i) => i.key));
-	const statusWidth = width(issues.map((i) => i.status));
-	const ageWidth = width(ages);
-	return issues.map((i, n) => {
-		const status = colorForCategory(i.statusCategory)(i.status.padEnd(statusWidth));
-		return {
-			id: i.key,
-			fixedColumns: `${i.key.padEnd(keyWidth)}  ${status}  ${(ages[n] ?? "").padEnd(ageWidth)}`,
-			freeText: i.summary,
-			json: { ...i },
-		};
-	});
+export function formatIssueRows(issues: IssueSummary[], nowMs: number): SearchRow[] {
+	return alignedRows(issues, nowMs, (i) => ({
+		id: i.key,
+		label: i.status,
+		color: colorForCategory(i.statusCategory),
+		text: i.summary,
+	}));
 }
 
 const ISSUE_NOUN = { singular: "issue", plural: "issues" };

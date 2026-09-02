@@ -1,11 +1,43 @@
 import { checkbox } from "@inquirer/prompts";
 import { stripVTControlCharacters } from "node:util";
 
+import { relativeTime } from "#/util/format.ts";
+
 export interface SearchRow {
 	id: string;
 	fixedColumns: string;
 	freeText: string;
 	json: Record<string, unknown>;
+}
+
+export interface Cells {
+	id: string;
+	label: string;
+	color: (text: string) => string;
+	text: string;
+}
+
+export function alignedRows<T extends { updated: string }>(
+	items: T[],
+	nowMs: number,
+	cells: (item: T) => Cells,
+): SearchRow[] {
+	const rows = items.map((item) => ({
+		...cells(item),
+		age: relativeTime(item.updated, nowMs),
+		json: { ...item },
+	}));
+	const width = (pick: (row: (typeof rows)[number]) => string) =>
+		Math.max(...rows.map((row) => pick(row).length));
+	const idWidth = width((row) => row.id);
+	const labelWidth = width((row) => row.label);
+	const ageWidth = width((row) => row.age);
+	return rows.map((row) => ({
+		id: row.id,
+		fixedColumns: `${row.id.padEnd(idWidth)}  ${row.color(row.label.padEnd(labelWidth))}  ${row.age.padEnd(ageWidth)}`,
+		freeText: row.text,
+		json: row.json,
+	}));
 }
 
 export interface RunSearchOptions {

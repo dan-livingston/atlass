@@ -193,6 +193,7 @@ export interface PageSummary {
 	id: string;
 	space: string;
 	title: string;
+	updated: string;
 	url: string;
 }
 
@@ -209,6 +210,7 @@ interface SearchResponse {
 		content?: { id?: string; title?: string };
 		title?: string;
 		url?: string;
+		lastModified?: string;
 		space?: { key?: string };
 		resultGlobalContainer?: { title?: string };
 	}[];
@@ -239,6 +241,7 @@ export async function searchPages(
 			id: r.content?.id ?? "",
 			space: r.space?.key ?? r.resultGlobalContainer?.title ?? "",
 			title: decodeEntities(r.content?.title ?? r.title ?? ""),
+			updated: r.lastModified ?? "",
 			url: r.url ? `${site}/wiki${r.url}` : "",
 		}));
 	return { pages, hasMore: serverPageWasFull };
