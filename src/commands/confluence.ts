@@ -3,9 +3,10 @@ import kleur from "kleur";
 import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 
-import type { PageSearchParams, PageSummary } from "#/api/confluence.ts";
+import type { ConfluencePage, PageSearchParams, PageSummary } from "#/api/confluence.ts";
 import type { CopyOptions } from "#/commands/jira.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
+import type { ViewOptions } from "#/commands/view.ts";
 import type { LocalImage } from "#/update/plan.ts";
 
 import { imageHrefs } from "#/adf/from-markdown.ts";
@@ -20,12 +21,20 @@ import {
 } from "#/api/confluence.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
 import { alignedRows, runSearch, searchFooter } from "#/commands/search-run.ts";
+import {
+	attachmentSection,
+	bodyLines,
+	commentSection,
+	dateWithAge,
+	fieldLines,
+} from "#/commands/view.ts";
 import { planPageCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
 import { requireAuth } from "#/credentials.ts";
 import { parsePageSource } from "#/markdown/copied-document.ts";
 import { planPageUpdate, withUploadedIds } from "#/update/plan.ts";
 import { runPlan } from "#/update/run.ts";
+import { printPaged } from "#/util/pager.ts";
 import { isExternalHref, parseLimit, parsePageId } from "#/util/parse.ts";
 
 export interface SearchOptions {
@@ -35,6 +44,37 @@ export interface SearchOptions {
 	json?: boolean;
 	copy?: boolean;
 	out?: string;
+}
+
+export async function confluenceView(arg: string | undefined, options: ViewOptions): Promise<void> {
+	const auth = await requireAuth();
+	const id = await resolveRef(arg, PAGE_REF);
+	const client = new AtlassianClient(auth);
+	const page = await fetchPage(client, auth.site, id);
+	const lines = formatPageView(page, Date.now(), options.allComments ?? false);
+	await printPaged(lines.join("\n"), { pager: options.pager });
+}
+
+export function formatPageView(
+	page: ConfluencePage,
+	nowMs: number,
+	allComments: boolean,
+): string[] {
+	return [
+		kleur.bold(page.title),
+		...fieldLines([
+			["Space", page.spaceKey],
+			["ID", page.id],
+			["Version", page.version ? String(page.version) : ""],
+			["Author", page.author],
+			["Created", dateWithAge(page.createdAt, nowMs)],
+			["Updated", dateWithAge(page.updatedAt, nowMs)],
+			["URL", page.url],
+		]),
+		...bodyLines(page.body),
+		...commentSection(page.comments, allComments),
+		...attachmentSection(page.attachments),
+	];
 }
 
 export async function confluenceCopy(arg: string | undefined, options: CopyOptions): Promise<void> {

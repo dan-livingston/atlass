@@ -25,6 +25,7 @@ export function registerJira(jira: Command): Command {
 	jira.command("view [issue]")
 		.description("Show a Jira issue (key or URL) in the terminal")
 		.option("--all-comments", "show all comments instead of the last 5")
+		.option("--no-pager", "print directly instead of paging long output")
 		.action(run(jiraView));
 	jira.command("copy [issue]")
 		.description("Copy a Jira issue (key or URL) to a Markdown file")

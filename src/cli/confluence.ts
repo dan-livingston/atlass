@@ -6,10 +6,17 @@ import {
 	confluenceList,
 	confluenceSearch,
 	confluenceUpdate,
+	confluenceView,
 } from "#/commands/confluence.ts";
 
 export function registerConfluence(confluence: Command): Command {
 	confluence.description("Confluence commands");
+	confluence
+		.command("view [page]")
+		.description("Show a Confluence page (id or URL) in the terminal")
+		.option("--all-comments", "show all comments instead of the last 5")
+		.option("--no-pager", "print directly instead of paging long output")
+		.action(run(confluenceView));
 	confluence
 		.command("copy [page]")
 		.description("Copy a Confluence page (id or URL) to a Markdown file")

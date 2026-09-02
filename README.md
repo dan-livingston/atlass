@@ -44,12 +44,19 @@ atlass bitbucket logout
 ```bash
 atlass jira view PROJ-123
 atlass jira view https://acme.atlassian.net/browse/PROJ-123
+atlass confluence view 123456
+atlass confluence view https://acme.atlassian.net/wiki/spaces/DEV/pages/123456/Title
 ```
 
-Prints the issue to the terminal: fields, description, the last five comments
-(`--all-comments` for all of them), and attachment names. The status is colored
-by category and the Markdown is syntax highlighted, code blocks included; color
-turns off automatically when piping, or with `NO_COLOR`, leaving plain Markdown.
+Prints the issue or page to the terminal: fields, the body, the last five
+comments (`--all-comments` for all of them), and attachment names. The Jira
+status is colored by category and the Markdown is syntax highlighted, code
+blocks included; color turns off automatically when piping, or with `NO_COLOR`,
+leaving plain Markdown.
+
+Output taller than the terminal goes through a pager, `$PAGER` or `less`, with
+`LESS=FRX` unless you have set `LESS` yourself. Pass `--no-pager` to print
+directly. Piped output is never paged.
 
 ## Copy
 
