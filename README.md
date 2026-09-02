@@ -96,12 +96,18 @@ body sent is everything between the H1 and `## Comments`.
 atlass jira list
 atlass jira list --project PROJ
 atlass jira list --all
+atlass confluence list
+atlass confluence list --space DOCS
 ```
 
-Lists issues assigned to you as `KEY  Status  Age  Summary`, with In Progress
-first, then To Do, and the most recently updated at the top of each group. Done
-issues are left out; `--all` adds those updated in the last 30 days. `--json`
-and `--copy` work as for search.
+`jira list` shows issues assigned to you as `KEY  Status  Age  Summary`, with
+In Progress first, then To Do, and the most recently updated at the top of each
+group. Done issues are left out; `--all` adds those updated in the last 30 days.
+
+`confluence list` shows the pages you starred as `ID  SPACE  Title`, most
+recently updated first. `--limit` works as for search.
+
+For both, `--json` and `--copy` work as for search.
 
 ## Search
 

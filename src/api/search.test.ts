@@ -113,6 +113,12 @@ test("cql: space and text are AND'd after type", () => {
 	);
 });
 
+test("cql: starred lists the current user's favourites, still constrained to pages", () => {
+	expect(buildCql({ starred: true, space: "DOCS", limit: 25 })).toBe(
+		'type = page AND favourite = currentUser() AND space = "DOCS" ORDER BY lastmodified DESC',
+	);
+});
+
 test("cql: raw cql is used verbatim", () => {
 	expect(buildCql({ cql: "type = blogpost", space: "IGNORED", limit: 25 })).toBe(
 		"type = blogpost",

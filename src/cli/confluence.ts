@@ -1,7 +1,12 @@
 import type { Command } from "commander";
 
 import { run } from "#/cli/run.ts";
-import { confluenceCopy, confluenceSearch, confluenceUpdate } from "#/commands/confluence.ts";
+import {
+	confluenceCopy,
+	confluenceList,
+	confluenceSearch,
+	confluenceUpdate,
+} from "#/commands/confluence.ts";
 
 export function registerConfluence(confluence: Command): Command {
 	confluence.description("Confluence commands");
@@ -18,6 +23,15 @@ export function registerConfluence(confluence: Command): Command {
 		.option("-f, --force", "skip the stale-version and data-loss checks")
 		.option("--dry-run", "show what would change without writing")
 		.action(run(confluenceUpdate));
+	confluence
+		.command("list")
+		.description("List pages you starred")
+		.option("-s, --space <key>", "limit to a space")
+		.option("-l, --limit <n>", "max results (default 25, max 100)")
+		.option("--json", "output results as JSON")
+		.option("-c, --copy", "pick results to copy to Markdown")
+		.option("-o, --out <dir>", "output directory for --copy")
+		.action(run(confluenceList));
 	confluence
 		.command("search [query]")
 		.description("Search Confluence pages (text query, --space, or --cql)")

@@ -2,7 +2,9 @@ import { input } from "@inquirer/prompts";
 import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 
+import type { PageSearchParams, PageSummary } from "#/api/confluence.ts";
 import type { CopyOptions } from "#/commands/jira.ts";
+import type { SearchRow } from "#/commands/search-run.ts";
 import type { LocalImage } from "#/update/plan.ts";
 
 import { imageHrefs } from "#/adf/from-markdown.ts";
@@ -105,6 +107,28 @@ export async function confluenceSearch(
 	if (options.cql && (query || options.space)) {
 		throw new Error("--cql cannot be combined with a text query or --space.");
 	}
+	await listPages(
+		{ text: query, space: options.space, cql: options.cql },
+		"No matching pages.",
+		options,
+	);
+}
+
+export type ListOptions = Omit<SearchOptions, "cql">;
+
+export async function confluenceList(options: ListOptions): Promise<void> {
+	await listPages(
+		{ starred: true, space: options.space },
+		options.space ? `No starred pages in ${options.space}.` : "No starred pages.",
+		options,
+	);
+}
+
+async function listPages(
+	filter: Omit<PageSearchParams, "limit">,
+	empty: string,
+	options: ListOptions,
+): Promise<void> {
 	if (options.json && options.copy) {
 		throw new Error("--json and --copy cannot be used together.");
 	}
@@ -112,31 +136,32 @@ export async function confluenceSearch(
 	const auth = await requireAuth();
 	const client = new AtlassianClient(auth);
 	const limit = parseLimit(options.limit);
-	const { pages, hasMore } = await searchPages(client, auth.site, {
-		text: query,
-		space: options.space,
-		cql: options.cql,
-		limit,
-	});
+	const { pages, hasMore } = await searchPages(client, auth.site, { ...filter, limit });
 
 	await runSearch(
-		pages.map((p) => ({
-			id: p.id,
-			fixedColumns: `${p.id}  ${p.space}`,
-			freeText: p.title,
-			json: { id: p.id, space: p.space, title: p.title, url: p.url },
-		})),
+		pages.map(toSearchRow),
 		{
 			json: options.json,
 			copy: options.copy,
 			out: options.out,
-			empty: "No matching pages.",
+			empty,
 			footer: hasMore ? searchFooter(limit) : undefined,
 		},
-		{ singular: "page", plural: "pages" },
+		PAGE_NOUN,
 		(id) => copyPage(client, auth.site, id, options.out),
 	);
 }
+
+function toSearchRow(p: PageSummary): SearchRow {
+	return {
+		id: p.id,
+		fixedColumns: `${p.id}  ${p.space}`,
+		freeText: p.title,
+		json: { id: p.id, space: p.space, title: p.title, url: p.url },
+	};
+}
+
+const PAGE_NOUN = { singular: "page", plural: "pages" };
 
 export async function copyPage(
 	client: AtlassianClient,

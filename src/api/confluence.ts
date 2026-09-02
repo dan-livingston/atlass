@@ -199,6 +199,7 @@ export interface PageSummary {
 export interface PageSearchParams {
 	text?: string;
 	space?: string;
+	starred?: boolean;
 	cql?: string;
 	limit: number;
 }
@@ -246,6 +247,7 @@ export async function searchPages(
 export function buildCql(params: PageSearchParams): string {
 	if (params.cql) return params.cql;
 	const clauses = ["type = page"];
+	if (params.starred) clauses.push("favourite = currentUser()");
 	if (params.space) clauses.push(`space = ${cqlStringLiteral(params.space)}`);
 	if (params.text) clauses.push(`text ~ ${cqlStringLiteral(params.text)}`);
 	return `${clauses.join(" AND ")} ORDER BY lastmodified DESC`;
