@@ -16,7 +16,7 @@ import {
 	uploadAttachment,
 } from "#/api/confluence.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
-import { runSearch } from "#/commands/search-run.ts";
+import { runSearch, searchFooter } from "#/commands/search-run.ts";
 import { planPageCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
 import { requireAuth } from "#/credentials.ts";
@@ -126,7 +126,13 @@ export async function confluenceSearch(
 			freeText: p.title,
 			json: { id: p.id, space: p.space, title: p.title, url: p.url },
 		})),
-		{ json: options.json, copy: options.copy, limit, hasMore, out: options.out },
+		{
+			json: options.json,
+			copy: options.copy,
+			out: options.out,
+			empty: "No matching pages.",
+			footer: hasMore ? searchFooter(limit) : undefined,
+		},
 		{ singular: "page", plural: "pages" },
 		(id) => copyPage(client, auth.site, id, options.out),
 	);

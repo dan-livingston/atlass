@@ -86,6 +86,19 @@ body sent is everything between the H1 and `## Comments`.
 - Confluence uploads local images referenced in the body as attachments. Jira
   update does not support image changes yet.
 
+## List
+
+```bash
+atlass jira list
+atlass jira list --project PROJ
+atlass jira list --all
+```
+
+Lists issues assigned to you as `KEY  Status  Age  Summary`, with In Progress
+first, then To Do, and the most recently updated at the top of each group. Done
+issues are left out; `--all` adds those updated in the last 30 days. `--json`
+and `--copy` work as for search.
+
 ## Search
 
 ```bash

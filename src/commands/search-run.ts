@@ -1,4 +1,5 @@
 import { checkbox } from "@inquirer/prompts";
+import { stripVTControlCharacters } from "node:util";
 
 export interface SearchRow {
 	id: string;
@@ -10,9 +11,9 @@ export interface SearchRow {
 export interface RunSearchOptions {
 	json?: boolean;
 	copy?: boolean;
-	limit: number;
-	hasMore?: boolean;
 	out?: string;
+	empty: string;
+	footer?: string;
 }
 
 const COPY_CONCURRENCY = 5;
@@ -40,7 +41,7 @@ export async function runSearch(
 	}
 
 	if (rows.length === 0) {
-		console.log(`No matching ${noun.plural}.`);
+		console.log(options.empty);
 		return;
 	}
 
@@ -55,9 +56,12 @@ export async function runSearch(
 	}
 
 	for (const row of rows) console.log(formatRow(row));
-	if (options.hasMore) {
-		console.log(`\nShowing first ${options.limit}; refine with flags or raise --limit.`);
-	}
+	if (options.footer) console.log(options.footer);
+}
+
+export function searchFooter(limit: number): string {
+	return `
+Showing first ${limit}; refine with flags or raise --limit.`;
 }
 
 async function copySelected(rows: SearchRow[], noun: Noun, copyOne: (id: string) => Promise<void>) {
@@ -96,7 +100,7 @@ async function copySelected(rows: SearchRow[], noun: Noun, copyOne: (id: string)
 
 function formatRow(row: SearchRow): string {
 	const width = process.stdout.columns ?? 80;
-	const room = width - row.fixedColumns.length - 2;
+	const room = width - stripVTControlCharacters(row.fixedColumns).length - 2;
 	const text = room > 0 ? truncate(row.freeText, room) : "";
 	return text ? `${row.fixedColumns}  ${text}` : row.fixedColumns;
 }

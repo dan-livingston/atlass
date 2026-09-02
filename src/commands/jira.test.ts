@@ -1,9 +1,14 @@
 import kleur from "kleur";
 import { expect, test } from "vite-plus/test";
 
-import type { JiraComment, JiraIssue } from "#/api/jira.ts";
+import type { IssueSummary, JiraComment, JiraIssue } from "#/api/jira.ts";
 
-import { formatIssueView, formatProjectRows, formatStatusRows } from "#/commands/jira.ts";
+import {
+	formatIssueView,
+	formatListRows,
+	formatProjectRows,
+	formatStatusRows,
+} from "#/commands/jira.ts";
 
 kleur.enabled = false;
 
@@ -136,4 +141,49 @@ test("view: lists attachment filenames", () => {
 	);
 	expect(lines).toContain("Attachments");
 	expect(lines).toContain("- screenshot.png");
+});
+
+function listed(overrides: Partial<IssueSummary> = {}): IssueSummary {
+	return {
+		key: "PROJ-1",
+		status: "In Progress",
+		statusCategory: "indeterminate",
+		summary: "Fix login",
+		updated: "2026-08-30T10:00:00.000Z",
+		url: "https://acme.atlassian.net/browse/PROJ-1",
+		...overrides,
+	};
+}
+
+test("list: key, status, and age columns are padded so summaries align", () => {
+	const rows = formatListRows(
+		[
+			listed(),
+			listed({
+				key: "OPS-12345",
+				status: "To Do",
+				statusCategory: "new",
+				summary: "Rotate keys",
+				updated: "2026-08-12T10:00:00.000Z",
+			}),
+		],
+		NOW,
+	);
+	expect(rows.map((r) => r.fixedColumns)).toEqual([
+		"PROJ-1     In Progress  1d ago ",
+		"OPS-12345  To Do        19d ago",
+	]);
+	expect(rows.map((r) => r.freeText)).toEqual(["Fix login", "Rotate keys"]);
+	expect(rows.map((r) => r.id)).toEqual(["PROJ-1", "OPS-12345"]);
+});
+
+test("list: json carries the fetched fields", () => {
+	expect(formatListRows([listed()], NOW)[0]?.json).toEqual({
+		key: "PROJ-1",
+		status: "In Progress",
+		statusCategory: "indeterminate",
+		summary: "Fix login",
+		updated: "2026-08-30T10:00:00.000Z",
+		url: "https://acme.atlassian.net/browse/PROJ-1",
+	});
 });

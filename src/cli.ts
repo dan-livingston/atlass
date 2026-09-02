@@ -12,6 +12,7 @@ import {
 import { confluenceCopy, confluenceSearch, confluenceUpdate } from "#/commands/confluence.ts";
 import {
 	jiraCopy,
+	jiraList,
 	jiraProjects,
 	jiraSearch,
 	jiraStatuses,
@@ -56,6 +57,14 @@ jira.command("update [file]")
 	.option("-f, --force", "skip the stale-issue and data-loss checks")
 	.option("--dry-run", "show what would change without writing")
 	.action(run(jiraUpdate));
+jira.command("list")
+	.description("List open issues assigned to you")
+	.option("-p, --project <key>", "limit to a project")
+	.option("-a, --all", "include Done issues updated in the last 30 days")
+	.option("--json", "output results as JSON")
+	.option("-c, --copy", "pick results to copy to Markdown")
+	.option("-o, --out <dir>", "output directory for --copy")
+	.action(run(jiraList));
 jira.command("search [query]")
 	.description("Search Jira issues (text query, filters, or --jql)")
 	.option("-p, --project <key>", "limit to a project")

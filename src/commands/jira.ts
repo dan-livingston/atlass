@@ -3,13 +3,28 @@ import kleur from "kleur";
 import { readFile } from "node:fs/promises";
 
 import type { RemoteAttachment } from "#/api/attachments.ts";
-import type { JiraComment, JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira.ts";
+import type {
+	IssueSummary,
+	JiraComment,
+	JiraIssue,
+	ProjectSummary,
+	StatusSummary,
+} from "#/api/jira.ts";
+import type { SearchRow } from "#/commands/search-run.ts";
 
 import { adfToMarkdown } from "#/adf/to-markdown.ts";
 import { AtlassianClient } from "#/api/client.ts";
-import { fetchIssue, listProjects, listStatuses, searchIssues, updateIssue } from "#/api/jira.ts";
+import {
+	fetchIssue,
+	listAssignedIssues,
+	listProjects,
+	listStatuses,
+	searchIssues,
+	sortByCategoryThenUpdated,
+	updateIssue,
+} from "#/api/jira.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
-import { runSearch } from "#/commands/search-run.ts";
+import { runSearch, searchFooter } from "#/commands/search-run.ts";
 import { planIssueCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
 import { requireAuth } from "#/credentials.ts";
@@ -119,6 +134,10 @@ const CATEGORY_COLORS: Record<string, (text: string) => string> = {
 	done: kleur.green,
 };
 
+function colorForCategory(category: string): (text: string) => string {
+	return CATEGORY_COLORS[category] ?? ((text: string) => text);
+}
+
 export function formatIssueView(issue: JiraIssue, nowMs: number, allComments: boolean): string[] {
 	return [
 		`${kleur.bold(issue.key)}  ${issue.summary}`,
@@ -130,7 +149,7 @@ export function formatIssueView(issue: JiraIssue, nowMs: number, allComments: bo
 }
 
 function fieldLines(issue: JiraIssue, nowMs: number): string[] {
-	const colorStatus = CATEGORY_COLORS[issue.statusCategory] ?? ((text: string) => text);
+	const colorStatus = colorForCategory(issue.statusCategory);
 	const pairs: [string, string][] = [
 		["Type", issue.type],
 		["Status", issue.status && colorStatus(issue.status)],
@@ -246,14 +265,69 @@ export async function jiraSearch(query: string | undefined, options: SearchOptio
 		{
 			json: options.json,
 			copy: options.copy,
-			limit,
-			hasMore: issues.length === limit,
 			out: options.out,
+			empty: "No matching issues.",
+			footer: issues.length === limit ? searchFooter(limit) : undefined,
 		},
-		{ singular: "issue", plural: "issues" },
+		ISSUE_NOUN,
 		(key) => copyIssue(client, auth.site, key, options.out),
 	);
 }
+
+export interface ListOptions {
+	project?: string;
+	all?: boolean;
+	json?: boolean;
+	copy?: boolean;
+	out?: string;
+}
+
+export async function jiraList(options: ListOptions): Promise<void> {
+	if (options.json && options.copy) {
+		throw new Error("--json and --copy cannot be used together.");
+	}
+
+	const auth = await requireAuth();
+	const client = new AtlassianClient(auth);
+	const { issues, truncated } = await listAssignedIssues(client, auth.site, {
+		all: options.all,
+		project: options.project,
+	});
+
+	await runSearch(
+		formatListRows(sortByCategoryThenUpdated(issues), Date.now()),
+		{
+			json: options.json,
+			copy: options.copy,
+			out: options.out,
+			empty: options.all ? "No issues assigned to you." : "No open issues assigned to you.",
+			footer: truncated
+				? `\nShowing the first ${issues.length}; narrow with --project.`
+				: undefined,
+		},
+		ISSUE_NOUN,
+		(key) => copyIssue(client, auth.site, key, options.out),
+	);
+}
+
+export function formatListRows(issues: IssueSummary[], nowMs: number): SearchRow[] {
+	const ages = issues.map((i) => relativeTime(i.updated, nowMs));
+	const width = (values: string[]) => Math.max(...values.map((v) => v.length));
+	const keyWidth = width(issues.map((i) => i.key));
+	const statusWidth = width(issues.map((i) => i.status));
+	const ageWidth = width(ages);
+	return issues.map((i, n) => {
+		const status = colorForCategory(i.statusCategory)(i.status.padEnd(statusWidth));
+		return {
+			id: i.key,
+			fixedColumns: `${i.key.padEnd(keyWidth)}  ${status}  ${(ages[n] ?? "").padEnd(ageWidth)}`,
+			freeText: i.summary,
+			json: { ...i },
+		};
+	});
+}
+
+const ISSUE_NOUN = { singular: "issue", plural: "issues" };
 
 export async function copyIssue(
 	client: AtlassianClient,
