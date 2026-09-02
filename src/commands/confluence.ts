@@ -139,7 +139,7 @@ async function listPages(
 	const { pages, hasMore } = await searchPages(client, auth.site, { ...filter, limit });
 
 	await runSearch(
-		pages.map(toSearchRow),
+		formatPageRows(pages),
 		{
 			json: options.json,
 			copy: options.copy,
@@ -152,13 +152,16 @@ async function listPages(
 	);
 }
 
-function toSearchRow(p: PageSummary): SearchRow {
-	return {
+export function formatPageRows(pages: PageSummary[]): SearchRow[] {
+	const width = (values: string[]) => Math.max(...values.map((v) => v.length));
+	const idWidth = width(pages.map((p) => p.id));
+	const spaceWidth = width(pages.map((p) => p.space));
+	return pages.map((p) => ({
 		id: p.id,
-		fixedColumns: `${p.id}  ${p.space}`,
+		fixedColumns: `${p.id.padEnd(idWidth)}  ${p.space.padEnd(spaceWidth)}`,
 		freeText: p.title,
 		json: { id: p.id, space: p.space, title: p.title, url: p.url },
-	};
+	}));
 }
 
 const PAGE_NOUN = { singular: "page", plural: "pages" };
