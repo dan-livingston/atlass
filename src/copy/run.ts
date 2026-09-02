@@ -1,0 +1,42 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
+
+import type { DownloadedAttachment } from "../api/attachments.ts";
+import type { CopyPlan } from "./plan.ts";
+
+import { renderCopy } from "./plan.ts";
+
+export type FetchBytes = (url: string) => Promise<Uint8Array>;
+
+export async function runCopy(plan: CopyPlan, fetchBytes: FetchBytes): Promise<void> {
+	const landed = await download(plan, fetchBytes);
+	await mkdir(dirname(plan.filePath), { recursive: true });
+	await writeFile(plan.filePath, renderCopy(plan, landed), "utf8");
+	console.log(wroteLine(plan.filePath, landed.length));
+}
+
+async function download(plan: CopyPlan, fetchBytes: FetchBytes): Promise<DownloadedAttachment[]> {
+	if (plan.downloads.length === 0) return [];
+	await mkdir(plan.assetsDir, { recursive: true });
+
+	const landed: DownloadedAttachment[] = [];
+	for (const { path, ...attachment } of plan.downloads) {
+		try {
+			await writeFile(path, await fetchBytes(attachment.url));
+			landed.push(attachment);
+		} catch (err) {
+			console.warn(
+				`  ! could not download ${attachment.filename}: ${(err as Error).message}`,
+			);
+		}
+	}
+	return landed;
+}
+
+function wroteLine(filePath: string, attachmentCount: number): string {
+	const suffix =
+		attachmentCount > 0
+			? ` (+${attachmentCount} attachment${attachmentCount === 1 ? "" : "s"})`
+			: "";
+	return `Wrote ${filePath}${suffix}`;
+}

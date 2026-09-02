@@ -1,13 +1,11 @@
 import { input } from "@inquirer/prompts";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 
 import type { LocalImage } from "../update/plan.ts";
 import type { CopyOptions } from "./jira.ts";
 
 import { imageHrefs } from "../adf/from-markdown.ts";
-import { adfToMarkdown } from "../adf/to-markdown.ts";
-import { downloadAttachments, mediaResolver } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
 import {
 	fetchPage,
@@ -17,12 +15,14 @@ import {
 	updatePage,
 	uploadAttachment,
 } from "../api/confluence.ts";
+import { planPageCopy } from "../copy/plan.ts";
+import { runCopy } from "../copy/run.ts";
 import { requireAuth } from "../credentials.ts";
-import { parsePageSource, render } from "../markdown/copied-document.ts";
+import { parsePageSource } from "../markdown/copied-document.ts";
 import { planPageUpdate, withUploadedIds } from "../update/plan.ts";
 import { runPlan } from "../update/run.ts";
-import { resolveOutput, slugify } from "../util/output-path.ts";
 import { isExternalHref, parseLimit, parsePageId } from "../util/parse.ts";
+import { resolveRef } from "./resolve-ref.ts";
 import { runSearch } from "./search-run.ts";
 
 export interface SearchOptions {
@@ -36,7 +36,7 @@ export interface SearchOptions {
 
 export async function confluenceCopy(arg: string | undefined, options: CopyOptions): Promise<void> {
 	const auth = await requireAuth();
-	const id = await resolveId(arg);
+	const id = await resolveRef(arg, PAGE_REF);
 	const client = new AtlassianClient(auth);
 	await copyPage(client, auth.site, id, options.out);
 }
@@ -140,48 +140,11 @@ export async function copyPage(
 ): Promise<void> {
 	console.log(`Fetching page ${id} ...`);
 	const page = await fetchPage(client, site, id);
-
-	const target = resolveOutput(`${page.id}-${slugify(page.title)}`, out);
-	const downloaded = await downloadAttachments(
-		client,
-		page.attachments,
-		target.assetsDir,
-		target.assetsDirName,
-	);
-	const resolveMedia = mediaResolver(downloaded);
-
-	const document = render({
-		fields: {
-			title: page.title,
-			id: page.id,
-			space: page.spaceKey,
-			version: page.version,
-			author: page.author,
-			created: page.createdAt,
-			updated: page.updatedAt,
-			url: page.url,
-		},
-		title: page.title,
-		body: adfToMarkdown(page.body, { resolveMedia }),
-		comments: page.comments.map((c) => ({
-			author: c.author,
-			created: c.created,
-			body: adfToMarkdown(c.body, { resolveMedia }),
-		})),
-		attachments: downloaded,
-	});
-
-	await writeFile(target.filePath, document, "utf8");
-	const suffix =
-		downloaded.length > 0
-			? ` (+${downloaded.length} attachment${downloaded.length === 1 ? "" : "s"})`
-			: "";
-	console.log(`Wrote ${target.filePath}${suffix}`);
+	await runCopy(planPageCopy(page, out), (url) => client.getBinary(url));
 }
 
-async function resolveId(arg: string | undefined): Promise<string> {
-	const raw = arg ?? (await input({ message: "Confluence page id or URL:", required: true }));
-	const id = parsePageId(raw);
-	if (!id) throw new Error(`Could not find a page id in "${raw}".`);
-	return id;
-}
+const PAGE_REF = {
+	message: "Confluence page id or URL:",
+	parse: parsePageId,
+	notFound: (raw: string) => `Could not find a page id in "${raw}".`,
+};

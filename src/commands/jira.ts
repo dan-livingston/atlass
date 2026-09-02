@@ -1,21 +1,22 @@
 import { input } from "@inquirer/prompts";
 import kleur from "kleur";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 
 import type { RemoteAttachment } from "../api/attachments.ts";
 import type { JiraComment, JiraIssue, ProjectSummary, StatusSummary } from "../api/jira.ts";
 
 import { adfToMarkdown } from "../adf/to-markdown.ts";
-import { downloadAttachments, mediaResolver } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
 import { fetchIssue, listProjects, listStatuses, searchIssues, updateIssue } from "../api/jira.ts";
+import { planIssueCopy } from "../copy/plan.ts";
+import { runCopy } from "../copy/run.ts";
 import { requireAuth } from "../credentials.ts";
-import { parseIssueSource, render } from "../markdown/copied-document.ts";
+import { parseIssueSource } from "../markdown/copied-document.ts";
 import { planIssueUpdate } from "../update/plan.ts";
 import { runPlan } from "../update/run.ts";
 import { formatDateTime, relativeTime } from "../util/format.ts";
-import { resolveOutput } from "../util/output-path.ts";
 import { parseIssueKey, parseLimit } from "../util/parse.ts";
+import { resolveRef } from "./resolve-ref.ts";
 import { runSearch } from "./search-run.ts";
 
 export interface CopyOptions {
@@ -101,7 +102,7 @@ export interface ViewOptions {
 
 export async function jiraView(arg: string | undefined, options: ViewOptions): Promise<void> {
 	const auth = await requireAuth();
-	const key = await resolveKey(arg);
+	const key = await resolveRef(arg, ISSUE_REF);
 	const client = new AtlassianClient(auth);
 	const issue = await fetchIssue(client, auth.site, key);
 	for (const line of formatIssueView(issue, Date.now(), options.allComments ?? false)) {
@@ -183,7 +184,7 @@ function attachmentSection(attachments: RemoteAttachment[]): string[] {
 
 export async function jiraCopy(arg: string | undefined, options: CopyOptions): Promise<void> {
 	const auth = await requireAuth();
-	const key = await resolveKey(arg);
+	const key = await resolveRef(arg, ISSUE_REF);
 	const client = new AtlassianClient(auth);
 	await copyIssue(client, auth.site, key, options.out);
 }
@@ -261,52 +262,11 @@ export async function copyIssue(
 ): Promise<void> {
 	console.log(`Fetching ${key} ...`);
 	const issue = await fetchIssue(client, site, key);
-
-	const target = resolveOutput(issue.key, out);
-	const downloaded = await downloadAttachments(
-		client,
-		issue.attachments,
-		target.assetsDir,
-		target.assetsDirName,
-	);
-	const resolveMedia = mediaResolver(downloaded);
-
-	const document = render({
-		fields: {
-			key: issue.key,
-			type: issue.type,
-			status: issue.status,
-			assignee: issue.assignee,
-			reporter: issue.reporter,
-			priority: issue.priority,
-			labels: issue.labels,
-			created: issue.created,
-			updated: issue.updated,
-			url: issue.url,
-		},
-		title: issue.summary,
-		body: adfToMarkdown(issue.description, { resolveMedia }),
-		comments: issue.comments.map((c) => ({
-			author: c.author,
-			created: c.created,
-			body: adfToMarkdown(c.body, { resolveMedia }),
-		})),
-		attachments: downloaded,
-	});
-
-	await writeFile(target.filePath, document, "utf8");
-	report(target.filePath, downloaded.length);
+	await runCopy(planIssueCopy(issue, out), (url) => client.getBinary(url));
 }
 
-async function resolveKey(arg: string | undefined): Promise<string> {
-	const raw = arg ?? (await input({ message: "Jira issue key or URL:", required: true }));
-	const key = parseIssueKey(raw);
-	if (!key) throw new Error(`Could not find an issue key in "${raw}" (expected e.g. PROJ-123).`);
-	return key;
-}
-
-function report(filePath: string, assetCount: number): void {
-	const suffix =
-		assetCount > 0 ? ` (+${assetCount} attachment${assetCount === 1 ? "" : "s"})` : "";
-	console.log(`Wrote ${filePath}${suffix}`);
-}
+const ISSUE_REF = {
+	message: "Jira issue key or URL:",
+	parse: parseIssueKey,
+	notFound: (raw: string) => `Could not find an issue key in "${raw}" (expected e.g. PROJ-123).`,
+};
