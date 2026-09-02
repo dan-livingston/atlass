@@ -132,7 +132,7 @@ export async function confluenceSearch(
 	);
 }
 
-async function copyPage(
+export async function copyPage(
 	client: AtlassianClient,
 	site: string,
 	id: string,

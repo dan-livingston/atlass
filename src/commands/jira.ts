@@ -253,7 +253,7 @@ export async function jiraSearch(query: string | undefined, options: SearchOptio
 	);
 }
 
-async function copyIssue(
+export async function copyIssue(
 	client: AtlassianClient,
 	site: string,
 	key: string,
