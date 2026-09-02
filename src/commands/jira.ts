@@ -1,24 +1,21 @@
-import type { Tokens } from "marked";
-
-import { confirm, input } from "@inquirer/prompts";
+import { input } from "@inquirer/prompts";
 import kleur from "kleur";
-import { marked } from "marked";
 import { readFile, writeFile } from "node:fs/promises";
 
 import type { RemoteAttachment } from "../api/attachments.ts";
 import type { JiraComment, JiraIssue, ProjectSummary, StatusSummary } from "../api/jira.ts";
 
-import { markdownToAdf } from "../adf/from-markdown.ts";
-import { findLossyNodes, formatLossy, JIRA_LOSSY_LABELS } from "../adf/lossy.ts";
 import { adfToMarkdown } from "../adf/to-markdown.ts";
 import { downloadAttachments, mediaResolver } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
 import { fetchIssue, listProjects, listStatuses, searchIssues, updateIssue } from "../api/jira.ts";
 import { requireAuth } from "../credentials.ts";
 import { parseIssueSource, render } from "../markdown/copied-document.ts";
+import { planIssueUpdate } from "../update/plan.ts";
+import { runPlan } from "../update/run.ts";
 import { formatDateTime, relativeTime } from "../util/format.ts";
 import { resolveOutput } from "../util/output-path.ts";
-import { isExternalHref, parseIssueKey, parseLimit } from "../util/parse.ts";
+import { parseIssueKey, parseLimit } from "../util/parse.ts";
 import { runSearch } from "./search-run.ts";
 
 export interface CopyOptions {
@@ -204,56 +201,17 @@ export async function jiraUpdate(arg: string | undefined, options: UpdateOptions
 
 	const auth = await requireAuth();
 	const client = new AtlassianClient(auth);
-
 	const issue = await fetchIssue(client, auth.site, src.key);
-	const stale = issue.updated !== src.updatedAtCopy;
-	const { local, external } = classifyImages(src.body);
-	const lossy = findLossyNodes(issue.description, JIRA_LOSSY_LABELS);
-	const newSummary = options.summary && src.title ? src.title : issue.summary;
 
-	if (options.dryRun) {
-		printDryRun(src.key, issue.summary, newSummary, stale, external.length, local, lossy);
-		return;
-	}
-
-	if (local.length > 0) {
-		throw new Error(
-			`jira update does not support image changes yet. ` +
-				`Remove local image reference(s) or edit text only: ${local.join(", ")}`,
-		);
-	}
-
-	if (stale && !options.force) {
-		throw new Error(
-			`Issue changed on the server since you copied it ` +
-				`(local ${src.updatedAtCopy || "unknown"}, server ${issue.updated}). ` +
-				`Re-copy the issue or pass --force.`,
-		);
-	}
-
-	if (lossy.size > 0 && !options.force) {
-		const ok = await confirm({
-			message:
-				`This issue's description contains ${formatLossy(lossy)} that Markdown ` +
-				`cannot represent and will be removed. Continue?`,
-			default: false,
+	const plan = planIssueUpdate(src, issue, options);
+	await runPlan(plan, options, async () => {
+		const { current, next } = plan.headline;
+		await updateIssue(client, src.key, {
+			description: plan.body,
+			summary: next !== current ? next : undefined,
 		});
-		if (!ok) {
-			console.log("Aborted.");
-			return;
-		}
-	}
-
-	const description = markdownToAdf(src.body);
-	if (!description.content || description.content.length === 0) {
-		throw new Error("Refusing to update: the converted description is empty.");
-	}
-
-	await updateIssue(client, src.key, {
-		description,
-		summary: options.summary && newSummary !== issue.summary ? newSummary : undefined,
+		console.log(`Updated ${src.key}.`);
 	});
-	console.log(`Updated ${src.key}.`);
 }
 
 export async function jiraSearch(query: string | undefined, options: SearchOptions): Promise<void> {
@@ -351,43 +309,4 @@ function report(filePath: string, assetCount: number): void {
 	const suffix =
 		assetCount > 0 ? ` (+${assetCount} attachment${assetCount === 1 ? "" : "s"})` : "";
 	console.log(`Wrote ${filePath}${suffix}`);
-}
-
-function classifyImages(md: string): { local: string[]; external: string[] } {
-	const local: string[] = [];
-	const external: string[] = [];
-	const seen = new Set<string>();
-	void marked.walkTokens(marked.lexer(md), (token) => {
-		if (token.type !== "image") return;
-		const href = (token as Tokens.Image).href;
-		if (seen.has(href)) return;
-		seen.add(href);
-		if (isExternalHref(href)) external.push(href);
-		else local.push(href);
-	});
-	return { local, external };
-}
-
-function printDryRun(
-	key: string,
-	currentSummary: string,
-	newSummary: string,
-	stale: boolean,
-	externalImages: number,
-	localImages: string[],
-	lossy: Map<string, number>,
-): void {
-	console.log(`Dry run for ${key} "${currentSummary}"`);
-	if (newSummary !== currentSummary) {
-		console.log(`  summary: "${currentSummary}" -> "${newSummary}"`);
-	}
-	if (externalImages > 0) console.log(`  images:  ${externalImages} external`);
-	if (localImages.length > 0) {
-		console.log(
-			`  blocked: ${localImages.length} local image(s) not supported (edit text only)`,
-		);
-	}
-	if (lossy.size > 0) console.log(`  warning: ${formatLossy(lossy)} will be removed`);
-	if (stale) console.log(`  stale:   server changed since copy (would refuse without --force)`);
-	console.log("  nothing was written (dry run)");
 }

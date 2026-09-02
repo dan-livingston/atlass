@@ -1,16 +1,11 @@
-import type { Tokens } from "marked";
-
-import { confirm, input } from "@inquirer/prompts";
-import { marked } from "marked";
+import { input } from "@inquirer/prompts";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 
-import type { AdfNode } from "../adf/types.ts";
-import type { AttachmentInfo } from "../api/confluence.ts";
+import type { LocalImage } from "../update/plan.ts";
 import type { CopyOptions } from "./jira.ts";
 
-import { markdownToAdf } from "../adf/from-markdown.ts";
-import { findLossyNodes, formatLossy } from "../adf/lossy.ts";
+import { imageHrefs } from "../adf/from-markdown.ts";
 import { adfToMarkdown } from "../adf/to-markdown.ts";
 import { downloadAttachments, mediaResolver } from "../api/attachments.ts";
 import { AtlassianClient } from "../api/client.ts";
@@ -24,6 +19,8 @@ import {
 } from "../api/confluence.ts";
 import { requireAuth } from "../credentials.ts";
 import { parsePageSource, render } from "../markdown/copied-document.ts";
+import { planPageUpdate, withUploadedIds } from "../update/plan.ts";
+import { runPlan } from "../update/run.ts";
 import { resolveOutput, slugify } from "../util/output-path.ts";
 import { isExternalHref, parseLimit, parsePageId } from "../util/parse.ts";
 import { runSearch } from "./search-run.ts";
@@ -61,75 +58,44 @@ export async function confluenceUpdate(
 
 	const auth = await requireAuth();
 	const client = new AtlassianClient(auth);
-
 	const state = await fetchPageState(client, src.id);
-	if (state.version !== src.version && !options.force) {
-		throw new Error(
-			`Page changed on the server since you copied it ` +
-				`(local v${src.version}, server v${state.version}). Re-copy the page or pass --force.`,
-		);
-	}
-
-	const dir = dirname(resolve(file));
 	const attachments = await listAttachments(client, src.id);
-	const plan = await planImages(dir, collectImageHrefs(src.body), attachments);
+	const localImages = await statLocalImages(dirname(resolve(file)), src.body);
 
-	const lossy = findLossyNodes(state.body);
-	const nextVersion = state.version + 1;
-	const newTitle = options.title && src.title ? src.title : state.title;
-
-	if (options.dryRun) {
-		printDryRun(src.id, state.title, newTitle, state.version, nextVersion, lossy, plan);
-		return;
-	}
-
-	if (lossy.size > 0 && !options.force) {
-		const ok = await confirm({
-			message:
-				`This page contains ${formatLossy(lossy)} that Markdown cannot represent ` +
-				`and will be removed. Continue?`,
-			default: false,
+	const plan = planPageUpdate(src, state, attachments, localImages, options);
+	await runPlan(plan, options, async () => {
+		const ids = new Map<string, string>();
+		for (const upload of plan.uploads) {
+			console.log(`Uploading ${upload.filename} ...`);
+			const bytes = await readFile(upload.path);
+			ids.set(upload.href, await uploadAttachment(client, src.id, upload.filename, bytes));
+		}
+		const version = await updatePage(client, src.id, {
+			title: plan.headline.next,
+			nextVersion: state.version + 1,
+			body: withUploadedIds(plan.body, ids),
+			message: options.message ?? "Updated via atlass",
 		});
-		if (!ok) {
-			console.log("Aborted.");
-			return;
-		}
-	}
-
-	const collection = `contentId-${src.id}`;
-	const fileIds = new Map<string, string>();
-	for (const [href, entry] of plan) {
-		if (entry.kind === "upload") {
-			console.log(`Uploading ${entry.filename} ...`);
-			fileIds.set(
-				href,
-				await uploadAttachment(client, src.id, entry.filename, await readFile(entry.path)),
-			);
-		} else if (entry.kind === "reuse") {
-			fileIds.set(href, entry.fileId);
-		}
-	}
-
-	const body = markdownToAdf(src.body, {
-		resolveImage: (href, alt) => {
-			const entry = plan.get(href);
-			if (!entry) return undefined;
-			if (entry.kind === "external") return externalMedia(href, alt);
-			const fileId = fileIds.get(href);
-			return fileId ? fileMedia(fileId, collection, alt) : undefined;
-		},
+		console.log(`Updated page ${src.id} to version ${version}.`);
 	});
-	if (!body.content || body.content.length === 0) {
-		throw new Error("Refusing to update: the converted body is empty.");
-	}
+}
 
-	const version = await updatePage(client, src.id, {
-		title: newTitle,
-		nextVersion,
-		body,
-		message: options.message ?? "Updated via atlass",
-	});
-	console.log(`Updated page ${src.id} to version ${version}.`);
+async function statLocalImages(dir: string, md: string): Promise<LocalImage[]> {
+	const hrefs = imageHrefs(md).filter((href) => !isExternalHref(href));
+	return Promise.all(
+		hrefs.map(async (href) => {
+			const path = isAbsolute(href) ? href : resolve(dir, href);
+			return { href, path, filename: basename(path), ...(await fileSize(path)) };
+		}),
+	);
+}
+
+async function fileSize(path: string): Promise<{ size?: number }> {
+	try {
+		return { size: (await stat(path)).size };
+	} catch {
+		return {};
+	}
 }
 
 export async function confluenceSearch(
@@ -218,97 +184,4 @@ async function resolveId(arg: string | undefined): Promise<string> {
 	const id = parsePageId(raw);
 	if (!id) throw new Error(`Could not find a page id in "${raw}".`);
 	return id;
-}
-
-type ImagePlan =
-	| { kind: "external" }
-	| { kind: "reuse"; fileId: string; filename: string }
-	| { kind: "upload"; path: string; filename: string; existed: boolean };
-
-function collectImageHrefs(md: string): string[] {
-	const hrefs = new Set<string>();
-	void marked.walkTokens(marked.lexer(md), (token) => {
-		if (token.type === "image") hrefs.add((token as Tokens.Image).href);
-	});
-	return [...hrefs];
-}
-
-async function planImages(
-	dir: string,
-	hrefs: string[],
-	attachments: AttachmentInfo[],
-): Promise<Map<string, ImagePlan>> {
-	const byName = new Map(attachments.map((a) => [a.filename, a]));
-	const plan = new Map<string, ImagePlan>();
-	const missing: string[] = [];
-	for (const href of hrefs) {
-		if (isExternalHref(href)) {
-			plan.set(href, { kind: "external" });
-			continue;
-		}
-		const path = isAbsolute(href) ? href : resolve(dir, href);
-		let size: number;
-		try {
-			size = (await stat(path)).size;
-		} catch {
-			missing.push(href);
-			continue;
-		}
-		const filename = basename(path);
-		const existing = byName.get(filename);
-		if (existing && existing.size === size) {
-			plan.set(href, { kind: "reuse", fileId: existing.fileId, filename });
-		} else {
-			plan.set(href, { kind: "upload", path, filename, existed: existing !== undefined });
-		}
-	}
-	if (missing.length > 0) {
-		throw new Error(`Image file(s) not found: ${missing.join(", ")}`);
-	}
-	return plan;
-}
-
-function externalMedia(href: string, alt: string): AdfNode {
-	const attrs: Record<string, unknown> = { type: "external", url: href };
-	if (alt) attrs["alt"] = alt;
-	return {
-		type: "mediaSingle",
-		attrs: { layout: "center" },
-		content: [{ type: "media", attrs }],
-	};
-}
-
-function fileMedia(fileId: string, collection: string, alt: string): AdfNode {
-	const attrs: Record<string, unknown> = { type: "file", id: fileId, collection };
-	if (alt) attrs["alt"] = alt;
-	return {
-		type: "mediaSingle",
-		attrs: { layout: "center" },
-		content: [{ type: "media", attrs }],
-	};
-}
-
-function printDryRun(
-	id: string,
-	currentTitle: string,
-	newTitle: string,
-	currentVersion: number,
-	nextVersion: number,
-	lossy: Map<string, number>,
-	plan: Map<string, ImagePlan>,
-): void {
-	const entries = [...plan.values()];
-	const added = entries.filter((e) => e.kind === "upload" && !e.existed).length;
-	const changed = entries.filter((e) => e.kind === "upload" && e.existed).length;
-	const reused = entries.filter((e) => e.kind === "reuse").length;
-	const external = entries.filter((e) => e.kind === "external").length;
-
-	console.log(`Dry run for page ${id} "${currentTitle}"`);
-	console.log(`  version: ${currentVersion} -> ${nextVersion}`);
-	if (newTitle !== currentTitle) console.log(`  title:   "${currentTitle}" -> "${newTitle}"`);
-	console.log(
-		`  images:  ${added} new, ${changed} changed, ${reused} reused, ${external} external`,
-	);
-	if (lossy.size > 0) console.log(`  warning: ${formatLossy(lossy)} will be removed`);
-	console.log("  nothing was written (dry run)");
 }

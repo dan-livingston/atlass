@@ -9,12 +9,34 @@ export interface FromMarkdownOptions {
 	resolveImage?: (href: string, alt: string) => AdfNode | undefined;
 }
 
+export type MediaSource =
+	| { type: "external"; url: string }
+	| { type: "file"; id: string; collection: string };
+
+export function mediaNode(source: MediaSource, alt: string): AdfNode {
+	const attrs: Record<string, unknown> = { ...source };
+	if (alt) attrs["alt"] = alt;
+	return {
+		type: "mediaSingle",
+		attrs: { layout: "center" },
+		content: [{ type: "media", attrs }],
+	};
+}
+
+export function imageHrefs(md: string): string[] {
+	const hrefs = new Set<string>();
+	void marked.walkTokens(marked.lexer(md), (token) => {
+		if (token.type === "image") hrefs.add((token as Tokens.Image).href);
+	});
+	return [...hrefs];
+}
+
 interface Ctx {
 	resolveImage: (href: string, alt: string) => AdfNode | undefined;
 }
 
 export function markdownToAdf(md: string, options: FromMarkdownOptions = {}): AdfDoc {
-	const ctx: Ctx = { resolveImage: options.resolveImage ?? externalMediaBlock };
+	const ctx: Ctx = { resolveImage: options.resolveImage ?? externalMedia };
 	const content = blocks(marked.lexer(md), ctx);
 	return { type: "doc", version: 1, content };
 }
@@ -205,17 +227,8 @@ function withUniqueMark(marks: AdfMark[], mark: AdfMark): AdfMark[] {
 	return [...marks.filter((m) => m.type !== mark.type), mark];
 }
 
-function externalMediaBlock(href: string, alt: string): AdfNode {
-	return {
-		type: "mediaSingle",
-		attrs: { layout: "center" },
-		content: [
-			{
-				type: "media",
-				attrs: alt ? { type: "external", url: href, alt } : { type: "external", url: href },
-			},
-		],
-	};
+export function externalMedia(href: string, alt: string): AdfNode {
+	return mediaNode({ type: "external", url: href }, alt);
 }
 
 function textToken(text: string): Tokens.Text {
