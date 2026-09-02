@@ -196,6 +196,7 @@ async function listPages(
 export function formatPageRows(pages: PageSummary[], nowMs: number): SearchRow[] {
 	return alignedRows(pages, nowMs, (p) => ({
 		id: p.id,
+		url: p.url,
 		label: p.space,
 		color: colorForSpace(p.space),
 		text: p.title,

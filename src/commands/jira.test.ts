@@ -9,6 +9,7 @@ import {
 	formatProjectRows,
 	formatStatusRows,
 } from "#/commands/jira.ts";
+import { formatRow } from "#/commands/search-run.ts";
 
 kleur.enabled = false;
 
@@ -175,6 +176,25 @@ test("list: key, status, and age columns are padded so summaries align", () => {
 	]);
 	expect(rows.map((r) => r.freeText)).toEqual(["Fix login", "Rotate keys"]);
 	expect(rows.map((r) => r.id)).toEqual(["PROJ-1", "OPS-12345"]);
+});
+
+test("list: rows link the key and the summary, with padding outside both links", () => {
+	kleur.enabled = true;
+	const rows = formatIssueRows([listed(), listed({ key: "OPS-12345" })], NOW);
+	const line = formatRow(rows[0]!, 80);
+	kleur.enabled = false;
+	const link = (text: string) => `\u001b]8;;${listed().url}\u0007${text}\u001b]8;;\u0007`;
+	expect(line.startsWith(`${link("PROJ-1")}    `)).toBe(true);
+	expect(line.endsWith(`  ${link("Fix login")}`)).toBe(true);
+	expect(rows[0]?.fixedColumns).not.toContain("]8;;");
+});
+
+test("list: a url with a plus sign does not eat the summary's room", () => {
+	kleur.enabled = true;
+	const url = "https://acme.atlassian.net/wiki/spaces/DOCS/pages/1/Onboarding+guide";
+	const line = formatRow(formatIssueRows([listed({ url })], NOW)[0]!, 80);
+	kleur.enabled = false;
+	expect(line).toContain("Fix login");
 });
 
 test("list: json carries the fetched fields", () => {

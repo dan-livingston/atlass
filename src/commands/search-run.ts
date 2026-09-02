@@ -2,9 +2,11 @@ import { checkbox } from "@inquirer/prompts";
 import { stripVTControlCharacters } from "node:util";
 
 import { relativeTime } from "#/util/format.ts";
+import { hyperlink } from "#/util/link.ts";
 
 export interface SearchRow {
 	id: string;
+	url: string;
 	fixedColumns: string;
 	freeText: string;
 	json: Record<string, unknown>;
@@ -12,6 +14,7 @@ export interface SearchRow {
 
 export interface Cells {
 	id: string;
+	url: string;
 	label: string;
 	color: (text: string) => string;
 	text: string;
@@ -34,6 +37,7 @@ export function alignedRows<T extends { updated: string }>(
 	const ageWidth = width((row) => row.age);
 	return rows.map((row) => ({
 		id: row.id,
+		url: row.url,
 		fixedColumns: `${row.id.padEnd(idWidth)}  ${row.color(row.label.padEnd(labelWidth))}  ${row.age.padEnd(ageWidth)}`,
 		freeText: row.text,
 		json: row.json,
@@ -130,11 +134,11 @@ async function copySelected(rows: SearchRow[], noun: Noun, copyOne: (id: string)
 	else console.log(`${summary}, failed ${failures.length}: ${failures.join(", ")}`);
 }
 
-function formatRow(row: SearchRow): string {
-	const width = process.stdout.columns ?? 80;
+export function formatRow(row: SearchRow, width = process.stdout.columns ?? 80): string {
 	const room = width - stripVTControlCharacters(row.fixedColumns).length - 2;
 	const text = room > 0 ? truncate(row.freeText, room) : "";
-	return text ? `${row.fixedColumns}  ${text}` : row.fixedColumns;
+	const columns = hyperlink(row.id, row.url) + row.fixedColumns.slice(row.id.length);
+	return text ? `${columns}  ${hyperlink(text, row.url)}` : columns;
 }
 
 function truncate(text: string, max: number): string {

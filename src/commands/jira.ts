@@ -257,6 +257,7 @@ export async function jiraList(options: ListOptions): Promise<void> {
 export function formatIssueRows(issues: IssueSummary[], nowMs: number): SearchRow[] {
 	return alignedRows(issues, nowMs, (i) => ({
 		id: i.key,
+		url: i.url,
 		label: i.status,
 		color: colorForCategory(i.statusCategory),
 		text: i.summary,
