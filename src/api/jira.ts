@@ -17,6 +17,7 @@ export interface JiraIssue {
 	summary: string;
 	type: string;
 	status: string;
+	statusCategory: string;
 	assignee: string;
 	reporter: string;
 	priority: string;
@@ -34,7 +35,7 @@ interface IssueResponse {
 		summary?: string;
 		description?: AdfNode | null;
 		issuetype?: { name?: string };
-		status?: { name?: string };
+		status?: { name?: string; statusCategory?: { key?: string } };
 		assignee?: { displayName?: string } | null;
 		reporter?: { displayName?: string } | null;
 		priority?: { name?: string } | null;
@@ -89,6 +90,7 @@ export async function fetchIssue(
 		summary: f.summary ?? "",
 		type: f.issuetype?.name ?? "",
 		status: f.status?.name ?? "",
+		statusCategory: f.status?.statusCategory?.key ?? "",
 		assignee: f.assignee?.displayName ?? "Unassigned",
 		reporter: f.reporter?.displayName ?? "",
 		priority: f.priority?.name ?? "",

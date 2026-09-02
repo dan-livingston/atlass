@@ -1,3 +1,5 @@
+import { formatDateTime } from "../util/format.ts";
+
 export type FrontmatterValue = string | number | string[];
 
 export interface CopiedSource {
@@ -162,7 +164,7 @@ function leadingH1(lines: string[]): { index: number; title: string } | null {
 function commentsSection(comments: CopiedComment[]): string {
 	if (comments.length === 0) return "";
 	const blocks = comments.map((c) => {
-		const heading = `### ${c.author || "Unknown"}${c.created ? ` - ${formatDate(c.created)}` : ""}`;
+		const heading = `### ${c.author || "Unknown"}${c.created ? ` - ${formatDateTime(c.created)}` : ""}`;
 		return c.body ? `${heading}\n\n${c.body}` : heading;
 	});
 	return [COMMENTS_HEADING, "", blocks.join("\n\n")].join("\n");
@@ -172,10 +174,4 @@ function attachmentsSection(attachments: CopiedAttachment[]): string {
 	if (attachments.length === 0) return "";
 	const items = attachments.map((a) => `- [${a.filename}](${a.relativePath})`);
 	return [ATTACHMENTS_HEADING, "", ...items].join("\n");
-}
-
-function formatDate(iso: string): string {
-	const date = new Date(iso);
-	if (Number.isNaN(date.getTime())) return iso;
-	return date.toISOString().replace("T", " ").slice(0, 16);
 }

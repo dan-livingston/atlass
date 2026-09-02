@@ -8,6 +8,12 @@ export function formatDuration(seconds: number | null | undefined): string {
 	return `${h}h${String(m % 60).padStart(2, "0")}m`;
 }
 
+export function formatDateTime(iso: string): string {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return iso;
+	return date.toISOString().replace("T", " ").slice(0, 16);
+}
+
 const MINUTE = 60;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;

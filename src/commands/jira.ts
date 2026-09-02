@@ -1,10 +1,12 @@
 import type { Tokens } from "marked";
 
 import { confirm, input } from "@inquirer/prompts";
+import kleur from "kleur";
 import { marked } from "marked";
 import { readFile, writeFile } from "node:fs/promises";
 
-import type { ProjectSummary, StatusSummary } from "../api/jira.ts";
+import type { RemoteAttachment } from "../api/attachments.ts";
+import type { JiraComment, JiraIssue, ProjectSummary, StatusSummary } from "../api/jira.ts";
 
 import { markdownToAdf } from "../adf/from-markdown.ts";
 import { findLossyNodes, formatLossy, JIRA_LOSSY_LABELS } from "../adf/lossy.ts";
@@ -14,6 +16,7 @@ import { AtlassianClient } from "../api/client.ts";
 import { fetchIssue, listProjects, listStatuses, searchIssues, updateIssue } from "../api/jira.ts";
 import { requireAuth } from "../credentials.ts";
 import { parseIssueSource, render } from "../markdown/copied-document.ts";
+import { formatDateTime, relativeTime } from "../util/format.ts";
 import { resolveOutput } from "../util/output-path.ts";
 import { isExternalHref, parseIssueKey, parseLimit } from "../util/parse.ts";
 import { runSearch } from "./search-run.ts";
@@ -93,6 +96,92 @@ export async function jiraStatuses(
 export function formatStatusRows(statuses: Pick<StatusSummary, "name" | "category">[]): string[] {
 	const width = Math.max(...statuses.map((s) => s.name.length));
 	return statuses.map((s) => `${s.name.padEnd(width)}  ${s.category}`);
+}
+
+export interface ViewOptions {
+	allComments?: boolean;
+}
+
+export async function jiraView(arg: string | undefined, options: ViewOptions): Promise<void> {
+	const auth = await requireAuth();
+	const key = await resolveKey(arg);
+	const client = new AtlassianClient(auth);
+	const issue = await fetchIssue(client, auth.site, key);
+	for (const line of formatIssueView(issue, Date.now(), options.allComments ?? false)) {
+		console.log(line);
+	}
+}
+
+const VISIBLE_COMMENTS = 5;
+
+const CATEGORY_COLORS: Record<string, (text: string) => string> = {
+	new: kleur.cyan,
+	indeterminate: kleur.yellow,
+	done: kleur.green,
+};
+
+export function formatIssueView(issue: JiraIssue, nowMs: number, allComments: boolean): string[] {
+	return [
+		`${kleur.bold(issue.key)}  ${issue.summary}`,
+		...fieldLines(issue, nowMs),
+		...bodyLines(adfToMarkdown(issue.description)),
+		...commentSection(issue.comments, allComments),
+		...attachmentSection(issue.attachments),
+	];
+}
+
+function fieldLines(issue: JiraIssue, nowMs: number): string[] {
+	const colorStatus = CATEGORY_COLORS[issue.statusCategory] ?? ((text: string) => text);
+	const pairs: [string, string][] = [
+		["Type", issue.type],
+		["Status", issue.status && colorStatus(issue.status)],
+		["Assignee", issue.assignee],
+		["Reporter", issue.reporter],
+		["Priority", issue.priority],
+		["Labels", issue.labels.join(", ")],
+		["Created", dateWithAge(issue.created, nowMs)],
+		["Updated", dateWithAge(issue.updated, nowMs)],
+		["URL", issue.url],
+	];
+	const kept = pairs.filter(([, value]) => value !== "");
+	const width = Math.max(...kept.map(([label]) => label.length)) + 1;
+	return kept.map(([label, value]) => `${kleur.dim(`${label}:`.padEnd(width))}  ${value}`);
+}
+
+function dateWithAge(iso: string, nowMs: number): string {
+	if (!iso) return "";
+	return `${formatDateTime(iso).slice(0, 10)} (${relativeTime(iso, nowMs)})`;
+}
+
+function bodyLines(body: string): string[] {
+	return body ? ["", body] : [];
+}
+
+function commentSection(comments: JiraComment[], allComments: boolean): string[] {
+	if (comments.length === 0) return [];
+	const visible = allComments ? comments : comments.slice(-VISIBLE_COMMENTS);
+	const hidden = comments.length - visible.length;
+	const heading =
+		hidden > 0
+			? `Comments (${comments.length}, showing last ${visible.length} — --all-comments for all)`
+			: `Comments (${comments.length})`;
+	const lines = ["", kleur.bold(heading)];
+	for (const comment of visible) {
+		const body = adfToMarkdown(comment.body);
+		lines.push("", commentHeader(comment), ...(body ? [body] : []));
+	}
+	return lines;
+}
+
+function commentHeader(comment: JiraComment): string {
+	const author = kleur.bold(comment.author || "Unknown");
+	const when = comment.created ? ` · ${kleur.dim(formatDateTime(comment.created))}` : "";
+	return `─ ${author}${when}`;
+}
+
+function attachmentSection(attachments: RemoteAttachment[]): string[] {
+	if (attachments.length === 0) return [];
+	return ["", kleur.bold("Attachments"), ...attachments.map((a) => `- ${a.filename}`)];
 }
 
 export async function jiraCopy(arg: string | undefined, options: CopyOptions): Promise<void> {

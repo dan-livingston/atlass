@@ -1,7 +1,8 @@
 # atlass
 
-CLI for Atlassian Cloud. Copies Jira issues and Confluence pages to Markdown,
-pushes edits back, searches both, and shows Bitbucket pipeline runs.
+CLI for Atlassian Cloud. Views Jira issues in the terminal, copies Jira issues
+and Confluence pages to Markdown, pushes edits back, searches both, and shows
+Bitbucket pipeline runs.
 
 ## Install
 
@@ -33,6 +34,17 @@ atlass bitbucket login    # prompts for workspace, default repo, and token
 atlass bitbucket status
 atlass bitbucket logout
 ```
+
+## View
+
+```bash
+atlass jira view PROJ-123
+atlass jira view https://acme.atlassian.net/browse/PROJ-123
+```
+
+Prints the issue to the terminal: fields, description, the last five comments
+(`--all-comments` for all of them), and attachment names. The status is colored
+by category; color turns off automatically when piping, or with `NO_COLOR`.
 
 ## Copy
 

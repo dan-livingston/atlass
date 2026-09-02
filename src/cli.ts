@@ -11,7 +11,14 @@ import {
 	bitbucketStatus,
 } from "./commands/bitbucket.ts";
 import { confluenceCopy, confluenceSearch, confluenceUpdate } from "./commands/confluence.ts";
-import { jiraCopy, jiraProjects, jiraSearch, jiraStatuses, jiraUpdate } from "./commands/jira.ts";
+import {
+	jiraCopy,
+	jiraProjects,
+	jiraSearch,
+	jiraStatuses,
+	jiraUpdate,
+	jiraView,
+} from "./commands/jira.ts";
 
 const program = new Command();
 
@@ -35,6 +42,10 @@ jira.command("statuses [query]")
 	.option("-p, --project <key>", "limit to statuses used by a project")
 	.option("--json", "output results as JSON")
 	.action(run(jiraStatuses));
+jira.command("view [issue]")
+	.description("Show a Jira issue (key or URL) in the terminal")
+	.option("--all-comments", "show all comments instead of the last 5")
+	.action(run(jiraView));
 jira.command("copy [issue]")
 	.description("Copy a Jira issue (key or URL) to a Markdown file")
 	.option("-o, --out <path>", "output file or directory")
