@@ -8,7 +8,10 @@
 		"url": "git+https://github.com/dan-livingston/atlass.git"
 	},
 	"bin": {
-		"atlass": "./dist/cli.mjs"
+		"atlass": "./dist/cli.mjs",
+		"bitbucket": "./dist/bitbucket.mjs",
+		"confluence": "./dist/confluence.mjs",
+		"jira": "./dist/jira.mjs"
 	},
 	"files": [
 		"dist"
@@ -19,7 +22,10 @@
 		"#package.json": "./package.json"
 	},
 	"exports": {
-		".": "./dist/cli.mjs",
+		"./bitbucket": "./dist/bitbucket.mjs",
+		"./cli": "./dist/cli.mjs",
+		"./confluence": "./dist/confluence.mjs",
+		"./jira": "./dist/jira.mjs",
 		"./package.json": "./package.json"
 	},
 	"publishConfig": {

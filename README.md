@@ -12,6 +12,10 @@ npm install -g atlass
 
 Or from source: `pnpm install && pnpm build && pnpm link --global`.
 
+The install also adds `jira`, `confluence`, and `bitbucket` as shortcuts for
+`atlass jira`, `atlass confluence`, and `atlass bitbucket`. Under `atlass`,
+`conf` and `bb` are aliases for the two long names.
+
 ## Authentication
 
 Create an API token at

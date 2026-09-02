@@ -5,11 +5,18 @@ export default defineConfig({
 		"*": "vp check --fix",
 	},
 	pack: {
-		entry: ["src/cli.ts"],
+		entry: ["src/cli.ts", "src/jira.ts", "src/confluence.ts", "src/bitbucket.ts"],
 		dts: {
 			tsgo: true,
 		},
-		exports: true,
+		exports: {
+			bin: {
+				atlass: "./src/cli.ts",
+				jira: "./src/jira.ts",
+				confluence: "./src/confluence.ts",
+				bitbucket: "./src/bitbucket.ts",
+			},
+		},
 	},
 	lint: {
 		options: {
