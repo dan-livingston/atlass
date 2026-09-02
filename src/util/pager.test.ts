@@ -77,7 +77,7 @@ test("printPaged: prints directly with --no-pager or when nothing would scroll",
 test("printPaged: survives a pager that exits without reading its input", async () => {
 	const log = vi.spyOn(console, "log").mockImplementation(() => {});
 	try {
-		await printPaged(TALL, { term: TINY, env: { PAGER: "node -e 0" } });
+		await printPaged(TALL, { term: TINY, env: { ...process.env, PAGER: "node -e 0" } });
 		expect(log).not.toHaveBeenCalled();
 	} finally {
 		log.mockRestore();
