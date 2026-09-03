@@ -4,7 +4,7 @@ import kleur from "kleur";
 import type { PipelineDetail, PipelineSummary, StepSummary } from "#/api/bitbucket.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 
-import { getPipeline, listPipelines, listSteps } from "#/api/bitbucket.ts";
+import { fetchCurrentUserUuid, getPipeline, listPipelines, listSteps } from "#/api/bitbucket.ts";
 import { AtlassianClient, HttpError } from "#/api/client.ts";
 import { alignedRows, printRows } from "#/commands/search-run.ts";
 import { clearConfig, readConfig, writeConfig } from "#/config.ts";
@@ -32,20 +32,32 @@ export async function bitbucketLogin(): Promise<void> {
 	const defaultRepo =
 		(await input({ message: "Default repo slug (optional):" })).trim() || undefined;
 	const token = await password({
-		message: "Bitbucket API token (needs read:pipeline + workspace read scopes):",
+		message:
+			"Bitbucket API token (needs pipeline, pull request, account, and workspace read scopes):",
 		mask: true,
 	});
 
 	const client = new AtlassianClient({ site: BITBUCKET_ORIGIN, email, token });
 	const ws = await verifyWorkspace(client, workspace);
+	const uuid = await fetchCurrentUserUuid(client).catch(() => undefined);
 
 	await writeConfig({
 		...existing,
 		email,
-		bitbucket: { workspace, ...(defaultRepo ? { defaultRepo } : {}) },
+		bitbucket: {
+			workspace,
+			...(defaultRepo ? { defaultRepo } : {}),
+			...(uuid ? { uuid } : {}),
+		},
 	});
 	saveBitbucketToken(email, token);
 	console.log(`Logged in to Bitbucket workspace ${ws.name ?? workspace} as ${email}.`);
+}
+
+export async function rememberBitbucketUuid(uuid: string): Promise<void> {
+	const config = await readConfig();
+	if (!config?.bitbucket) return;
+	await writeConfig({ ...config, bitbucket: { ...config.bitbucket, uuid } });
 }
 
 export async function bitbucketLogout(): Promise<void> {
@@ -84,7 +96,7 @@ export async function bitbucketPipelines(options: PipelinesOptions): Promise<voi
 	const ref = resolveRepo(options.repo, auth);
 	const client = new AtlassianClient(auth);
 	const limit = parseLimit(options.limit);
-	const pipelines = await withScopeHint(() => listPipelines(client, ref, limit));
+	const pipelines = await withScopeHint(PIPELINE_SCOPE, () => listPipelines(client, ref, limit));
 
 	printRows(pipelineRows(pipelines, Date.now()), {
 		json: options.json,
@@ -104,8 +116,8 @@ export async function bitbucketPipeline(
 	const auth = await requireBitbucketAuth();
 	const ref = resolveRepo(options.repo, auth);
 	const client = new AtlassianClient(auth);
-	const detail = await withScopeHint(() => getPipeline(client, ref, buildNumber));
-	const steps = await withScopeHint(() => listSteps(client, ref, detail.uuid));
+	const detail = await withScopeHint(PIPELINE_SCOPE, () => getPipeline(client, ref, buildNumber));
+	const steps = await withScopeHint(PIPELINE_SCOPE, () => listSteps(client, ref, detail.uuid));
 	printPipelineDetail(detail, steps, Date.now());
 }
 
@@ -197,14 +209,16 @@ function parseBuildNumber(arg: string | undefined): number {
 	return Number.parseInt(raw, 10);
 }
 
-async function withScopeHint<T>(fn: () => Promise<T>): Promise<T> {
+const PIPELINE_SCOPE = "read:pipeline:bitbucket";
+
+export async function withScopeHint<T>(scope: string, fn: () => Promise<T>): Promise<T> {
 	try {
 		return await fn();
 	} catch (err) {
 		if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
 			throw new Error(
-				"Bitbucket rejected the request (401/403). Check the token has the " +
-					"read:pipeline:bitbucket scope, or run `atlass bitbucket login` to update it.",
+				`Bitbucket rejected the request (401/403). Check the token has the ${scope} ` +
+					"scope, or run `atlass bitbucket login` to update it.",
 			);
 		}
 		throw err;

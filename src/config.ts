@@ -5,6 +5,7 @@ import { join } from "node:path";
 export interface BitbucketConfig {
 	workspace: string;
 	defaultRepo?: string;
+	uuid?: string;
 }
 
 export interface Config {

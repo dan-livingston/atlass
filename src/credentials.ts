@@ -67,6 +67,7 @@ export async function requireAuth(): Promise<Auth> {
 export interface BitbucketAuth extends Auth {
 	workspace: string;
 	defaultRepo?: string;
+	uuid?: string;
 }
 
 export async function requireBitbucketAuth(): Promise<BitbucketAuth> {
@@ -86,5 +87,6 @@ export async function requireBitbucketAuth(): Promise<BitbucketAuth> {
 		token,
 		workspace: config.bitbucket.workspace,
 		defaultRepo: config.bitbucket.defaultRepo,
+		uuid: config.bitbucket.uuid,
 	};
 }

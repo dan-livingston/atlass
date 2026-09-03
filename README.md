@@ -30,8 +30,9 @@ atlass auth logout
 Site and email go in `~/.config/atlass/config.json`. The token goes in the OS
 keyring. One account at a time.
 
-Bitbucket needs its own Bitbucket-scoped token with pipeline and workspace read
-scopes, since Atlassian tokens are scoped per product:
+Bitbucket needs its own Bitbucket-scoped token with pipeline, pull request,
+account, and workspace read scopes, since Atlassian tokens are scoped per
+product:
 
 ```bash
 atlass bitbucket login    # prompts for workspace, default repo, and token
@@ -164,7 +165,13 @@ atlass jira projects [query]
 atlass jira statuses [query] [--project PROJ]
 ```
 
-## Bitbucket pipelines
+## Bitbucket
+
+`--repo` takes `workspace/slug` or a bare slug under the configured workspace,
+and defaults to the repo set at login. `--limit` and `--json` work as for
+search.
+
+### Pipelines
 
 ```bash
 atlass bitbucket pipelines                    # recent runs for the default repo
@@ -172,8 +179,28 @@ atlass bitbucket pipelines --repo acme/web
 atlass bitbucket pipeline 124                 # one run and its steps
 ```
 
-`--repo` takes `workspace/slug` or a bare slug under the configured workspace.
-`--limit` and `--json` work as for search.
+`pipelines` shows runs as `#NUM  Status  Age  ref (commit)  duration`, newest
+first. `pipeline` adds the trigger, the creator, and the steps.
+
+### Pull requests
+
+```bash
+atlass bitbucket prs                          # open PRs on the default repo
+atlass bitbucket prs --state merged --limit 10
+atlass bitbucket prs --all                    # every state
+atlass bitbucket prs --reviewer me            # waiting on your review
+atlass bitbucket prs --author me --repo acme/web
+atlass bitbucket prs --query 'destination.branch.name = "main"'
+```
+
+`prs` shows `#ID  State  Age  Title`, most recently updated first. Only open
+pull requests are listed unless `--state` or `--all` says otherwise; `--state`
+takes commas or repeated flags. Drafts show as `DRAFT` in place of `OPEN`.
+
+`--author` and `--reviewer` take `me`, an account id, or a uuid, and combine
+with OR, so passing both lists everything involving that person. `--query`
+takes a raw Bitbucket query and replaces both; it cannot mention `state`, which
+`--state` owns.
 
 ## Development
 
