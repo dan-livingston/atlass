@@ -13,7 +13,7 @@ export function run<A extends unknown[]>(
 ): (...args: A) => Promise<void> {
 	return async (...args: A) => {
 		try {
-			await fn(openTerminal(process.argv, process.stdin), ...args);
+			await fn(openTerminal(args, process.stdin), ...args);
 		} catch (err) {
 			fail(err);
 		}

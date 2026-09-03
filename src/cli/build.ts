@@ -17,8 +17,8 @@ type Product = keyof typeof PRODUCTS;
 const NO_INPUT = "never prompt; fail if a required value is missing";
 
 function withNoInput(command: Command): Command {
-	if (command.commands.length === 0) command.option("--no-input", NO_INPUT);
-	else for (const sub of command.commands) withNoInput(sub);
+	command.option("--no-input", NO_INPUT);
+	for (const sub of command.commands) withNoInput(sub);
 	return command;
 }
 

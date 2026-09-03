@@ -43,7 +43,7 @@ for (const product of PRODUCTS) {
 		expect(standalone.name).toBe(product);
 		expect(standalone.description).toBe(expected.description);
 		expect(standalone.commands).toEqual(expected.commands);
-		expect(standalone.options.map((o) => o.flags)).toEqual(["-V, --version"]);
+		expect(standalone.options.map((o) => o.flags)).toEqual(["-V, --version", "--no-input"]);
 	});
 }
 
