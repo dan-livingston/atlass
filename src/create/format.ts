@@ -1,4 +1,4 @@
-import type { CreateField, CreateIssueType, FieldSchema } from "#/api/jira.ts";
+import type { CreateField, CreateIssueType, FieldSchema } from "#/api/jira-types.ts";
 
 import { allowedLabel, isLabels, isMultiLine } from "#/create/encode.ts";
 

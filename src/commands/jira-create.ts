@@ -1,18 +1,13 @@
 import { confirm, search, select } from "@inquirer/prompts";
 import { readFile } from "node:fs/promises";
 
-import type { CreateField, CreateIssueType } from "#/api/jira.ts";
+import type { CreateField, CreateIssueType } from "#/api/jira-types.ts";
 import type { FieldInput, ResolveUser } from "#/create/encode.ts";
 
 import { AtlassianClient, HttpError } from "#/api/client.ts";
-import {
-	createIssue,
-	fetchCreateFields,
-	fetchCreateIssueTypes,
-	fetchMyself,
-	listProjects,
-	searchAssignableUsers,
-} from "#/api/jira.ts";
+import { createIssue, fetchCreateFields, fetchCreateIssueTypes } from "#/api/jira-createmeta.ts";
+import { listProjects } from "#/api/jira-projects.ts";
+import { fetchMyself, searchAssignableUsers } from "#/api/jira-users.ts";
 import { encodeCreate } from "#/create/encode.ts";
 import { formatFieldRows, formatIssueTypeRows, formatMissingFields } from "#/create/format.ts";
 import { walkFields } from "#/create/prompt.ts";

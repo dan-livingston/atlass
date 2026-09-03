@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 
-import type { JiraIssue } from "#/api/jira.ts";
+import type { JiraIssue } from "#/api/jira-types.ts";
 
 import { planIssueCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";

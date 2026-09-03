@@ -1,4 +1,4 @@
-import type { AllowedValue, CreateField, FieldSchema } from "#/api/jira.ts";
+import type { AllowedValue, CreateField, FieldSchema } from "#/api/jira-types.ts";
 
 import { markdownToAdf } from "#/adf/from-markdown.ts";
 

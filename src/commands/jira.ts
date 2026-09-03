@@ -2,20 +2,15 @@ import { input } from "@inquirer/prompts";
 import kleur from "kleur";
 import { readFile } from "node:fs/promises";
 
-import type { IssueSummary, JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira.ts";
+import type { IssueSummary, JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira-types.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { ViewOptions } from "#/commands/view.ts";
 
 import { AtlassianClient } from "#/api/client.ts";
-import {
-	fetchIssue,
-	listAssignedIssues,
-	listProjects,
-	listStatuses,
-	searchIssues,
-	sortByCategoryThenUpdated,
-	updateIssue,
-} from "#/api/jira.ts";
+import { fetchIssue, updateIssue } from "#/api/jira-issues.ts";
+import { listProjects } from "#/api/jira-projects.ts";
+import { listAssignedIssues, searchIssues, sortByCategoryThenUpdated } from "#/api/jira-search.ts";
+import { listStatuses } from "#/api/jira-statuses.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
 import { alignedRows, runSearch, searchFooter } from "#/commands/search-run.ts";
 import {

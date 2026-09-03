@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import type { CreateField } from "#/api/jira.ts";
+import type { CreateField } from "#/api/jira-types.ts";
 
 import {
 	fieldTypeLabel,

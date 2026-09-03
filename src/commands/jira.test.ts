@@ -1,7 +1,7 @@
 import kleur from "kleur";
 import { expect, test } from "vite-plus/test";
 
-import type { IssueSummary, JiraComment, JiraIssue } from "#/api/jira.ts";
+import type { IssueSummary, JiraComment, JiraIssue } from "#/api/jira-types.ts";
 
 import {
 	formatIssueView,

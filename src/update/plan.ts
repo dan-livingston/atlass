@@ -1,6 +1,6 @@
 import type { AdfDoc, AdfNode } from "#/adf/types.ts";
 import type { AttachmentInfo, PageState } from "#/api/confluence.ts";
-import type { JiraIssue } from "#/api/jira.ts";
+import type { JiraIssue } from "#/api/jira-types.ts";
 import type { IssueSource, PageSource } from "#/markdown/copied-document.ts";
 
 import { externalMedia, imageHrefs, markdownToAdf, mediaNode } from "#/adf/from-markdown.ts";

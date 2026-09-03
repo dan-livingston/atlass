@@ -1,6 +1,6 @@
 import { checkbox, editor, input, search, select } from "@inquirer/prompts";
 
-import type { AllowedValue, CreateField, JiraUser } from "#/api/jira.ts";
+import type { AllowedValue, CreateField, JiraUser } from "#/api/jira-types.ts";
 import type { FieldInput } from "#/create/encode.ts";
 
 import { SERVER_FILLED, allowedLabel, isMultiLine } from "#/create/encode.ts";

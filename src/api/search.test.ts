@@ -3,14 +3,14 @@ import { expect, test } from "vite-plus/test";
 import type { AtlassianClient } from "#/api/client.ts";
 
 import { buildCql, searchPages } from "#/api/confluence.ts";
+import { projectSearchQuery } from "#/api/jira-projects.ts";
 import {
 	buildJql,
 	buildListJql,
-	dedupeAndSortStatuses,
 	listAssignedIssues,
-	projectSearchQuery,
 	sortByCategoryThenUpdated,
-} from "#/api/jira.ts";
+} from "#/api/jira-search.ts";
+import { dedupeAndSortStatuses } from "#/api/jira-statuses.ts";
 
 test("jql: empty query falls back to recent issues, since the search endpoint rejects unbounded queries", () => {
 	expect(buildJql({ limit: 25 })).toBe("updated >= -30d ORDER BY updated DESC");
