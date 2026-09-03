@@ -5,9 +5,10 @@ import type { AttachmentInfo } from "#/api/confluence-attachments.ts";
 import type { PageState } from "#/api/confluence-pages.ts";
 import type { JiraIssue } from "#/api/jira-types.ts";
 import type { IssueSource, PageSource } from "#/markdown/copied-document.ts";
-import type { LocalImage } from "#/update/plan.ts";
+import type { LocalImage } from "#/update/plan-page.ts";
 
-import { formatPlan, planIssueUpdate, planPageUpdate, withUploadedIds } from "#/update/plan.ts";
+import { planPageUpdate, withUploadedIds } from "#/update/plan-page.ts";
+import { formatPlan, planIssueUpdate } from "#/update/plan.ts";
 
 function paragraph(text: string): AdfNode {
 	return { type: "paragraph", content: [{ type: "text", text }] };

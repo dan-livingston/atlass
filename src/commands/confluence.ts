@@ -8,7 +8,7 @@ import type { PageSearchParams, PageSummary } from "#/api/confluence-search.ts";
 import type { CopyOptions } from "#/commands/jira.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { ViewOptions } from "#/commands/view.ts";
-import type { LocalImage } from "#/update/plan.ts";
+import type { LocalImage } from "#/update/plan-page.ts";
 
 import { imageHrefs } from "#/adf/from-markdown.ts";
 import { AtlassianClient } from "#/api/client.ts";
@@ -28,7 +28,7 @@ import { planPageCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
 import { requireAuth } from "#/credentials.ts";
 import { parsePageSource } from "#/markdown/copied-document.ts";
-import { planPageUpdate, withUploadedIds } from "#/update/plan.ts";
+import { planPageUpdate, withUploadedIds } from "#/update/plan-page.ts";
 import { runPlan } from "#/update/run.ts";
 import { printPaged } from "#/util/pager.ts";
 import { isExternalHref, parseLimit, parsePageId } from "#/util/parse.ts";
