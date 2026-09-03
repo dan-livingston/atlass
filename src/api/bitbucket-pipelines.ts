@@ -1,4 +1,4 @@
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 import type { RepoRef } from "#/util/parse.ts";
 
 import {
@@ -8,7 +8,7 @@ import {
 	repoPath,
 	walkPages,
 } from "#/api/bitbucket-repo.ts";
-import { HttpError } from "#/api/client.ts";
+import { HttpError } from "#/api/http-error.ts";
 
 interface CompletedState {
 	name: "COMPLETED";
@@ -132,7 +132,7 @@ function pipelinesPath(ref: RepoRef): string {
 }
 
 export async function listPipelines(
-	client: AtlassianClient,
+	client: Transport,
 	ref: RepoRef,
 	limit: number,
 ): Promise<PipelineSummary[]> {
@@ -143,7 +143,7 @@ export async function listPipelines(
 }
 
 export async function getPipeline(
-	client: AtlassianClient,
+	client: Transport,
 	ref: RepoRef,
 	buildNumber: number,
 ): Promise<PipelineDetail> {
@@ -159,7 +159,7 @@ export async function getPipeline(
 }
 
 async function fetchByBuildNumber(
-	client: AtlassianClient,
+	client: Transport,
 	ref: RepoRef,
 	buildNumber: number,
 ): Promise<PipelineValue | null> {
@@ -174,7 +174,7 @@ async function fetchByBuildNumber(
 }
 
 async function findInRecentRuns(
-	client: AtlassianClient,
+	client: Transport,
 	ref: RepoRef,
 	buildNumber: number,
 ): Promise<PipelineValue | null> {
@@ -188,7 +188,7 @@ async function findInRecentRuns(
 }
 
 export async function listSteps(
-	client: AtlassianClient,
+	client: Transport,
 	ref: RepoRef,
 	pipelineId: string,
 ): Promise<StepSummary[]> {

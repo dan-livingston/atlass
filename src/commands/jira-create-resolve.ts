@@ -1,6 +1,6 @@
 import { search, select } from "@inquirer/prompts";
 
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 import type { CreateIssueType } from "#/api/jira-types.ts";
 import type { ResolveUser } from "#/create/encode.ts";
 
@@ -8,7 +8,7 @@ import { listProjects } from "#/api/jira-projects.ts";
 import { fetchMyself, searchAssignableUsers } from "#/api/jira-users.ts";
 
 export async function resolveProject(
-	client: AtlassianClient,
+	client: Transport,
 	site: string,
 	arg: string | undefined,
 	strict: boolean,
@@ -61,7 +61,7 @@ export function matchType(types: CreateIssueType[], arg: string): CreateIssueTyp
 
 const ACCOUNT_ID = /^(?:[0-9a-f]{24}|[a-z0-9]+:[0-9a-f-]{36}(?::[0-9a-f-]{36})?)$/i;
 
-export function userResolver(client: AtlassianClient, project: string): ResolveUser {
+export function userResolver(client: Transport, project: string): ResolveUser {
 	return async (query) => {
 		if (query === "me") return (await fetchMyself(client)).accountId;
 		if (ACCOUNT_ID.test(query)) return query;

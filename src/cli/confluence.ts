@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 
-import { run } from "#/cli/run.ts";
+import { run, withJira } from "#/cli/run.ts";
 import {
 	confluenceCopy,
 	confluenceList,
@@ -16,12 +16,12 @@ export function registerConfluence(confluence: Command): Command {
 		.description("Show a Confluence page (id or URL) in the terminal")
 		.option("--all-comments", "show all comments instead of the last 5")
 		.option("--no-pager", "print directly instead of paging long output")
-		.action(run(confluenceView));
+		.action(run(withJira(confluenceView)));
 	confluence
 		.command("copy [page]")
 		.description("Copy a Confluence page (id or URL) to a Markdown file")
 		.option("-o, --out <path>", "output file or directory")
-		.action(run(confluenceCopy));
+		.action(run(withJira(confluenceCopy)));
 	confluence
 		.command("update [file]")
 		.description("Update a Confluence page from an edited Markdown file")
@@ -29,7 +29,7 @@ export function registerConfluence(confluence: Command): Command {
 		.option("-m, --message <text>", "version message (default 'Updated via atlass')")
 		.option("-f, --force", "skip the stale-version and data-loss checks")
 		.option("--dry-run", "show what would change without writing")
-		.action(run(confluenceUpdate));
+		.action(run(withJira(confluenceUpdate)));
 	confluence
 		.command("list")
 		.description("List pages you starred")
@@ -38,7 +38,7 @@ export function registerConfluence(confluence: Command): Command {
 		.option("--json", "output results as JSON")
 		.option("-c, --copy", "pick results to copy to Markdown")
 		.option("-o, --out <dir>", "output directory for --copy")
-		.action(run(confluenceList));
+		.action(run(withJira(confluenceList)));
 	confluence
 		.command("search [query]")
 		.description("Search Confluence pages (text query, --space, or --cql)")
@@ -48,6 +48,6 @@ export function registerConfluence(confluence: Command): Command {
 		.option("--json", "output results as JSON")
 		.option("-c, --copy", "pick results to copy to Markdown")
 		.option("-o, --out <dir>", "output directory for --copy")
-		.action(run(confluenceSearch));
+		.action(run(withJira(confluenceSearch)));
 	return confluence;
 }

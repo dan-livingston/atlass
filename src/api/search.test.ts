@@ -1,7 +1,5 @@
 import { expect, test } from "vite-plus/test";
 
-import type { AtlassianClient } from "#/api/client.ts";
-
 import { buildCql, searchPages } from "#/api/confluence-search.ts";
 import { projectSearchQuery } from "#/api/jira-projects.ts";
 import {
@@ -11,6 +9,7 @@ import {
 	sortByCategoryThenUpdated,
 } from "#/api/jira-search.ts";
 import { dedupeAndSortStatuses } from "#/api/jira-statuses.ts";
+import { fakeSession } from "#/test/session.ts";
 
 test("jql: empty query falls back to recent issues, since the search endpoint rejects unbounded queries", () => {
 	expect(buildJql({ limit: 25 })).toBe("updated >= -30d ORDER BY updated DESC");
@@ -126,11 +125,11 @@ test("cql: raw cql is used verbatim", () => {
 });
 
 test("cql search: a full server page means more results, even when rows without a content id are dropped", async () => {
-	const client = {
+	const client = fakeSession({
 		getJson: async () => ({
 			results: [{ content: { id: "1", title: "A" } }, { title: "orphan result" }],
 		}),
-	} as unknown as AtlassianClient;
+	});
 	const res = await searchPages(client, "https://acme.atlassian.net", { limit: 2 });
 	expect(res.pages.map((p) => p.id)).toEqual(["1"]);
 	expect(res.hasMore).toBe(true);
@@ -171,14 +170,14 @@ function issuePage(keys: string[], nextPageToken?: string) {
 
 test("list: follows page tokens until the last page and keeps category and updated", async () => {
 	const paths: string[] = [];
-	const client = {
+	const client = fakeSession({
 		getJson: async (path: string) => {
 			paths.push(path);
 			return path.includes("nextPageToken=t2")
 				? issuePage(["PROJ-3"])
 				: issuePage(["PROJ-1", "PROJ-2"], "t2");
 		},
-	} as unknown as AtlassianClient;
+	});
 	const res = await listAssignedIssues(client, "https://acme.atlassian.net", {});
 	expect(res.issues.map((i) => i.key)).toEqual(["PROJ-1", "PROJ-2", "PROJ-3"]);
 	expect(res.issues[0]).toEqual({
@@ -197,13 +196,13 @@ test("list: follows page tokens until the last page and keeps category and updat
 
 test("list: stops at the cap and reports truncation when the server still has more", async () => {
 	let page = 0;
-	const client = {
+	const client = fakeSession({
 		getJson: async () => {
 			page++;
 			const keys = Array.from({ length: 100 }, (_, i) => `PROJ-${page * 100 + i}`);
 			return issuePage(keys, `t${page + 1}`);
 		},
-	} as unknown as AtlassianClient;
+	});
 	const res = await listAssignedIssues(client, "https://acme.atlassian.net", {});
 	expect(res.issues).toHaveLength(500);
 	expect(res.truncated).toBe(true);
@@ -245,14 +244,14 @@ test("list sort: unknown category sorts last", () => {
 });
 
 test("cql search: last modified is carried through as updated", async () => {
-	const client = {
+	const client = fakeSession({
 		getJson: async () => ({
 			results: [
 				{ content: { id: "1", title: "A" }, lastModified: "2026-08-30T10:00:00.000Z" },
 				{ content: { id: "2", title: "B" } },
 			],
 		}),
-	} as unknown as AtlassianClient;
+	});
 	const res = await searchPages(client, "https://acme.atlassian.net", { limit: 25 });
 	expect(res.pages.map((p) => p.updated)).toEqual(["2026-08-30T10:00:00.000Z", ""]);
 });

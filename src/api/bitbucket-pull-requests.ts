@@ -1,4 +1,4 @@
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 import type { RepoRef } from "#/util/parse.ts";
 
 import {
@@ -127,7 +127,7 @@ export function toPullRequestSummary(ref: RepoRef, pr: PullRequestValue): PullRe
 }
 
 export async function listPullRequests(
-	client: AtlassianClient,
+	client: Transport,
 	ref: RepoRef,
 	params: PullRequestsParams,
 ): Promise<PullRequestSummary[]> {

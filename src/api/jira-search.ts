@@ -1,4 +1,4 @@
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 import type {
 	IssueList,
 	IssueListParams,
@@ -29,7 +29,7 @@ interface SearchResponse {
 const SEARCH_FIELDS = "summary,status,updated";
 
 export async function searchIssues(
-	client: AtlassianClient,
+	client: Transport,
 	site: string,
 	params: IssueSearchParams,
 ): Promise<IssueSummary[]> {
@@ -38,7 +38,7 @@ export async function searchIssues(
 }
 
 async function fetchSearchPage(
-	client: AtlassianClient,
+	client: Transport,
 	jql: string,
 	maxResults: number,
 	nextPageToken?: string,
@@ -93,7 +93,7 @@ const LIST_PAGE_SIZE = 100;
 const LIST_CAP = 500;
 
 export async function listAssignedIssues(
-	client: AtlassianClient,
+	client: Transport,
 	site: string,
 	params: IssueListParams,
 ): Promise<IssueList> {

@@ -1,5 +1,5 @@
 import type { AdfNode } from "#/adf/types.ts";
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 import type { IssueUpdate, JiraComment, JiraIssue } from "#/api/jira-types.ts";
 
 import { browseUrl } from "#/api/jira-url.ts";
@@ -43,11 +43,7 @@ const FIELDS = [
 	"attachment",
 ].join(",");
 
-export async function fetchIssue(
-	client: AtlassianClient,
-	site: string,
-	key: string,
-): Promise<JiraIssue> {
+export async function fetchIssue(client: Transport, site: string, key: string): Promise<JiraIssue> {
 	const issue = await client.getJson<IssueResponse>(
 		`/rest/api/3/issue/${encodeURIComponent(key)}?fields=${FIELDS}`,
 	);
@@ -77,7 +73,7 @@ export async function fetchIssue(
 }
 
 export async function updateIssue(
-	client: AtlassianClient,
+	client: Transport,
 	key: string,
 	update: IssueUpdate,
 ): Promise<void> {
@@ -86,7 +82,7 @@ export async function updateIssue(
 	await client.putNoContent(`/rest/api/3/issue/${encodeURIComponent(key)}`, { fields });
 }
 
-async function fetchComments(client: AtlassianClient, key: string): Promise<JiraComment[]> {
+async function fetchComments(client: Transport, key: string): Promise<JiraComment[]> {
 	const res = await client.getJson<CommentResponse>(
 		`/rest/api/3/issue/${encodeURIComponent(key)}/comment?maxResults=100&orderBy=created`,
 	);

@@ -1,4 +1,4 @@
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 import type { RepoRef } from "#/util/parse.ts";
 
 import { pathAndQuery } from "#/api/client.ts";
@@ -15,7 +15,7 @@ export function repoPath(ref: RepoRef, resource: string): string {
 	return `/2.0/repositories/${encodeURIComponent(ref.workspace)}/${encodeURIComponent(ref.repo)}/${resource}`;
 }
 
-export async function* walkPages<T>(client: AtlassianClient, firstPath: string): AsyncGenerator<T> {
+export async function* walkPages<T>(client: Transport, firstPath: string): AsyncGenerator<T> {
 	let path: string | null = firstPath;
 	while (path) {
 		const page: Paginated<T> = await client.getJson(path);
@@ -25,7 +25,7 @@ export async function* walkPages<T>(client: AtlassianClient, firstPath: string):
 }
 
 export async function collectPages<V, T>(
-	client: AtlassianClient,
+	client: Transport,
 	first: string,
 	limit: number,
 	map: (value: V) => T,

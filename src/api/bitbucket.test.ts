@@ -1,7 +1,5 @@
 import { expect, test } from "vite-plus/test";
 
-import type { AtlassianClient } from "#/api/client.ts";
-
 import {
 	getPipeline,
 	pipelinesQuery,
@@ -16,17 +14,18 @@ import {
 	pullRequestsQuery,
 	toPullRequestSummary,
 } from "#/api/bitbucket-pull-requests.ts";
-import { HttpError } from "#/api/client.ts";
+import { HttpError } from "#/api/http-error.ts";
+import { fakeBitbucketSession } from "#/test/session.ts";
 
 const repo = { workspace: "ws", repo: "app" };
 
-function stubClient(routes: Record<string, unknown>): AtlassianClient {
-	return {
-		getJson: async (path: string) => {
+function stubClient(routes: Record<string, unknown>) {
+	return fakeBitbucketSession({
+		getJson: (path) => {
 			if (!(path in routes)) throw new HttpError(404, `Not found (404): ${path}`);
 			return routes[path];
 		},
-	} as unknown as AtlassianClient;
+	});
 }
 
 test("status: a completed pipeline shows its result", () => {

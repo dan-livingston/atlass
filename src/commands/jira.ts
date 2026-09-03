@@ -3,9 +3,10 @@ import kleur from "kleur";
 import { readFile } from "node:fs/promises";
 
 import type { JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira-types.ts";
+import type { AtlassianSession } from "#/api/session.ts";
 import type { ViewOptions } from "#/commands/view.ts";
+import type { Env } from "#/env.ts";
 
-import { AtlassianClient } from "#/api/client.ts";
 import { fetchIssue, updateIssue } from "#/api/jira-issues.ts";
 import { listProjects } from "#/api/jira-projects.ts";
 import { listStatuses } from "#/api/jira-statuses.ts";
@@ -19,7 +20,6 @@ import {
 } from "#/commands/view.ts";
 import { planIssueCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
-import { requireAuth } from "#/credentials.ts";
 import { parseIssueSource } from "#/markdown/copied-document.ts";
 import { planIssueUpdate } from "#/update/plan.ts";
 import { runPlan } from "#/update/run.ts";
@@ -35,12 +35,11 @@ export interface ProjectsOptions {
 }
 
 export async function jiraProjects(
+	{ session }: Env,
 	query: string | undefined,
 	options: ProjectsOptions,
 ): Promise<void> {
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
-	const projects = await listProjects(client, auth.site, query);
+	const projects = await listProjects(session, session.site, query);
 
 	if (options.json) {
 		console.log(JSON.stringify(projects, null, 2));
@@ -64,12 +63,11 @@ export interface StatusesOptions {
 }
 
 export async function jiraStatuses(
+	{ session }: Env,
 	query: string | undefined,
 	options: StatusesOptions,
 ): Promise<void> {
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
-	let statuses = await listStatuses(client, options.project);
+	let statuses = await listStatuses(session, options.project);
 
 	if (query) {
 		const needle = query.toLowerCase();
@@ -92,11 +90,13 @@ export function formatStatusRows(statuses: Pick<StatusSummary, "name" | "categor
 	return statuses.map((s) => `${s.name.padEnd(width)}  ${s.category}`);
 }
 
-export async function jiraView(arg: string | undefined, options: ViewOptions): Promise<void> {
-	const auth = await requireAuth();
+export async function jiraView(
+	{ session }: Env,
+	arg: string | undefined,
+	options: ViewOptions,
+): Promise<void> {
 	const key = await resolveRef(arg, ISSUE_REF);
-	const client = new AtlassianClient(auth);
-	const issue = await fetchIssue(client, auth.site, key);
+	const issue = await fetchIssue(session, session.site, key);
 	const lines = formatIssueView(issue, Date.now(), options.allComments ?? false);
 	await printPaged(lines.join("\n"), { pager: options.pager });
 }
@@ -132,11 +132,13 @@ export function formatIssueView(issue: JiraIssue, nowMs: number, allComments: bo
 	];
 }
 
-export async function jiraCopy(arg: string | undefined, options: CopyOptions): Promise<void> {
-	const auth = await requireAuth();
+export async function jiraCopy(
+	{ session }: Env,
+	arg: string | undefined,
+	options: CopyOptions,
+): Promise<void> {
 	const key = await resolveRef(arg, ISSUE_REF);
-	const client = new AtlassianClient(auth);
-	await copyIssue(client, auth.site, key, options.out);
+	await copyIssue(session, key, options.out);
 }
 
 export interface UpdateOptions {
@@ -145,19 +147,21 @@ export interface UpdateOptions {
 	dryRun?: boolean;
 }
 
-export async function jiraUpdate(arg: string | undefined, options: UpdateOptions): Promise<void> {
+export async function jiraUpdate(
+	{ session }: Env,
+	arg: string | undefined,
+	options: UpdateOptions,
+): Promise<void> {
 	const file =
 		arg ?? (await input({ message: "Path to the issue Markdown file:", required: true }));
 	const src = parseIssueSource(await readFile(file, "utf8"));
 
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
-	const issue = await fetchIssue(client, auth.site, src.key);
+	const issue = await fetchIssue(session, session.site, src.key);
 
 	const plan = planIssueUpdate(src, issue, options);
 	await runPlan(plan, options, async () => {
 		const { current, next } = plan.headline;
-		await updateIssue(client, src.key, {
+		await updateIssue(session, src.key, {
 			description: plan.body,
 			summary: next !== current ? next : undefined,
 		});
@@ -166,14 +170,13 @@ export async function jiraUpdate(arg: string | undefined, options: UpdateOptions
 }
 
 export async function copyIssue(
-	client: AtlassianClient,
-	site: string,
+	session: AtlassianSession,
 	key: string,
 	out: string | undefined,
 ): Promise<void> {
 	console.log(`Fetching ${key} ...`);
-	const issue = await fetchIssue(client, site, key);
-	await runCopy(planIssueCopy(issue, out), (url) => client.getBinary(url));
+	const issue = await fetchIssue(session, session.site, key);
+	await runCopy(planIssueCopy(issue, out), (url) => session.getBinary(url));
 }
 
 const ISSUE_REF = {

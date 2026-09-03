@@ -1,6 +1,6 @@
 import type { AdfNode } from "#/adf/types.ts";
 import type { RemoteAttachment } from "#/api/attachments.ts";
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 
 import { fetchAttachments } from "#/api/confluence-attachments.ts";
 
@@ -51,7 +51,7 @@ interface UserResponse {
 }
 
 export async function fetchPage(
-	client: AtlassianClient,
+	client: Transport,
 	site: string,
 	id: string,
 ): Promise<ConfluencePage> {
@@ -88,7 +88,7 @@ export interface PageState {
 	body: AdfNode | null;
 }
 
-export async function fetchPageState(client: AtlassianClient, id: string): Promise<PageState> {
+export async function fetchPageState(client: Transport, id: string): Promise<PageState> {
 	const page = await client.getJson<PageResponse>(
 		`/wiki/api/v2/pages/${encodeURIComponent(id)}?body-format=atlas_doc_format`,
 	);
@@ -107,7 +107,7 @@ export interface UpdatePageParams {
 }
 
 export async function updatePage(
-	client: AtlassianClient,
+	client: Transport,
 	id: string,
 	params: UpdatePageParams,
 ): Promise<number> {
@@ -124,7 +124,7 @@ export async function updatePage(
 	return res.version?.number ?? params.nextVersion;
 }
 
-async function fetchSpaceKey(client: AtlassianClient, spaceId: string): Promise<string> {
+async function fetchSpaceKey(client: Transport, spaceId: string): Promise<string> {
 	if (!spaceId) return "";
 	try {
 		const space = await client.getJson<SpaceResponse>(
@@ -137,7 +137,7 @@ async function fetchSpaceKey(client: AtlassianClient, spaceId: string): Promise<
 }
 
 async function fetchComments(
-	client: AtlassianClient,
+	client: Transport,
 	id: string,
 	names: UserNames,
 ): Promise<ConfluenceComment[]> {
@@ -165,7 +165,7 @@ function parseAdfJson(value: string | undefined): AdfNode | null {
 class UserNames {
 	private readonly cache = new Map<string, string>();
 
-	constructor(private readonly client: AtlassianClient) {}
+	constructor(private readonly client: Transport) {}
 
 	async resolve(accountId: string | undefined): Promise<string> {
 		if (!accountId) return "";

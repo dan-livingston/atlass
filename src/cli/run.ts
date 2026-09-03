@@ -1,3 +1,8 @@
+import type { BitbucketSession } from "#/api/session.ts";
+import type { Env } from "#/env.ts";
+
+import { openBitbucketSession, openSession } from "#/api/session.ts";
+
 const SIGINT_EXIT_CODE = 130;
 
 export function run<A extends unknown[]>(
@@ -10,6 +15,18 @@ export function run<A extends unknown[]>(
 			fail(err);
 		}
 	};
+}
+
+export function withJira<A extends unknown[]>(
+	fn: (env: Env, ...args: A) => Promise<void>,
+): (...args: A) => Promise<void> {
+	return async (...args: A) => fn({ session: await openSession() }, ...args);
+}
+
+export function withBitbucket<A extends unknown[]>(
+	fn: (env: Env<BitbucketSession>, ...args: A) => Promise<void>,
+): (...args: A) => Promise<void> {
+	return async (...args: A) => fn({ session: await openBitbucketSession() }, ...args);
 }
 
 export function fail(err: unknown): never {

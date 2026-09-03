@@ -1,5 +1,5 @@
 import type { RemoteAttachment } from "#/api/attachments.ts";
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 
 interface AttachmentResponse {
 	fileId?: string;
@@ -21,10 +21,7 @@ export interface AttachmentInfo {
 
 const UNKNOWN_SIZE = -1;
 
-export async function listAttachments(
-	client: AtlassianClient,
-	id: string,
-): Promise<AttachmentInfo[]> {
+export async function listAttachments(client: Transport, id: string): Promise<AttachmentInfo[]> {
 	const res = await client.getJson<AttachmentsResponse>(
 		`/wiki/api/v2/pages/${encodeURIComponent(id)}/attachments?limit=250`,
 	);
@@ -40,7 +37,7 @@ interface UploadResponse {
 }
 
 export async function uploadAttachment(
-	client: AtlassianClient,
+	client: Transport,
 	pageId: string,
 	filename: string,
 	bytes: Uint8Array,
@@ -56,7 +53,7 @@ export async function uploadAttachment(
 }
 
 async function fileIdByListing(
-	client: AtlassianClient,
+	client: Transport,
 	pageId: string,
 	filename: string,
 ): Promise<string> {
@@ -66,10 +63,7 @@ async function fileIdByListing(
 	throw new Error(`Upload of "${filename}" did not return a fileId.`);
 }
 
-export async function fetchAttachments(
-	client: AtlassianClient,
-	id: string,
-): Promise<RemoteAttachment[]> {
+export async function fetchAttachments(client: Transport, id: string): Promise<RemoteAttachment[]> {
 	const res = await client.getJson<AttachmentsResponse>(
 		`/wiki/api/v2/pages/${encodeURIComponent(id)}/attachments?limit=250`,
 	);

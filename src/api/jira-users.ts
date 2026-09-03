@@ -1,4 +1,4 @@
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 import type { JiraUser } from "#/api/jira-types.ts";
 
 interface UserResponse {
@@ -9,7 +9,7 @@ interface UserResponse {
 }
 
 export async function searchAssignableUsers(
-	client: AtlassianClient,
+	client: Transport,
 	project: string,
 	query: string,
 ): Promise<JiraUser[]> {
@@ -20,7 +20,7 @@ export async function searchAssignableUsers(
 	return users.map(toJiraUser);
 }
 
-export async function fetchMyself(client: AtlassianClient): Promise<JiraUser> {
+export async function fetchMyself(client: Transport): Promise<JiraUser> {
 	return toJiraUser(await client.getJson<UserResponse>("/rest/api/3/myself"));
 }
 

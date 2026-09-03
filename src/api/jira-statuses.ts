@@ -1,7 +1,7 @@
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 import type { StatusSummary } from "#/api/jira-types.ts";
 
-import { HttpError } from "#/api/client.ts";
+import { HttpError } from "#/api/http-error.ts";
 
 interface StatusResponse {
 	id: string;
@@ -13,20 +13,14 @@ interface IssueTypeStatusesResponse {
 	statuses?: StatusResponse[];
 }
 
-export async function listStatuses(
-	client: AtlassianClient,
-	project?: string,
-): Promise<StatusSummary[]> {
+export async function listStatuses(client: Transport, project?: string): Promise<StatusSummary[]> {
 	const raw = project
 		? await fetchProjectStatuses(client, project)
 		: await client.getJson<StatusResponse[]>("/rest/api/3/status");
 	return dedupeAndSortStatuses(raw.map(toStatusSummary));
 }
 
-async function fetchProjectStatuses(
-	client: AtlassianClient,
-	project: string,
-): Promise<StatusResponse[]> {
+async function fetchProjectStatuses(client: Transport, project: string): Promise<StatusResponse[]> {
 	let groups: IssueTypeStatusesResponse[];
 	try {
 		groups = await client.getJson<IssueTypeStatusesResponse[]>(

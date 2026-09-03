@@ -1,4 +1,4 @@
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 
 import { decodeEntities } from "#/util/html.ts";
 
@@ -35,7 +35,7 @@ export interface PageSearchResult {
 }
 
 export async function searchPages(
-	client: AtlassianClient,
+	client: Transport,
 	site: string,
 	params: PageSearchParams,
 ): Promise<PageSearchResult> {

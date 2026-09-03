@@ -32,6 +32,10 @@ export default defineConfig({
 							group: ["./*", "../*"],
 							message: "Use #/ subpath imports instead of relative paths.",
 						},
+						{
+							group: ["#/test/*"],
+							message: "#/test holds test-only helpers; import it from a test file.",
+						},
 					],
 				},
 			],
@@ -43,6 +47,17 @@ export default defineConfig({
 					"max-lines": [
 						"error",
 						{ max: 400, skipBlankLines: false, skipComments: false },
+					],
+					"no-restricted-imports": [
+						"error",
+						{
+							patterns: [
+								{
+									group: ["./*", "../*"],
+									message: "Use #/ subpath imports instead of relative paths.",
+								},
+							],
+						},
 					],
 				},
 			},

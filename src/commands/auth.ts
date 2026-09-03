@@ -1,6 +1,6 @@
 import { input, password } from "@inquirer/prompts";
 
-import { AtlassianClient } from "#/api/client.ts";
+import { sessionFor } from "#/api/session.ts";
 import { clearConfig, siteOrigin, readConfig, writeConfig } from "#/config.ts";
 import { deleteToken, readToken, saveToken } from "#/credentials.ts";
 
@@ -22,8 +22,8 @@ export async function login(): Promise<void> {
 		mask: true,
 	});
 
-	const client = new AtlassianClient({ site, email, token });
-	const me = await client.getJson<Myself>("/rest/api/3/myself");
+	const session = sessionFor({ site, email, token });
+	const me = await session.getJson<Myself>("/rest/api/3/myself");
 
 	const existing = (await readConfig()) ?? {};
 	await writeConfig({ ...existing, site, email });

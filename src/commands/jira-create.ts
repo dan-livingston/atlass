@@ -3,15 +3,15 @@ import { readFile } from "node:fs/promises";
 
 import type { CreateField } from "#/api/jira-types.ts";
 import type { FieldInput } from "#/create/encode.ts";
+import type { Env } from "#/env.ts";
 
-import { AtlassianClient, HttpError } from "#/api/client.ts";
+import { HttpError } from "#/api/http-error.ts";
 import { createIssue, fetchCreateFields, fetchCreateIssueTypes } from "#/api/jira-createmeta.ts";
 import { searchAssignableUsers } from "#/api/jira-users.ts";
 import { resolveProject, resolveType, userResolver } from "#/commands/jira-create-resolve.ts";
 import { encodeCreate } from "#/create/encode.ts";
 import { formatFieldRows, formatIssueTypeRows, formatMissingFields } from "#/create/format.ts";
 import { walkFields } from "#/create/prompt.ts";
-import { requireAuth } from "#/credentials.ts";
 
 export interface CreateOptions {
 	summary?: string;
@@ -60,6 +60,7 @@ export function parseFieldFlag(raw: string): FieldInput {
 }
 
 export async function jiraCreate(
+	{ session }: Env,
 	projectArg: string | undefined,
 	typeArg: string | undefined,
 	options: CreateOptions,
@@ -67,18 +68,16 @@ export async function jiraCreate(
 	const inputs = await flagInputs(options);
 	const strict = inputs.length > 0 || options.input === false || !process.stdin.isTTY;
 
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
-	const project = await resolveProject(client, auth.site, projectArg, strict);
-	const types = await fetchCreateIssueTypes(client, project);
+	const project = await resolveProject(session, session.site, projectArg, strict);
+	const types = await fetchCreateIssueTypes(session, project);
 	const type = await resolveType(project, types, typeArg, strict);
-	const meta = await fetchCreateFields(client, project, type.id);
-	const resolveUser = userResolver(client, project);
+	const meta = await fetchCreateFields(session, project, type.id);
+	const resolveUser = userResolver(session, project);
 
 	if (!strict) {
 		inputs.push(
 			...(await walkFields(meta, {
-				searchUsers: (query) => searchAssignableUsers(client, project, query),
+				searchUsers: (query) => searchAssignableUsers(session, project, query),
 				validate: async (field, value) => {
 					const probe = await encodeCreate(
 						[field],
@@ -116,7 +115,7 @@ export async function jiraCreate(
 	}
 
 	try {
-		const created = await createIssue(client, auth.site, fields);
+		const created = await createIssue(session, session.site, fields);
 		if (options.json) console.log(JSON.stringify(created, null, 2));
 		else console.log(`Created ${created.key}  ${created.url}`);
 	} catch (err) {
@@ -154,14 +153,13 @@ export interface FieldsOptions {
 }
 
 export async function jiraFields(
+	{ session }: Env,
 	projectArg: string,
 	typeArg: string | undefined,
 	options: FieldsOptions,
 ): Promise<void> {
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
 	const project = projectArg.toUpperCase();
-	const types = await fetchCreateIssueTypes(client, project);
+	const types = await fetchCreateIssueTypes(session, project);
 	if (!typeArg) {
 		if (options.json) console.log(JSON.stringify(types, null, 2));
 		else if (types.length === 0) console.log(`You cannot create issues in ${project}.`);
@@ -169,7 +167,7 @@ export async function jiraFields(
 		return;
 	}
 	const type = await resolveType(project, types, typeArg, true);
-	const fields = await fetchCreateFields(client, project, type.id);
+	const fields = await fetchCreateFields(session, project, type.id);
 	if (options.json) console.log(JSON.stringify(fields, null, 2));
 	else for (const line of formatFieldRows(fields)) console.log(line);
 }

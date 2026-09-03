@@ -1,6 +1,7 @@
 import type { PullRequestSummary } from "#/api/bitbucket-pull-requests.ts";
+import type { BitbucketSession } from "#/api/session.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
-import type { BitbucketAuth } from "#/credentials.ts";
+import type { Env } from "#/env.ts";
 
 import {
 	allPullRequestStates,
@@ -9,14 +10,12 @@ import {
 	pullRequestQuery,
 } from "#/api/bitbucket-pull-requests.ts";
 import { fetchCurrentUserUuid } from "#/api/bitbucket-user.ts";
-import { AtlassianClient } from "#/api/client.ts";
 import {
 	colorForBitbucketState,
 	rememberBitbucketUuid,
 	withScopeHint,
 } from "#/commands/bitbucket.ts";
 import { alignedRows, printRows, searchFooter } from "#/commands/search-run.ts";
-import { requireBitbucketAuth } from "#/credentials.ts";
 import { parseLimit, resolveRepo } from "#/util/parse.ts";
 
 export interface PrsOptions {
@@ -33,21 +32,22 @@ export interface PrsOptions {
 const PULL_REQUEST_SCOPE = "read:pullrequest:bitbucket";
 const ACCOUNT_SCOPE = "read:account";
 
-export async function bitbucketPrs(options: PrsOptions): Promise<void> {
+export async function bitbucketPrs(
+	{ session }: Env<BitbucketSession>,
+	options: PrsOptions,
+): Promise<void> {
 	if (options.query && (options.author || options.reviewer)) {
 		throw new Error("--query cannot be combined with --author or --reviewer.");
 	}
 	const states = pullRequestStates(options);
-	const auth = await requireBitbucketAuth();
-	const ref = resolveRepo(options.repo, auth);
-	const client = new AtlassianClient(auth);
+	const ref = resolveRepo(options.repo, session);
 	const limit = parseLimit(options.limit);
 	const query = pullRequestQuery({
-		...(await resolvePrincipals(client, auth, options)),
+		...(await resolvePrincipals(session, options)),
 		query: options.query,
 	});
 	const prs = await withScopeHint(PULL_REQUEST_SCOPE, () =>
-		listPullRequests(client, ref, { limit, states, query }),
+		listPullRequests(session, ref, { limit, states, query }),
 	);
 
 	printRows(pullRequestRows(prs, Date.now()), {
@@ -83,14 +83,11 @@ interface Principals {
 }
 
 async function resolvePrincipals(
-	client: AtlassianClient,
-	auth: BitbucketAuth,
+	session: BitbucketSession,
 	options: PrsOptions,
 ): Promise<Principals> {
 	const mine =
-		isMe(options.author) || isMe(options.reviewer)
-			? await currentUuid(client, auth)
-			: undefined;
+		isMe(options.author) || isMe(options.reviewer) ? await currentUuid(session) : undefined;
 	return {
 		author: isMe(options.author) ? mine : options.author,
 		reviewer: isMe(options.reviewer) ? mine : options.reviewer,
@@ -101,9 +98,9 @@ function isMe(value: string | undefined): boolean {
 	return value?.toLowerCase() === "me";
 }
 
-async function currentUuid(client: AtlassianClient, auth: BitbucketAuth): Promise<string> {
-	if (auth.uuid) return auth.uuid;
-	const uuid = await withScopeHint(ACCOUNT_SCOPE, () => fetchCurrentUserUuid(client));
+async function currentUuid(session: BitbucketSession): Promise<string> {
+	if (session.uuid) return session.uuid;
+	const uuid = await withScopeHint(ACCOUNT_SCOPE, () => fetchCurrentUserUuid(session));
 	await rememberBitbucketUuid(uuid);
 	return uuid;
 }

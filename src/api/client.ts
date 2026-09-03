@@ -1,15 +1,32 @@
-import type { Auth } from "#/credentials.ts";
+import { httpError } from "#/api/http-error.ts";
 
 const DISABLE_XSRF_CHECK = { "X-Atlassian-Token": "nocheck" };
 
-export class AtlassianClient {
-	private readonly site: string;
-	private readonly authHeader: string;
+export interface Credentials {
+	site: string;
+	email: string;
+	token: string;
+}
 
-	constructor(auth: Auth) {
-		this.site = auth.site;
-		const basic = Buffer.from(`${auth.email}:${auth.token}`).toString("base64");
+export interface Transport {
+	getJson<T>(path: string): Promise<T>;
+	postJson<T>(path: string, body: unknown): Promise<T>;
+	putJson<T>(path: string, body: unknown): Promise<T>;
+	putNoContent(path: string, body: unknown): Promise<void>;
+	postMultipart<T>(path: string, filename: string, bytes: Uint8Array): Promise<T>;
+	getBinary(urlOrPath: string): Promise<Uint8Array>;
+}
+
+export class AtlassianClient implements Transport {
+	readonly site: string;
+	private readonly authHeader: string;
+	private readonly loginHint: string;
+
+	constructor(credentials: Credentials, loginHint: string) {
+		this.site = credentials.site;
+		const basic = Buffer.from(`${credentials.email}:${credentials.token}`).toString("base64");
 		this.authHeader = `Basic ${basic}`;
+		this.loginHint = loginHint;
 	}
 
 	private async request(
@@ -23,7 +40,7 @@ export class AtlassianClient {
 		});
 		if (!res.ok) {
 			const body = await res.text().catch(() => "");
-			throw httpError(res.status, path, body);
+			throw httpError(res.status, path, body, this.loginHint);
 		}
 		return res;
 	}
@@ -81,85 +98,4 @@ export class AtlassianClient {
 export function pathAndQuery(absoluteUrl: string): string {
 	const u = new URL(absoluteUrl);
 	return u.pathname + u.search;
-}
-
-export class HttpError extends Error {
-	constructor(
-		readonly status: number,
-		message: string,
-		readonly jira: JiraErrors = { errorMessages: [], errors: {} },
-	) {
-		super(message);
-		this.name = "HttpError";
-	}
-}
-
-function httpError(status: number, path: string, body = ""): Error {
-	if (status === 401 || status === 403) {
-		return new HttpError(
-			status,
-			"Authentication failed (401/403). Run `atlass auth login` to update your token.",
-		);
-	}
-	if (status === 404) {
-		return new HttpError(status, `Not found (404): ${path}`);
-	}
-	if (status === 409) {
-		const detail = extractErrorMessage(body);
-		return new HttpError(
-			status,
-			`Conflict (409): ${detail || "the page changed on the server"}`,
-		);
-	}
-	if (status === 413) {
-		return new HttpError(
-			status,
-			"Payload too large (413): the page or an attachment exceeds the size limit.",
-		);
-	}
-	if (status === 400) {
-		const detail = extractErrorMessage(body);
-		return new HttpError(status, `Bad request (400): ${detail || path}`, jiraErrors(body));
-	}
-	const detail = extractErrorMessage(body);
-	return new HttpError(status, `Request failed (${status}): ${detail || path}`, jiraErrors(body));
-}
-
-interface JiraErrorBody {
-	errorMessages?: string[];
-	errors?: Record<string, string>;
-	message?: string;
-}
-
-interface BitbucketErrorBody {
-	error?: { message?: string };
-}
-
-export function extractErrorMessage(body: string): string {
-	if (!body) return "";
-	const json = tryParseJson<JiraErrorBody & BitbucketErrorBody>(body);
-	const { errorMessages, errors } = jiraErrors(body);
-	const fromJira = [...errorMessages, ...Object.entries(errors).map(([f, m]) => `${f}: ${m}`)];
-	if (fromJira.length) return fromJira.join("; ");
-	if (json?.message) return json.message;
-	if (json?.error?.message) return json.error.message;
-	return body.slice(0, 300);
-}
-
-export interface JiraErrors {
-	errorMessages: string[];
-	errors: Record<string, string>;
-}
-
-export function jiraErrors(body: string): JiraErrors {
-	const json = tryParseJson<JiraErrorBody>(body);
-	return { errorMessages: json?.errorMessages ?? [], errors: json?.errors ?? {} };
-}
-
-function tryParseJson<T>(text: string): T | null {
-	try {
-		return JSON.parse(text) as T;
-	} catch {
-		return null;
-	}
 }

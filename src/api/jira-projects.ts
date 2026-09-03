@@ -1,4 +1,4 @@
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 import type { ProjectSummary } from "#/api/jira-types.ts";
 
 import { browseUrl } from "#/api/jira-url.ts";
@@ -16,7 +16,7 @@ interface ProjectSearchResponse {
 const PROJECT_PAGE_SIZE = 50;
 
 export async function listProjects(
-	client: AtlassianClient,
+	client: Transport,
 	site: string,
 	query?: string,
 ): Promise<ProjectSummary[]> {

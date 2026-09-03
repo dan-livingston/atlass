@@ -5,13 +5,14 @@ import { basename, dirname, isAbsolute, resolve } from "node:path";
 
 import type { ConfluencePage } from "#/api/confluence-pages.ts";
 import type { PageSearchParams, PageSummary } from "#/api/confluence-search.ts";
+import type { AtlassianSession } from "#/api/session.ts";
 import type { CopyOptions } from "#/commands/jira.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { ViewOptions } from "#/commands/view.ts";
+import type { Env } from "#/env.ts";
 import type { LocalImage } from "#/update/plan-page.ts";
 
 import { imageHrefs } from "#/adf/from-markdown.ts";
-import { AtlassianClient } from "#/api/client.ts";
 import { listAttachments, uploadAttachment } from "#/api/confluence-attachments.ts";
 import { fetchPage, fetchPageState, updatePage } from "#/api/confluence-pages.ts";
 import { searchPages } from "#/api/confluence-search.ts";
@@ -26,7 +27,6 @@ import {
 } from "#/commands/view.ts";
 import { planPageCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
-import { requireAuth } from "#/credentials.ts";
 import { parsePageSource } from "#/markdown/copied-document.ts";
 import { planPageUpdate, withUploadedIds } from "#/update/plan-page.ts";
 import { runPlan } from "#/update/run.ts";
@@ -42,11 +42,13 @@ export interface SearchOptions {
 	out?: string;
 }
 
-export async function confluenceView(arg: string | undefined, options: ViewOptions): Promise<void> {
-	const auth = await requireAuth();
+export async function confluenceView(
+	{ session }: Env,
+	arg: string | undefined,
+	options: ViewOptions,
+): Promise<void> {
 	const id = await resolveRef(arg, PAGE_REF);
-	const client = new AtlassianClient(auth);
-	const page = await fetchPage(client, auth.site, id);
+	const page = await fetchPage(session, session.site, id);
 	const lines = formatPageView(page, Date.now(), options.allComments ?? false);
 	await printPaged(lines.join("\n"), { pager: options.pager });
 }
@@ -73,11 +75,13 @@ export function formatPageView(
 	];
 }
 
-export async function confluenceCopy(arg: string | undefined, options: CopyOptions): Promise<void> {
-	const auth = await requireAuth();
+export async function confluenceCopy(
+	{ session }: Env,
+	arg: string | undefined,
+	options: CopyOptions,
+): Promise<void> {
 	const id = await resolveRef(arg, PAGE_REF);
-	const client = new AtlassianClient(auth);
-	await copyPage(client, auth.site, id, options.out);
+	await copyPage(session, id, options.out);
 }
 
 export interface UpdateOptions {
@@ -88,6 +92,7 @@ export interface UpdateOptions {
 }
 
 export async function confluenceUpdate(
+	{ session }: Env,
 	arg: string | undefined,
 	options: UpdateOptions,
 ): Promise<void> {
@@ -95,10 +100,8 @@ export async function confluenceUpdate(
 		arg ?? (await input({ message: "Path to the page Markdown file:", required: true }));
 	const src = parsePageSource(await readFile(file, "utf8"));
 
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
-	const state = await fetchPageState(client, src.id);
-	const attachments = await listAttachments(client, src.id);
+	const state = await fetchPageState(session, src.id);
+	const attachments = await listAttachments(session, src.id);
 	const localImages = await statLocalImages(dirname(resolve(file)), src.body);
 
 	const plan = planPageUpdate(src, state, attachments, localImages, options);
@@ -107,9 +110,9 @@ export async function confluenceUpdate(
 		for (const upload of plan.uploads) {
 			console.log(`Uploading ${upload.filename} ...`);
 			const bytes = await readFile(upload.path);
-			ids.set(upload.href, await uploadAttachment(client, src.id, upload.filename, bytes));
+			ids.set(upload.href, await uploadAttachment(session, src.id, upload.filename, bytes));
 		}
-		const version = await updatePage(client, src.id, {
+		const version = await updatePage(session, src.id, {
 			title: plan.headline.next,
 			nextVersion: state.version + 1,
 			body: withUploadedIds(plan.body, ids),
@@ -138,6 +141,7 @@ async function fileSize(path: string): Promise<{ size?: number }> {
 }
 
 export async function confluenceSearch(
+	env: Env,
 	query: string | undefined,
 	options: SearchOptions,
 ): Promise<void> {
@@ -145,6 +149,7 @@ export async function confluenceSearch(
 		throw new Error("--cql cannot be combined with a text query or --space.");
 	}
 	await listPages(
+		env,
 		{ text: query, space: options.space, cql: options.cql },
 		"No matching pages.",
 		options,
@@ -153,8 +158,9 @@ export async function confluenceSearch(
 
 export type ListOptions = Omit<SearchOptions, "cql">;
 
-export async function confluenceList(options: ListOptions): Promise<void> {
+export async function confluenceList(env: Env, options: ListOptions): Promise<void> {
 	await listPages(
+		env,
 		{ starred: true, space: options.space },
 		options.space ? `No starred pages in ${options.space}.` : "No starred pages.",
 		options,
@@ -162,6 +168,7 @@ export async function confluenceList(options: ListOptions): Promise<void> {
 }
 
 async function listPages(
+	{ session }: Env,
 	filter: Omit<PageSearchParams, "limit">,
 	empty: string,
 	options: ListOptions,
@@ -170,10 +177,8 @@ async function listPages(
 		throw new Error("--json and --copy cannot be used together.");
 	}
 
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
 	const limit = parseLimit(options.limit);
-	const { pages, hasMore } = await searchPages(client, auth.site, { ...filter, limit });
+	const { pages, hasMore } = await searchPages(session, session.site, { ...filter, limit });
 
 	await runSearch(
 		formatPageRows(pages, Date.now()),
@@ -185,7 +190,7 @@ async function listPages(
 			footer: hasMore ? searchFooter(limit) : undefined,
 		},
 		PAGE_NOUN,
-		(id) => copyPage(client, auth.site, id, options.out),
+		(id) => copyPage(session, id, options.out),
 	);
 }
 
@@ -211,14 +216,13 @@ function colorForSpace(space: string): (text: string) => string {
 const PAGE_NOUN = { singular: "page", plural: "pages" };
 
 export async function copyPage(
-	client: AtlassianClient,
-	site: string,
+	session: AtlassianSession,
 	id: string,
 	out: string | undefined,
 ): Promise<void> {
 	console.log(`Fetching page ${id} ...`);
-	const page = await fetchPage(client, site, id);
-	await runCopy(planPageCopy(page, out), (url) => client.getBinary(url));
+	const page = await fetchPage(session, session.site, id);
+	await runCopy(planPageCopy(page, out), (url) => session.getBinary(url));
 }
 
 const PAGE_REF = {

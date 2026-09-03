@@ -3,10 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 
-import type { AtlassianClient } from "#/api/client.ts";
-
 import { copyPage } from "#/commands/confluence.ts";
 import { copyIssue } from "#/commands/jira.ts";
+import { fakeSession } from "#/test/session.ts";
 
 const SITE = "https://acme.atlassian.net";
 
@@ -28,20 +27,18 @@ function doc(text: string, media?: { id: string; alt: string }) {
 	};
 }
 
-function fakeClient(
-	json: Record<string, unknown>,
-	binary: Record<string, string>,
-): AtlassianClient {
-	return {
-		async getJson(path: string) {
+function fakeClient(json: Record<string, unknown>, binary: Record<string, string>) {
+	return fakeSession({
+		site: SITE,
+		getJson: (path) => {
 			if (!(path in json)) throw new Error(`unexpected GET ${path}`);
 			return json[path];
 		},
-		async getBinary(url: string) {
+		getBinary: (url) => {
 			if (!(url in binary)) throw new Error("404 Not Found");
 			return new TextEncoder().encode(binary[url]);
 		},
-	} as unknown as AtlassianClient;
+	});
 }
 
 let dir: string;
@@ -110,7 +107,7 @@ const ISSUE_BINARY = {
 };
 
 test("copyIssue writes the issue document, its attachments and the wrote line", async () => {
-	await copyIssue(fakeClient(ISSUE_JSON, ISSUE_BINARY), SITE, "PROJ-7", dir);
+	await copyIssue(fakeClient(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", dir);
 
 	expect(await readFile(join(dir, "PROJ-7.md"), "utf8")).toBe(
 		[
@@ -159,7 +156,7 @@ test("copyIssue writes the issue document, its attachments and the wrote line", 
 
 test("copyIssue with an .md --out writes there and names the assets dir after it", async () => {
 	const out = join(dir, "notes", "bug.md");
-	await copyIssue(fakeClient(ISSUE_JSON, ISSUE_BINARY), SITE, "PROJ-7", out);
+	await copyIssue(fakeClient(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", out);
 
 	expect(await readFile(out, "utf8")).toContain("![shot.png](bug.assets/shot.png)");
 	expect((await readdir(join(dir, "notes", "bug.assets"))).sort()).toEqual([
@@ -201,7 +198,7 @@ const PAGE_JSON = {
 };
 
 test("copyPage writes the page document named by id and slug", async () => {
-	await copyPage(fakeClient(PAGE_JSON, { "/wiki/download/a-1": "png" }), SITE, "123", dir);
+	await copyPage(fakeClient(PAGE_JSON, { "/wiki/download/a-1": "png" }), "123", dir);
 
 	const file = join(dir, "123-release-notes-v2.md");
 	expect(await readFile(file, "utf8")).toBe(
@@ -244,7 +241,7 @@ test("copyPage without attachments writes no assets dir and a bare wrote line", 
 		...PAGE_JSON,
 		"/wiki/api/v2/pages/123/attachments?limit=250": { results: [] },
 	};
-	await copyPage(fakeClient(json, {}), SITE, "123", dir);
+	await copyPage(fakeClient(json, {}), "123", dir);
 
 	expect(await readdir(dir)).toEqual(["123-release-notes-v2.md"]);
 	expect(logged.at(-1)).toBe(`Wrote ${join(dir, "123-release-notes-v2.md")}`);

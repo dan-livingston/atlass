@@ -1,7 +1,7 @@
-import type { AtlassianClient } from "#/api/client.ts";
+import type { Transport } from "#/api/client.ts";
 import type { AllowedValue, CreateField, CreatedIssue, CreateIssueType } from "#/api/jira-types.ts";
 
-import { HttpError } from "#/api/client.ts";
+import { HttpError } from "#/api/http-error.ts";
 import { browseUrl } from "#/api/jira-url.ts";
 import { decodeEntities } from "#/util/html.ts";
 
@@ -20,7 +20,7 @@ interface FieldsPage extends CreateMetaPage {
 const CREATEMETA_PAGE_SIZE = 200;
 
 export async function fetchCreateIssueTypes(
-	client: AtlassianClient,
+	client: Transport,
 	project: string,
 ): Promise<CreateIssueType[]> {
 	const types = await pageCreateMeta(
@@ -38,7 +38,7 @@ export async function fetchCreateIssueTypes(
 }
 
 export async function fetchCreateFields(
-	client: AtlassianClient,
+	client: Transport,
 	project: string,
 	issueTypeId: string,
 ): Promise<CreateField[]> {
@@ -65,7 +65,7 @@ function decodeAllowedValue(v: AllowedValue): AllowedValue {
 }
 
 async function pageCreateMeta<P extends CreateMetaPage, T>(
-	client: AtlassianClient,
+	client: Transport,
 	project: string,
 	suffix: string,
 	items: (page: P) => T[],
@@ -92,7 +92,7 @@ async function pageCreateMeta<P extends CreateMetaPage, T>(
 }
 
 export async function createIssue(
-	client: AtlassianClient,
+	client: Transport,
 	site: string,
 	fields: Record<string, unknown>,
 ): Promise<CreatedIssue> {

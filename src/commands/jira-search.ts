@@ -1,11 +1,10 @@
 import type { IssueSummary } from "#/api/jira-types.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
+import type { Env } from "#/env.ts";
 
-import { AtlassianClient } from "#/api/client.ts";
 import { listAssignedIssues, searchIssues, sortByCategoryThenUpdated } from "#/api/jira-search.ts";
 import { colorForCategory, copyIssue } from "#/commands/jira.ts";
 import { alignedRows, runSearch, searchFooter } from "#/commands/search-run.ts";
-import { requireAuth } from "#/credentials.ts";
 import { parseLimit } from "#/util/parse.ts";
 
 export interface SearchOptions {
@@ -19,7 +18,11 @@ export interface SearchOptions {
 	out?: string;
 }
 
-export async function jiraSearch(query: string | undefined, options: SearchOptions): Promise<void> {
+export async function jiraSearch(
+	{ session }: Env,
+	query: string | undefined,
+	options: SearchOptions,
+): Promise<void> {
 	if (options.jql && (query || options.project || options.assignee || options.status)) {
 		throw new Error("--jql cannot be combined with a text query or other filters.");
 	}
@@ -27,10 +30,8 @@ export async function jiraSearch(query: string | undefined, options: SearchOptio
 		throw new Error("--json and --copy cannot be used together.");
 	}
 
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
 	const limit = parseLimit(options.limit);
-	const issues = await searchIssues(client, auth.site, {
+	const issues = await searchIssues(session, session.site, {
 		text: query,
 		project: options.project,
 		assignee: options.assignee,
@@ -49,7 +50,7 @@ export async function jiraSearch(query: string | undefined, options: SearchOptio
 			footer: issues.length === limit ? searchFooter(limit) : undefined,
 		},
 		ISSUE_NOUN,
-		(key) => copyIssue(client, auth.site, key, options.out),
+		(key) => copyIssue(session, key, options.out),
 	);
 }
 
@@ -61,14 +62,12 @@ export interface ListOptions {
 	out?: string;
 }
 
-export async function jiraList(options: ListOptions): Promise<void> {
+export async function jiraList({ session }: Env, options: ListOptions): Promise<void> {
 	if (options.json && options.copy) {
 		throw new Error("--json and --copy cannot be used together.");
 	}
 
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
-	const { issues, truncated } = await listAssignedIssues(client, auth.site, {
+	const { issues, truncated } = await listAssignedIssues(session, session.site, {
 		all: options.all,
 		project: options.project,
 	});
@@ -85,7 +84,7 @@ export async function jiraList(options: ListOptions): Promise<void> {
 				: undefined,
 		},
 		ISSUE_NOUN,
-		(key) => copyIssue(client, auth.site, key, options.out),
+		(key) => copyIssue(session, key, options.out),
 	);
 }
 

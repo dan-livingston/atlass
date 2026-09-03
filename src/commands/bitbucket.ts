@@ -2,20 +2,18 @@ import { input, password } from "@inquirer/prompts";
 import kleur from "kleur";
 
 import type { PipelineDetail, PipelineSummary, StepSummary } from "#/api/bitbucket-pipelines.ts";
+import type { Transport } from "#/api/client.ts";
+import type { BitbucketSession } from "#/api/session.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
+import type { Env } from "#/env.ts";
 
 import { getPipeline, listPipelines, listSteps } from "#/api/bitbucket-pipelines.ts";
 import { fetchCurrentUserUuid } from "#/api/bitbucket-user.ts";
-import { AtlassianClient, HttpError } from "#/api/client.ts";
+import { HttpError } from "#/api/http-error.ts";
+import { bitbucketSessionFor } from "#/api/session.ts";
 import { alignedRows, printRows } from "#/commands/search-run.ts";
 import { clearConfig, readConfig, writeConfig } from "#/config.ts";
-import {
-	BITBUCKET_ORIGIN,
-	deleteBitbucketToken,
-	readBitbucketToken,
-	requireBitbucketAuth,
-	saveBitbucketToken,
-} from "#/credentials.ts";
+import { deleteBitbucketToken, readBitbucketToken, saveBitbucketToken } from "#/credentials.ts";
 import { formatDuration, relativeTime } from "#/util/format.ts";
 import { parseLimit, resolveRepo } from "#/util/parse.ts";
 
@@ -38,9 +36,9 @@ export async function bitbucketLogin(): Promise<void> {
 		mask: true,
 	});
 
-	const client = new AtlassianClient({ site: BITBUCKET_ORIGIN, email, token });
-	const ws = await verifyWorkspace(client, workspace);
-	const uuid = await fetchCurrentUserUuid(client).catch(() => undefined);
+	const session = bitbucketSessionFor(email, token, { workspace });
+	const ws = await verifyWorkspace(session, workspace);
+	const uuid = await fetchCurrentUserUuid(session).catch(() => undefined);
 
 	await writeConfig({
 		...existing,
@@ -92,12 +90,13 @@ export interface PipelinesOptions {
 	json?: boolean;
 }
 
-export async function bitbucketPipelines(options: PipelinesOptions): Promise<void> {
-	const auth = await requireBitbucketAuth();
-	const ref = resolveRepo(options.repo, auth);
-	const client = new AtlassianClient(auth);
+export async function bitbucketPipelines(
+	{ session }: Env<BitbucketSession>,
+	options: PipelinesOptions,
+): Promise<void> {
+	const ref = resolveRepo(options.repo, session);
 	const limit = parseLimit(options.limit);
-	const pipelines = await withScopeHint(PIPELINE_SCOPE, () => listPipelines(client, ref, limit));
+	const pipelines = await withScopeHint(PIPELINE_SCOPE, () => listPipelines(session, ref, limit));
 
 	printRows(pipelineRows(pipelines, Date.now()), {
 		json: options.json,
@@ -110,15 +109,16 @@ export interface PipelineOptions {
 }
 
 export async function bitbucketPipeline(
+	{ session }: Env<BitbucketSession>,
 	arg: string | undefined,
 	options: PipelineOptions,
 ): Promise<void> {
 	const buildNumber = parseBuildNumber(arg);
-	const auth = await requireBitbucketAuth();
-	const ref = resolveRepo(options.repo, auth);
-	const client = new AtlassianClient(auth);
-	const detail = await withScopeHint(PIPELINE_SCOPE, () => getPipeline(client, ref, buildNumber));
-	const steps = await withScopeHint(PIPELINE_SCOPE, () => listSteps(client, ref, detail.uuid));
+	const ref = resolveRepo(options.repo, session);
+	const detail = await withScopeHint(PIPELINE_SCOPE, () =>
+		getPipeline(session, ref, buildNumber),
+	);
+	const steps = await withScopeHint(PIPELINE_SCOPE, () => listSteps(session, ref, detail.uuid));
 	printPipelineDetail(detail, steps, Date.now());
 }
 
@@ -183,9 +183,11 @@ function refWithCommit(pipeline: Pick<PipelineSummary, "ref" | "commit">): strin
 	return pipeline.commit ? `${pipeline.ref} (${pipeline.commit})` : pipeline.ref;
 }
 
-async function verifyWorkspace(client: AtlassianClient, workspace: string): Promise<Workspace> {
+async function verifyWorkspace(transport: Transport, workspace: string): Promise<Workspace> {
 	try {
-		return await client.getJson<Workspace>(`/2.0/workspaces/${encodeURIComponent(workspace)}`);
+		return await transport.getJson<Workspace>(
+			`/2.0/workspaces/${encodeURIComponent(workspace)}`,
+		);
 	} catch (err) {
 		if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
 			throw new Error(
