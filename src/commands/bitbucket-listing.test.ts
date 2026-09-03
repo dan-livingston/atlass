@@ -3,11 +3,13 @@ import { expect, test } from "vite-plus/test";
 
 import { bitbucketPrs } from "#/commands/bitbucket-prs.ts";
 import { bitbucketPipeline, bitbucketPipelines } from "#/commands/bitbucket.ts";
+import { readConfig, writeConfig } from "#/config.ts";
 import { fakeBitbucketEnv } from "#/test/env.ts";
 
 kleur.enabled = false;
 
 const NOW = "2026-07-14T12:00:00Z";
+const UUID = "{01234567-89ab-cdef-0123-456789abcdef}";
 
 function pipelineValue(buildNumber: number, result: string) {
 	return {
@@ -138,4 +140,22 @@ test("prs: rows are written, and an empty result explains which states were sear
 
 	expect(env.term.written).toHaveLength(1);
 	expect(env.term.written[0]).toContain("No ");
+});
+
+test("prs: --author me with no cached uuid looks it up and stores it in the config", async () => {
+	await writeConfig({ email: "ada@acme.com", bitbucket: { workspace: "acme" } });
+	const seen: string[] = [];
+	const env = fakeBitbucketEnv({
+		getJson: (path: string) => {
+			seen.push(path);
+			return path === "/2.0/user" ? { uuid: UUID } : { values: [] };
+		},
+		workspace: "acme",
+		defaultRepo: "api",
+	});
+	await bitbucketPrs(env, { author: "me" });
+
+	expect(seen[0]).toBe("/2.0/user");
+	expect(seen[1]).toContain("author");
+	expect((await readConfig())?.bitbucket?.uuid).toBe(UUID);
 });
