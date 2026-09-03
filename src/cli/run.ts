@@ -1,16 +1,18 @@
 import type { BitbucketSession } from "#/api/session.ts";
 import type { Env } from "#/env.ts";
+import type { Terminal } from "#/terminal.ts";
 
 import { openBitbucketSession, openSession } from "#/api/session.ts";
+import { ttyTerminal } from "#/terminal/tty.ts";
 
 const SIGINT_EXIT_CODE = 130;
 
 export function run<A extends unknown[]>(
-	fn: (...args: A) => Promise<void>,
+	fn: (term: Terminal, ...args: A) => Promise<void>,
 ): (...args: A) => Promise<void> {
 	return async (...args: A) => {
 		try {
-			await fn(...args);
+			await fn(ttyTerminal(), ...args);
 		} catch (err) {
 			fail(err);
 		}
@@ -19,19 +21,21 @@ export function run<A extends unknown[]>(
 
 export function withJira<A extends unknown[]>(
 	fn: (env: Env, ...args: A) => Promise<void>,
-): (...args: A) => Promise<void> {
-	return async (...args: A) => fn({ session: await openSession() }, ...args);
+): (term: Terminal, ...args: A) => Promise<void> {
+	return async (term: Terminal, ...args: A) =>
+		fn({ session: await openSession(), term }, ...args);
 }
 
 export function withBitbucket<A extends unknown[]>(
 	fn: (env: Env<BitbucketSession>, ...args: A) => Promise<void>,
-): (...args: A) => Promise<void> {
-	return async (...args: A) => fn({ session: await openBitbucketSession() }, ...args);
+): (term: Terminal, ...args: A) => Promise<void> {
+	return async (term: Terminal, ...args: A) =>
+		fn({ session: await openBitbucketSession(), term }, ...args);
 }
 
 export function fail(err: unknown): never {
 	if (isPromptInterrupt(err)) process.exit(SIGINT_EXIT_CODE);
-	console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+	ttyTerminal().err(`Error: ${err instanceof Error ? err.message : String(err)}`);
 	process.exit(1);
 }
 

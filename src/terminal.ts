@@ -6,6 +6,7 @@ export interface PromptSpec {
 export interface Choice<T> {
 	name: string;
 	value: T;
+	description?: string;
 	checked?: boolean;
 }
 

@@ -1,4 +1,3 @@
-import { confirm } from "@inquirer/prompts";
 import { readFile } from "node:fs/promises";
 
 import type { CreateField } from "#/api/jira-types.ts";
@@ -60,7 +59,7 @@ export function parseFieldFlag(raw: string): FieldInput {
 }
 
 export async function jiraCreate(
-	{ session }: Env,
+	{ session, term }: Env,
 	projectArg: string | undefined,
 	typeArg: string | undefined,
 	options: CreateOptions,
@@ -68,15 +67,15 @@ export async function jiraCreate(
 	const inputs = await flagInputs(options);
 	const strict = inputs.length > 0 || options.input === false || !process.stdin.isTTY;
 
-	const project = await resolveProject(session, session.site, projectArg, strict);
+	const project = await resolveProject(term.ask, session, session.site, projectArg, strict);
 	const types = await fetchCreateIssueTypes(session, project);
-	const type = await resolveType(project, types, typeArg, strict);
+	const type = await resolveType(term.ask, project, types, typeArg, strict);
 	const meta = await fetchCreateFields(session, project, type.id);
 	const resolveUser = userResolver(session, project);
 
 	if (!strict) {
 		inputs.push(
-			...(await walkFields(meta, {
+			...(await walkFields(term.ask, meta, {
 				searchUsers: (query) => searchAssignableUsers(session, project, query),
 				validate: async (field, value) => {
 					const probe = await encodeCreate(
@@ -102,22 +101,25 @@ export async function jiraCreate(
 	};
 
 	if (options.dryRun) {
-		console.log(JSON.stringify({ fields }, null, 2));
+		term.json({ fields });
 		return;
 	}
 	if (!strict) {
-		for (const line of formatReview(meta, inputs)) console.log(line);
-		const go = await confirm({ message: `Create ${project} ${type.name}?`, default: true });
+		term.out(formatReview(meta, inputs));
+		const go = await term.ask.confirm({
+			message: `Create ${project} ${type.name}?`,
+			default: true,
+		});
 		if (!go) {
-			console.log("Aborted.");
+			term.out("Aborted.");
 			return;
 		}
 	}
 
 	try {
 		const created = await createIssue(session, session.site, fields);
-		if (options.json) console.log(JSON.stringify(created, null, 2));
-		else console.log(`Created ${created.key}  ${created.url}`);
+		if (options.json) term.json(created);
+		else term.out(`Created ${created.key}  ${created.url}`);
 	} catch (err) {
 		throw describeRejection(err, meta);
 	}
@@ -153,7 +155,7 @@ export interface FieldsOptions {
 }
 
 export async function jiraFields(
-	{ session }: Env,
+	{ session, term }: Env,
 	projectArg: string,
 	typeArg: string | undefined,
 	options: FieldsOptions,
@@ -161,13 +163,13 @@ export async function jiraFields(
 	const project = projectArg.toUpperCase();
 	const types = await fetchCreateIssueTypes(session, project);
 	if (!typeArg) {
-		if (options.json) console.log(JSON.stringify(types, null, 2));
-		else if (types.length === 0) console.log(`You cannot create issues in ${project}.`);
-		else for (const line of formatIssueTypeRows(types)) console.log(line);
+		if (options.json) term.json(types);
+		else if (types.length === 0) term.out(`You cannot create issues in ${project}.`);
+		else term.out(formatIssueTypeRows(types));
 		return;
 	}
-	const type = await resolveType(project, types, typeArg, true);
+	const type = await resolveType(term.ask, project, types, typeArg, true);
 	const fields = await fetchCreateFields(session, project, type.id);
-	if (options.json) console.log(JSON.stringify(fields, null, 2));
-	else for (const line of formatFieldRows(fields)) console.log(line);
+	if (options.json) term.json(fields);
+	else term.out(formatFieldRows(fields));
 }

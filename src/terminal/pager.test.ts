@@ -1,6 +1,6 @@
-import { expect, test, vi } from "vite-plus/test";
+import { expect, test } from "vite-plus/test";
 
-import { pagerCommand, printPaged, renderedHeight, shouldPage } from "#/util/pager.ts";
+import { pagerCommand, renderedHeight, shouldPage, tryPager } from "#/terminal/pager.ts";
 
 test("renderedHeight: counts each line once when nothing wraps", () => {
 	expect(renderedHeight("a\nb\nc", 80)).toBe(3);
@@ -53,33 +53,23 @@ test("pagerCommand: an empty PAGER means the default", () => {
 const TALL = Array.from({ length: 5 }, (_, i) => `line ${i}`).join("\n");
 const TINY = { isTTY: true, rows: 2, columns: 80 };
 
-test("printPaged: prints directly when the pager cannot be spawned", async () => {
-	const log = vi.spyOn(console, "log").mockImplementation(() => {});
-	try {
-		await printPaged(TALL, { term: TINY, env: { PAGER: "atlass-no-such-pager-xyz" } });
-		expect(log).toHaveBeenCalledWith(TALL);
-	} finally {
-		log.mockRestore();
-	}
+test("tryPager: says it did not page when the pager cannot be spawned", async () => {
+	const paged = await tryPager(TALL, {
+		screen: TINY,
+		env: { PAGER: "atlass-no-such-pager-xyz" },
+	});
+	expect(paged).toBe(false);
 });
 
-test("printPaged: prints directly with --no-pager or when nothing would scroll", async () => {
-	const log = vi.spyOn(console, "log").mockImplementation(() => {});
-	try {
-		await printPaged(TALL, { pager: false, term: TINY, env: {} });
-		await printPaged("short", { term: TINY, env: { PAGER: "atlass-no-such-pager-xyz" } });
-		expect(log.mock.calls).toEqual([[TALL], ["short"]]);
-	} finally {
-		log.mockRestore();
-	}
+test("tryPager: says it did not page when nothing would scroll", async () => {
+	expect(await tryPager("short", { screen: TINY, env: {} })).toBe(false);
+	expect(await tryPager(TALL, { screen: { isTTY: false }, env: {} })).toBe(false);
 });
 
-test("printPaged: survives a pager that exits without reading its input", async () => {
-	const log = vi.spyOn(console, "log").mockImplementation(() => {});
-	try {
-		await printPaged(TALL, { term: TINY, env: { ...process.env, PAGER: "node -e 0" } });
-		expect(log).not.toHaveBeenCalled();
-	} finally {
-		log.mockRestore();
-	}
+test("tryPager: counts a pager that exits without reading its input as paged", async () => {
+	const paged = await tryPager(TALL, {
+		screen: TINY,
+		env: { ...process.env, PAGER: "node -e 0" },
+	});
+	expect(paged).toBe(true);
 });

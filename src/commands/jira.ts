@@ -1,4 +1,3 @@
-import { input } from "@inquirer/prompts";
 import kleur from "kleur";
 import { readFile } from "node:fs/promises";
 
@@ -6,6 +5,7 @@ import type { JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira-types.
 import type { AtlassianSession } from "#/api/session.ts";
 import type { ViewOptions } from "#/commands/view.ts";
 import type { Env } from "#/env.ts";
+import type { Terminal } from "#/terminal.ts";
 
 import { fetchIssue, updateIssue } from "#/api/jira-issues.ts";
 import { listProjects } from "#/api/jira-projects.ts";
@@ -23,7 +23,6 @@ import { runCopy } from "#/copy/run.ts";
 import { parseIssueSource } from "#/markdown/copied-document.ts";
 import { planIssueUpdate } from "#/update/plan.ts";
 import { runPlan } from "#/update/run.ts";
-import { printPaged } from "#/util/pager.ts";
 import { parseIssueKey } from "#/util/parse.ts";
 
 export interface CopyOptions {
@@ -35,21 +34,15 @@ export interface ProjectsOptions {
 }
 
 export async function jiraProjects(
-	{ session }: Env,
+	{ session, term }: Env,
 	query: string | undefined,
 	options: ProjectsOptions,
 ): Promise<void> {
 	const projects = await listProjects(session, session.site, query);
 
-	if (options.json) {
-		console.log(JSON.stringify(projects, null, 2));
-		return;
-	}
-	if (projects.length === 0) {
-		console.log("No matching projects.");
-		return;
-	}
-	for (const line of formatProjectRows(projects)) console.log(line);
+	if (options.json) term.json(projects);
+	else if (projects.length === 0) term.out("No matching projects.");
+	else term.out(formatProjectRows(projects));
 }
 
 export function formatProjectRows(projects: Pick<ProjectSummary, "key" | "name">[]): string[] {
@@ -63,7 +56,7 @@ export interface StatusesOptions {
 }
 
 export async function jiraStatuses(
-	{ session }: Env,
+	{ session, term }: Env,
 	query: string | undefined,
 	options: StatusesOptions,
 ): Promise<void> {
@@ -74,15 +67,9 @@ export async function jiraStatuses(
 		statuses = statuses.filter((s) => s.name.toLowerCase().includes(needle));
 	}
 
-	if (options.json) {
-		console.log(JSON.stringify(statuses, null, 2));
-		return;
-	}
-	if (statuses.length === 0) {
-		console.log("No matching statuses.");
-		return;
-	}
-	for (const line of formatStatusRows(statuses)) console.log(line);
+	if (options.json) term.json(statuses);
+	else if (statuses.length === 0) term.out("No matching statuses.");
+	else term.out(formatStatusRows(statuses));
 }
 
 export function formatStatusRows(statuses: Pick<StatusSummary, "name" | "category">[]): string[] {
@@ -91,14 +78,14 @@ export function formatStatusRows(statuses: Pick<StatusSummary, "name" | "categor
 }
 
 export async function jiraView(
-	{ session }: Env,
+	{ session, term }: Env,
 	arg: string | undefined,
 	options: ViewOptions,
 ): Promise<void> {
-	const key = await resolveRef(arg, ISSUE_REF);
+	const key = await resolveRef(term.ask, arg, ISSUE_REF);
 	const issue = await fetchIssue(session, session.site, key);
 	const lines = formatIssueView(issue, Date.now(), options.allComments ?? false);
-	await printPaged(lines.join("\n"), { pager: options.pager });
+	await term.page(lines.join("\n"), { pager: options.pager });
 }
 
 const CATEGORY_COLORS: Record<string, (text: string) => string> = {
@@ -133,12 +120,12 @@ export function formatIssueView(issue: JiraIssue, nowMs: number, allComments: bo
 }
 
 export async function jiraCopy(
-	{ session }: Env,
+	{ session, term }: Env,
 	arg: string | undefined,
 	options: CopyOptions,
 ): Promise<void> {
-	const key = await resolveRef(arg, ISSUE_REF);
-	await copyIssue(session, key, options.out);
+	const key = await resolveRef(term.ask, arg, ISSUE_REF);
+	await copyIssue(term, session, key, options.out);
 }
 
 export interface UpdateOptions {
@@ -148,39 +135,46 @@ export interface UpdateOptions {
 }
 
 export async function jiraUpdate(
-	{ session }: Env,
+	{ session, term }: Env,
 	arg: string | undefined,
 	options: UpdateOptions,
 ): Promise<void> {
 	const file =
-		arg ?? (await input({ message: "Path to the issue Markdown file:", required: true }));
+		arg ??
+		(await term.ask.text({
+			message: "Path to the issue Markdown file:",
+			flag: "[file]",
+			required: true,
+		}));
 	const src = parseIssueSource(await readFile(file, "utf8"));
 
 	const issue = await fetchIssue(session, session.site, src.key);
 
 	const plan = planIssueUpdate(src, issue, options);
-	await runPlan(plan, options, async () => {
+	await runPlan(term, plan, options, async () => {
 		const { current, next } = plan.headline;
 		await updateIssue(session, src.key, {
 			description: plan.body,
 			summary: next !== current ? next : undefined,
 		});
-		console.log(`Updated ${src.key}.`);
+		term.out(`Updated ${src.key}.`);
 	});
 }
 
 export async function copyIssue(
+	term: Terminal,
 	session: AtlassianSession,
 	key: string,
 	out: string | undefined,
 ): Promise<void> {
-	console.log(`Fetching ${key} ...`);
+	term.err(`Fetching ${key} ...`);
 	const issue = await fetchIssue(session, session.site, key);
-	await runCopy(planIssueCopy(issue, out), (url) => session.getBinary(url));
+	await runCopy(term, planIssueCopy(issue, out), (url) => session.getBinary(url));
 }
 
 const ISSUE_REF = {
 	message: "Jira issue key or URL:",
+	flag: "[issue]",
 	parse: parseIssueKey,
 	notFound: (raw: string) => `Could not find an issue key in "${raw}" (expected e.g. PROJ-123).`,
 };

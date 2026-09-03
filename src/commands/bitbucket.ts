@@ -1,4 +1,3 @@
-import { input, password } from "@inquirer/prompts";
 import kleur from "kleur";
 
 import type { PipelineDetail, PipelineSummary, StepSummary } from "#/api/bitbucket-pipelines.ts";
@@ -6,12 +5,13 @@ import type { Transport } from "#/api/client.ts";
 import type { BitbucketSession } from "#/api/session.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { Env } from "#/env.ts";
+import type { Terminal } from "#/terminal.ts";
 
 import { getPipeline, listPipelines, listSteps } from "#/api/bitbucket-pipelines.ts";
 import { fetchCurrentUserUuid } from "#/api/bitbucket-user.ts";
 import { HttpError } from "#/api/http-error.ts";
 import { bitbucketSessionFor } from "#/api/session.ts";
-import { alignedRows, printRows } from "#/commands/search-run.ts";
+import { alignedRows, formatRows } from "#/commands/search-run.ts";
 import { clearConfig, readConfig, writeConfig } from "#/config.ts";
 import { deleteBitbucketToken, readBitbucketToken, saveBitbucketToken } from "#/credentials.ts";
 import { formatDuration, relativeTime } from "#/util/format.ts";
@@ -22,15 +22,16 @@ interface Workspace {
 	name?: string;
 }
 
-export async function bitbucketLogin(): Promise<void> {
+export async function bitbucketLogin(term: Terminal): Promise<void> {
 	const existing = (await readConfig()) ?? {};
-	const email = existing.email ?? (await input({ message: "Account email:", required: true }));
+	const email =
+		existing.email ?? (await term.ask.text({ message: "Account email:", required: true }));
 	const workspace = (
-		await input({ message: "Bitbucket workspace (e.g. acme):", required: true })
+		await term.ask.text({ message: "Bitbucket workspace (e.g. acme):", required: true })
 	).trim();
 	const defaultRepo =
-		(await input({ message: "Default repo slug (optional):" })).trim() || undefined;
-	const token = await password({
+		(await term.ask.text({ message: "Default repo slug (optional):" })).trim() || undefined;
+	const token = await term.ask.secret({
 		message:
 			"Bitbucket API token (needs pipeline, pull request, account, and workspace read scopes):",
 		mask: true,
@@ -50,7 +51,7 @@ export async function bitbucketLogin(): Promise<void> {
 		},
 	});
 	saveBitbucketToken(email, token);
-	console.log(`Logged in to Bitbucket workspace ${ws.name ?? workspace} as ${email}.`);
+	term.out(`Logged in to Bitbucket workspace ${ws.name ?? workspace} as ${email}.`);
 }
 
 export async function rememberBitbucketUuid(uuid: string): Promise<void> {
@@ -59,29 +60,29 @@ export async function rememberBitbucketUuid(uuid: string): Promise<void> {
 	await writeConfig({ ...config, bitbucket: { ...config.bitbucket, uuid } });
 }
 
-export async function bitbucketLogout(): Promise<void> {
+export async function bitbucketLogout(term: Terminal): Promise<void> {
 	const config = await readConfig();
 	if (config?.email) deleteBitbucketToken(config.email);
 	const jiraLogin =
 		config?.site && config.email ? { site: config.site, email: config.email } : null;
 	if (jiraLogin) await writeConfig(jiraLogin);
 	else await clearConfig();
-	console.log("Logged out of Bitbucket. Credentials removed.");
+	term.out("Logged out of Bitbucket. Credentials removed.");
 }
 
-export async function bitbucketStatus(): Promise<void> {
+export async function bitbucketStatus(term: Terminal): Promise<void> {
 	const config = await readConfig();
 	if (!config?.email || !config.bitbucket?.workspace) {
-		console.log("Not logged in to Bitbucket. Run `atlass bitbucket login`.");
+		term.out("Not logged in to Bitbucket. Run `atlass bitbucket login`.");
 		return;
 	}
 	const hasToken = readBitbucketToken(config.email) !== null;
-	console.log(`Workspace:    ${config.bitbucket.workspace}`);
-	console.log(`Email:        ${config.email}`);
-	console.log(`Default repo: ${config.bitbucket.defaultRepo ?? "(none)"}`);
-	console.log(
+	term.out([
+		`Workspace:    ${config.bitbucket.workspace}`,
+		`Email:        ${config.email}`,
+		`Default repo: ${config.bitbucket.defaultRepo ?? "(none)"}`,
 		`Token:        ${hasToken ? "stored in keyring" : "MISSING (run `atlass bitbucket login`)"}`,
-	);
+	]);
 }
 
 export interface PipelinesOptions {
@@ -91,17 +92,16 @@ export interface PipelinesOptions {
 }
 
 export async function bitbucketPipelines(
-	{ session }: Env<BitbucketSession>,
+	{ session, term }: Env<BitbucketSession>,
 	options: PipelinesOptions,
 ): Promise<void> {
 	const ref = resolveRepo(options.repo, session);
 	const limit = parseLimit(options.limit);
 	const pipelines = await withScopeHint(PIPELINE_SCOPE, () => listPipelines(session, ref, limit));
 
-	printRows(pipelineRows(pipelines, Date.now()), {
-		json: options.json,
-		empty: "No pipelines found.",
-	});
+	const rows = pipelineRows(pipelines, Date.now());
+	if (options.json) term.json(rows.map((r) => r.json));
+	else term.out(formatRows(rows, { empty: "No pipelines found.", width: term.width }));
 }
 
 export interface PipelineOptions {
@@ -109,7 +109,7 @@ export interface PipelineOptions {
 }
 
 export async function bitbucketPipeline(
-	{ session }: Env<BitbucketSession>,
+	{ session, term }: Env<BitbucketSession>,
 	arg: string | undefined,
 	options: PipelineOptions,
 ): Promise<void> {
@@ -119,7 +119,7 @@ export async function bitbucketPipeline(
 		getPipeline(session, ref, buildNumber),
 	);
 	const steps = await withScopeHint(PIPELINE_SCOPE, () => listSteps(session, ref, detail.uuid));
-	printPipelineDetail(detail, steps, Date.now());
+	term.out(formatPipelineDetail(detail, steps, Date.now()));
 }
 
 export function pipelineRows(pipelines: PipelineSummary[], nowMs: number): SearchRow[] {
@@ -163,19 +163,21 @@ export function formatStepRows(steps: StepSummary[]): string[] {
 	return rows.map((r) => `  ${r.name.padEnd(wn)}  ${r.status.padEnd(ws)}  ${r.dur}`);
 }
 
-function printPipelineDetail(detail: PipelineDetail, steps: StepSummary[], nowMs: number): void {
-	console.log(`Pipeline #${detail.buildNumber}  ${detail.status || "-"}`);
-	if (detail.repo) console.log(`Repo:     ${detail.repo}`);
-	console.log(`Ref:      ${refWithCommit(detail)}`);
-	if (detail.trigger) console.log(`Trigger:  ${detail.trigger}`);
-	console.log(`Duration: ${formatDuration(detail.durationSeconds)}`);
+export function formatPipelineDetail(
+	detail: PipelineDetail,
+	steps: StepSummary[],
+	nowMs: number,
+): string[] {
 	const by = detail.creator ? ` by ${detail.creator}` : "";
-	console.log(`Created:  ${relativeTime(detail.createdOn, nowMs)}${by}`);
-	if (steps.length > 0) {
-		console.log("");
-		console.log("Steps:");
-		for (const line of formatStepRows(steps)) console.log(line);
-	}
+	return [
+		`Pipeline #${detail.buildNumber}  ${detail.status || "-"}`,
+		...(detail.repo ? [`Repo:     ${detail.repo}`] : []),
+		`Ref:      ${refWithCommit(detail)}`,
+		...(detail.trigger ? [`Trigger:  ${detail.trigger}`] : []),
+		`Duration: ${formatDuration(detail.durationSeconds)}`,
+		`Created:  ${relativeTime(detail.createdOn, nowMs)}${by}`,
+		...(steps.length > 0 ? ["", "Steps:", ...formatStepRows(steps)] : []),
+	];
 }
 
 function refWithCommit(pipeline: Pick<PipelineSummary, "ref" | "commit">): string {

@@ -1,5 +1,6 @@
-import { checkbox } from "@inquirer/prompts";
 import { stripVTControlCharacters } from "node:util";
+
+import type { Terminal } from "#/terminal.ts";
 
 import { relativeTime } from "#/util/format.ts";
 import { hyperlink } from "#/util/link.ts";
@@ -44,32 +45,22 @@ export function alignedRows<T extends object>(
 	}));
 }
 
-export interface PrintRowsOptions {
+export interface FormatRowsOptions {
+	empty: string;
+	footer?: string;
+	width: number;
+}
+
+export function formatRows(rows: SearchRow[], options: FormatRowsOptions): string[] {
+	if (rows.length === 0) return [options.empty];
+	const lines = rows.map((row) => formatRow(row, options.width));
+	return options.footer ? [...lines, options.footer] : lines;
+}
+
+export interface RunSearchOptions {
 	json?: boolean;
 	empty: string;
 	footer?: string;
-}
-
-export function printRows(rows: SearchRow[], options: PrintRowsOptions): void {
-	if (options.json) {
-		console.log(
-			JSON.stringify(
-				rows.map((r) => r.json),
-				null,
-				2,
-			),
-		);
-		return;
-	}
-	if (rows.length === 0) {
-		console.log(options.empty);
-		return;
-	}
-	for (const row of rows) console.log(formatRow(row));
-	if (options.footer) console.log(options.footer);
-}
-
-export interface RunSearchOptions extends PrintRowsOptions {
 	copy?: boolean;
 	out?: string;
 }
@@ -82,6 +73,7 @@ export interface Noun {
 }
 
 export async function runSearch(
+	term: Terminal,
 	rows: SearchRow[],
 	options: RunSearchOptions,
 	noun: Noun,
@@ -89,7 +81,8 @@ export async function runSearch(
 ): Promise<void> {
 	const selecting = options.copy && !options.json && rows.length > 0;
 	if (!selecting) {
-		printRows(rows, options);
+		if (options.json) term.json(rows.map((r) => r.json));
+		else term.out(formatRows(rows, { ...options, width: term.width }));
 		return;
 	}
 	if (options.out?.endsWith(".md")) {
@@ -97,7 +90,7 @@ export async function runSearch(
 			"--out must be a directory when using --copy; a .md file path would overwrite each selection.",
 		);
 	}
-	await copySelected(rows, noun, copyOne);
+	await copySelected(term, rows, noun, copyOne);
 }
 
 export function searchFooter(limit: number): string {
@@ -105,17 +98,22 @@ export function searchFooter(limit: number): string {
 Showing first ${limit}; refine with flags or raise --limit.`;
 }
 
-async function copySelected(rows: SearchRow[], noun: Noun, copyOne: (id: string) => Promise<void>) {
+async function copySelected(
+	term: Terminal,
+	rows: SearchRow[],
+	noun: Noun,
+	copyOne: (id: string) => Promise<void>,
+) {
 	if (!process.stdin.isTTY) {
 		throw new Error("--copy requires an interactive terminal.");
 	}
-	const selected = await checkbox({
+	const selected = await term.ask.pickMany<string>({
 		message: `Select ${noun.plural} to copy:`,
-		choices: rows.map((r) => ({ name: formatRow(r), value: r.id })),
+		choices: rows.map((r) => ({ name: formatRow(r, term.width), value: r.id })),
 		pageSize: 20,
 	});
 	if (selected.length === 0) {
-		console.log("Nothing selected.");
+		term.out("Nothing selected.");
 		return;
 	}
 
@@ -135,11 +133,11 @@ async function copySelected(rows: SearchRow[], noun: Noun, copyOne: (id: string)
 	await Promise.all(Array.from({ length: Math.min(COPY_CONCURRENCY, selected.length) }, worker));
 
 	const summary = `Copied ${copied} ${copied === 1 ? noun.singular : noun.plural}`;
-	if (failures.length === 0) console.log(summary);
-	else console.log(`${summary}, failed ${failures.length}: ${failures.join(", ")}`);
+	if (failures.length === 0) term.out(summary);
+	else term.out(`${summary}, failed ${failures.length}: ${failures.join(", ")}`);
 }
 
-export function formatRow(row: SearchRow, width = process.stdout.columns ?? 80): string {
+export function formatRow(row: SearchRow, width: number): string {
 	const room = width - stripVTControlCharacters(row.fixedColumns).length - 2;
 	const text = room > 0 ? truncate(row.freeText, room) : "";
 	const columns = hyperlink(row.id, row.url) + row.fixedColumns.slice(row.id.length);

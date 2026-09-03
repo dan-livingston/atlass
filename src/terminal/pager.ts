@@ -1,15 +1,14 @@
 import { spawn } from "node:child_process";
 import { stripVTControlCharacters } from "node:util";
 
-export interface Terminal {
+interface Screen {
 	isTTY?: boolean;
 	rows?: number;
 	columns?: number;
 }
 
-export interface PagedOptions {
-	pager?: boolean;
-	term?: Terminal;
+export interface PagerOptions {
+	screen?: Screen;
 	env?: NodeJS.ProcessEnv;
 }
 
@@ -26,10 +25,10 @@ export function renderedHeight(text: string, columns: number): number {
 		.reduce((sum, rows) => sum + rows, 0);
 }
 
-export function shouldPage(text: string, term: Terminal): boolean {
-	if (!term.isTTY) return false;
-	const rows = term.rows ?? DEFAULT_ROWS;
-	const columns = term.columns ?? DEFAULT_COLUMNS;
+export function shouldPage(text: string, screen: Screen): boolean {
+	if (!screen.isTTY) return false;
+	const rows = screen.rows ?? DEFAULT_ROWS;
+	const columns = screen.columns ?? DEFAULT_COLUMNS;
 	return renderedHeight(text, columns) > rows;
 }
 
@@ -47,14 +46,9 @@ export function pagerCommand(env: NodeJS.ProcessEnv): PagerCommand {
 	return { command, args, env: { ...env, LESS: env["LESS"] ?? DEFAULT_LESS } };
 }
 
-export async function printPaged(text: string, options: PagedOptions = {}): Promise<void> {
-	const term = options.term ?? process.stdout;
-	if (options.pager === false || !shouldPage(text, term)) {
-		console.log(text);
-		return;
-	}
-	const paged = await pipeToPager(text, pagerCommand(options.env ?? process.env));
-	if (!paged) console.log(text);
+export async function tryPager(text: string, options: PagerOptions = {}): Promise<boolean> {
+	if (!shouldPage(text, options.screen ?? process.stdout)) return false;
+	return pipeToPager(text, pagerCommand(options.env ?? process.env));
 }
 
 function pipeToPager(text: string, pager: PagerCommand): Promise<boolean> {

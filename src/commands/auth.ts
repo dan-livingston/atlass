@@ -1,4 +1,4 @@
-import { input, password } from "@inquirer/prompts";
+import type { Terminal } from "#/terminal.ts";
 
 import { sessionFor } from "#/api/session.ts";
 import { clearConfig, siteOrigin, readConfig, writeConfig } from "#/config.ts";
@@ -9,15 +9,15 @@ interface Myself {
 	emailAddress?: string;
 }
 
-export async function login(): Promise<void> {
+export async function login(term: Terminal): Promise<void> {
 	const site = siteOrigin(
-		await input({
+		await term.ask.text({
 			message: "Atlassian site (e.g. acme.atlassian.net):",
 			required: true,
 		}),
 	);
-	const email = await input({ message: "Account email:", required: true });
-	const token = await password({
+	const email = await term.ask.text({ message: "Account email:", required: true });
+	const token = await term.ask.secret({
 		message: "API token (from id.atlassian.com/manage-profile/security/api-tokens):",
 		mask: true,
 	});
@@ -28,10 +28,10 @@ export async function login(): Promise<void> {
 	const existing = (await readConfig()) ?? {};
 	await writeConfig({ ...existing, site, email });
 	saveToken(email, token);
-	console.log(`Logged in as ${me.displayName} on ${site}.`);
+	term.out(`Logged in as ${me.displayName} on ${site}.`);
 }
 
-export async function logout(): Promise<void> {
+export async function logout(term: Terminal): Promise<void> {
 	const config = await readConfig();
 	if (config?.email) deleteToken(config.email);
 	const bitbucketLogin =
@@ -40,17 +40,19 @@ export async function logout(): Promise<void> {
 			: null;
 	if (bitbucketLogin) await writeConfig(bitbucketLogin);
 	else await clearConfig();
-	console.log("Logged out. Credentials removed.");
+	term.out("Logged out. Credentials removed.");
 }
 
-export async function status(): Promise<void> {
+export async function status(term: Terminal): Promise<void> {
 	const config = await readConfig();
 	if (!config || !config.site || !config.email) {
-		console.log("Not logged in. Run `atlass auth login`.");
+		term.out("Not logged in. Run `atlass auth login`.");
 		return;
 	}
 	const hasToken = readToken(config.email) !== null;
-	console.log(`Site:  ${config.site}`);
-	console.log(`Email: ${config.email}`);
-	console.log(`Token: ${hasToken ? "stored in keyring" : "MISSING (run `atlass auth login`)"}`);
+	term.out([
+		`Site:  ${config.site}`,
+		`Email: ${config.email}`,
+		`Token: ${hasToken ? "stored in keyring" : "MISSING (run `atlass auth login`)"}`,
+	]);
 }

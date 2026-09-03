@@ -1,5 +1,4 @@
-import { confirm } from "@inquirer/prompts";
-
+import type { Terminal } from "#/terminal.ts";
 import type { UpdatePlan } from "#/update/plan.ts";
 
 import { formatPlan } from "#/update/plan.ts";
@@ -9,20 +8,25 @@ export interface RunOptions {
 }
 
 export async function runPlan(
+	term: Terminal,
 	plan: UpdatePlan,
 	options: RunOptions,
 	push: () => Promise<void>,
 ): Promise<void> {
 	if (options.dryRun) {
-		for (const line of formatPlan(plan)) console.log(line);
+		term.out(formatPlan(plan));
 		return;
 	}
 	const verdict = plan.verdict;
 	if (verdict.kind === "refuse") throw new Error(verdict.message);
 	if (verdict.kind === "confirm") {
-		const ok = await confirm({ message: verdict.message, default: false });
+		const ok = await term.ask.confirm({
+			message: verdict.message,
+			flag: "--force",
+			default: false,
+		});
 		if (!ok) {
-			console.log("Aborted.");
+			term.out("Aborted.");
 			return;
 		}
 	}

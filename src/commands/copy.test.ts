@@ -1,10 +1,11 @@
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
+import { afterEach, beforeEach, expect, test } from "vite-plus/test";
 
 import { copyPage } from "#/commands/confluence.ts";
 import { copyIssue } from "#/commands/jira.ts";
+import { scriptedTerminal } from "#/terminal/scripted.ts";
 import { fakeSession } from "#/test/session.ts";
 
 const SITE = "https://acme.atlassian.net";
@@ -42,17 +43,14 @@ function fakeClient(json: Record<string, unknown>, binary: Record<string, string
 }
 
 let dir: string;
-let logged: string[];
+let term: ReturnType<typeof scriptedTerminal>;
 
 beforeEach(async () => {
 	dir = await mkdtemp(join(tmpdir(), "atlass-copy-"));
-	logged = [];
-	vi.spyOn(console, "log").mockImplementation((line: string) => void logged.push(line));
-	vi.spyOn(console, "warn").mockImplementation((line: string) => void logged.push(line));
+	term = scriptedTerminal();
 });
 
 afterEach(async () => {
-	vi.restoreAllMocks();
 	await rm(dir, { recursive: true, force: true });
 });
 
@@ -107,7 +105,7 @@ const ISSUE_BINARY = {
 };
 
 test("copyIssue writes the issue document, its attachments and the wrote line", async () => {
-	await copyIssue(fakeClient(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", dir);
+	await copyIssue(term, fakeClient(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", dir);
 
 	expect(await readFile(join(dir, "PROJ-7.md"), "utf8")).toBe(
 		[
@@ -147,16 +145,16 @@ test("copyIssue writes the issue document, its attachments and the wrote line", 
 	);
 	expect((await readdir(join(dir, "PROJ-7.assets"))).sort()).toEqual(["shot-1.png", "shot.png"]);
 	expect(await readFile(join(dir, "PROJ-7.assets", "shot-1.png"), "utf8")).toBe("png-two");
-	expect(logged).toEqual([
+	expect(term.errors).toEqual([
 		"Fetching PROJ-7 ...",
 		"  ! could not download gone.txt: 404 Not Found",
-		`Wrote ${join(dir, "PROJ-7.md")} (+2 attachments)`,
 	]);
+	expect(term.written).toEqual([`Wrote ${join(dir, "PROJ-7.md")} (+2 attachments)`]);
 });
 
 test("copyIssue with an .md --out writes there and names the assets dir after it", async () => {
 	const out = join(dir, "notes", "bug.md");
-	await copyIssue(fakeClient(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", out);
+	await copyIssue(term, fakeClient(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", out);
 
 	expect(await readFile(out, "utf8")).toContain("![shot.png](bug.assets/shot.png)");
 	expect((await readdir(join(dir, "notes", "bug.assets"))).sort()).toEqual([
@@ -198,7 +196,7 @@ const PAGE_JSON = {
 };
 
 test("copyPage writes the page document named by id and slug", async () => {
-	await copyPage(fakeClient(PAGE_JSON, { "/wiki/download/a-1": "png" }), "123", dir);
+	await copyPage(term, fakeClient(PAGE_JSON, { "/wiki/download/a-1": "png" }), "123", dir);
 
 	const file = join(dir, "123-release-notes-v2.md");
 	expect(await readFile(file, "utf8")).toBe(
@@ -233,7 +231,8 @@ test("copyPage writes the page document named by id and slug", async () => {
 		].join("\n"),
 	);
 	expect(await readdir(join(dir, "123-release-notes-v2.assets"))).toEqual(["diagram.png"]);
-	expect(logged).toEqual(["Fetching page 123 ...", `Wrote ${file} (+1 attachment)`]);
+	expect(term.errors).toEqual(["Fetching page 123 ..."]);
+	expect(term.written).toEqual([`Wrote ${file} (+1 attachment)`]);
 });
 
 test("copyPage without attachments writes no assets dir and a bare wrote line", async () => {
@@ -241,8 +240,8 @@ test("copyPage without attachments writes no assets dir and a bare wrote line", 
 		...PAGE_JSON,
 		"/wiki/api/v2/pages/123/attachments?limit=250": { results: [] },
 	};
-	await copyPage(fakeClient(json, {}), "123", dir);
+	await copyPage(term, fakeClient(json, {}), "123", dir);
 
 	expect(await readdir(dir)).toEqual(["123-release-notes-v2.md"]);
-	expect(logged.at(-1)).toBe(`Wrote ${join(dir, "123-release-notes-v2.md")}`);
+	expect(term.written.at(-1)).toBe(`Wrote ${join(dir, "123-release-notes-v2.md")}`);
 });

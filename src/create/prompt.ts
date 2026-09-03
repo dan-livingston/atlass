@@ -1,7 +1,6 @@
-import { checkbox, editor, input, search, select } from "@inquirer/prompts";
-
 import type { AllowedValue, CreateField, JiraUser } from "#/api/jira-types.ts";
 import type { FieldInput } from "#/create/encode.ts";
+import type { Prompts } from "#/terminal.ts";
 
 import { allowedLabel } from "#/create/encode-allowed-values.ts";
 import { SERVER_FILLED, isMultiLine } from "#/create/encode.ts";
@@ -14,16 +13,20 @@ export interface WalkDeps {
 
 const PROMPT_SOURCE = "prompt";
 
-export async function walkFields(meta: CreateField[], deps: WalkDeps): Promise<FieldInput[]> {
+export async function walkFields(
+	ask: Prompts,
+	meta: CreateField[],
+	deps: WalkDeps,
+): Promise<FieldInput[]> {
 	const firstPass = meta.filter((f) => f.required && !SERVER_FILLED.has(f.fieldId));
 	const inputs: FieldInput[] = [];
 	for (const field of firstPass) {
-		const answer = await promptField(field, deps, true);
+		const answer = await promptField(ask, field, deps, true);
 		if (answer) inputs.push(answer);
 	}
 	const optional = meta.filter((f) => !firstPass.includes(f) && !SERVER_FILLED.has(f.fieldId));
 	if (optional.length === 0) return inputs;
-	const chosen = await checkbox({
+	const chosen = await ask.pickMany<string>({
 		message: "Set any optional fields?",
 		choices: optional.map((f) => ({
 			name: `${f.name}  (${fieldTypeLabel(f.schema)})`,
@@ -32,18 +35,19 @@ export async function walkFields(meta: CreateField[], deps: WalkDeps): Promise<F
 		pageSize: 15,
 	});
 	for (const field of optional.filter((f) => chosen.includes(f.fieldId))) {
-		const answer = await promptField(field, deps, false);
+		const answer = await promptField(ask, field, deps, false);
 		if (answer) inputs.push(answer);
 	}
 	return inputs;
 }
 
 async function promptField(
+	ask: Prompts,
 	field: CreateField,
 	deps: WalkDeps,
 	required: boolean,
 ): Promise<FieldInput | undefined> {
-	const answer = await askValues(field, deps, required);
+	const answer = await askValues(ask, field, deps, required);
 	if (answer.values.length === 0) return undefined;
 	return {
 		name: field.fieldId,
@@ -60,14 +64,19 @@ interface Answer {
 
 const SKIP = { name: "(skip)", value: "" };
 
-async function askValues(field: CreateField, deps: WalkDeps, required: boolean): Promise<Answer> {
+async function askValues(
+	ask: Prompts,
+	field: CreateField,
+	deps: WalkDeps,
+	required: boolean,
+): Promise<Answer> {
 	const { schema } = field;
 	const message = `${field.name}:`;
 	const options = field.allowedValues ?? [];
-	if (schema.type === "option-with-child") return askCascading(field, required);
+	if (schema.type === "option-with-child") return askCascading(ask, field, required);
 	if (options.length > 0 && schema.type === "array") {
 		const defaults = new Set(defaultIds(field));
-		const values = await checkbox({
+		const values = await ask.pickMany<string>({
 			message,
 			choices: options.map((v) => ({ ...choice(v), checked: defaults.has(v.id ?? "") })),
 			required,
@@ -77,7 +86,7 @@ async function askValues(field: CreateField, deps: WalkDeps, required: boolean):
 	}
 	if (options.length > 0) {
 		const choices = options.map(choice);
-		const picked = await select({
+		const picked = await ask.pick<string>({
 			message,
 			choices: required ? choices : [SKIP, ...choices],
 			default: defaultIds(field)[0],
@@ -85,9 +94,9 @@ async function askValues(field: CreateField, deps: WalkDeps, required: boolean):
 		});
 		return { values: picked ? [picked] : [] };
 	}
-	if (schema.type === "user") return askUser(field, deps, required);
+	if (schema.type === "user") return askUser(ask, field, deps, required);
 	if (isMultiLine(schema)) {
-		const text = await editor({
+		const text = await ask.edit({
 			message: `${field.name} (opens your editor, Markdown):`,
 			postfix: ".md",
 			default: primitiveDefault(field),
@@ -97,7 +106,7 @@ async function askValues(field: CreateField, deps: WalkDeps, required: boolean):
 		return { values: text.trim() ? [text] : [] };
 	}
 	const hint = inputHint(field);
-	const text = await input({
+	const text = await ask.text({
 		message: hint ? `${field.name} (${hint}):` : message,
 		default: primitiveDefault(field),
 		validate: async (v) => {
@@ -144,10 +153,10 @@ function primitiveDefault(field: CreateField): string | undefined {
 	return typeof d === "string" || typeof d === "number" ? String(d) : undefined;
 }
 
-async function askCascading(field: CreateField, required: boolean): Promise<Answer> {
+async function askCascading(ask: Prompts, field: CreateField, required: boolean): Promise<Answer> {
 	const options = field.allowedValues ?? [];
 	const parentChoices = options.map(choice);
-	const parentId = await select({
+	const parentId = await ask.pick<string>({
 		message: `${field.name}:`,
 		choices: required ? parentChoices : [SKIP, ...parentChoices],
 		pageSize: 15,
@@ -156,7 +165,7 @@ async function askCascading(field: CreateField, required: boolean): Promise<Answ
 	const parent = options.find((v) => v.id === parentId);
 	const children = parent?.children ?? [];
 	if (children.length === 0) return { values: [parentId] };
-	const childId = await select({
+	const childId = await ask.pick<string>({
 		message: `${field.name} > ${allowedLabel(parent!)}:`,
 		choices: [{ name: "(none)", value: "" }, ...children.map(choice)],
 		pageSize: 15,
@@ -167,10 +176,15 @@ async function askCascading(field: CreateField, required: boolean): Promise<Answ
 const ME = { name: "me", value: "me" };
 const UNASSIGNED = { name: "(unassigned)", value: "" };
 
-async function askUser(field: CreateField, deps: WalkDeps, required: boolean): Promise<Answer> {
+async function askUser(
+	ask: Prompts,
+	field: CreateField,
+	deps: WalkDeps,
+	required: boolean,
+): Promise<Answer> {
 	const fixed = required ? [ME] : [ME, UNASSIGNED];
 	const seen = new Map<string, string>();
-	const picked = await search({
+	const picked = await ask.searchPick<string>({
 		message: `${field.name} (type to search):`,
 		source: async (term) => {
 			if (!term) return fixed;

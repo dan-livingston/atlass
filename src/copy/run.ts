@@ -3,19 +3,28 @@ import { dirname } from "node:path";
 
 import type { DownloadedAttachment } from "#/api/attachments.ts";
 import type { CopyPlan } from "#/copy/plan.ts";
+import type { Terminal } from "#/terminal.ts";
 
 import { renderCopy } from "#/copy/plan.ts";
 
 export type FetchBytes = (url: string) => Promise<Uint8Array>;
 
-export async function runCopy(plan: CopyPlan, fetchBytes: FetchBytes): Promise<void> {
-	const landed = await download(plan, fetchBytes);
+export async function runCopy(
+	term: Terminal,
+	plan: CopyPlan,
+	fetchBytes: FetchBytes,
+): Promise<void> {
+	const landed = await download(term, plan, fetchBytes);
 	await mkdir(dirname(plan.filePath), { recursive: true });
 	await writeFile(plan.filePath, renderCopy(plan, landed), "utf8");
-	console.log(wroteLine(plan.filePath, landed.length));
+	term.out(wroteLine(plan.filePath, landed.length));
 }
 
-async function download(plan: CopyPlan, fetchBytes: FetchBytes): Promise<DownloadedAttachment[]> {
+async function download(
+	term: Terminal,
+	plan: CopyPlan,
+	fetchBytes: FetchBytes,
+): Promise<DownloadedAttachment[]> {
 	if (plan.downloads.length === 0) return [];
 	await mkdir(plan.assetsDir, { recursive: true });
 
@@ -25,9 +34,7 @@ async function download(plan: CopyPlan, fetchBytes: FetchBytes): Promise<Downloa
 			await writeFile(path, await fetchBytes(attachment.url));
 			landed.push(attachment);
 		} catch (err) {
-			console.warn(
-				`  ! could not download ${attachment.filename}: ${(err as Error).message}`,
-			);
+			term.err(`  ! could not download ${attachment.filename}: ${(err as Error).message}`);
 		}
 	}
 	return landed;

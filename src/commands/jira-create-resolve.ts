@@ -1,13 +1,13 @@
-import { search, select } from "@inquirer/prompts";
-
 import type { Transport } from "#/api/client.ts";
 import type { CreateIssueType } from "#/api/jira-types.ts";
 import type { ResolveUser } from "#/create/encode.ts";
+import type { Prompts } from "#/terminal.ts";
 
 import { listProjects } from "#/api/jira-projects.ts";
 import { fetchMyself, searchAssignableUsers } from "#/api/jira-users.ts";
 
 export async function resolveProject(
+	ask: Prompts,
 	client: Transport,
 	site: string,
 	arg: string | undefined,
@@ -16,7 +16,7 @@ export async function resolveProject(
 	if (arg) return arg.toUpperCase();
 	if (strict)
 		throw new Error("A project key is required, e.g. `jira create BSC Bug --summary ...`.");
-	return search({
+	return ask.searchPick<string>({
 		message: "Project:",
 		source: async (term) =>
 			(await listProjects(client, site, term)).map((p) => ({
@@ -28,6 +28,7 @@ export async function resolveProject(
 }
 
 export async function resolveType(
+	ask: Prompts,
 	project: string,
 	types: CreateIssueType[],
 	arg: string | undefined,
@@ -45,7 +46,7 @@ export async function resolveType(
 			`An issue type is required; ${project} has: ${types.map((t) => t.name).join(", ")}.`,
 		);
 	}
-	return select({
+	return ask.pick<CreateIssueType>({
 		message: "Issue type:",
 		choices: types.map((t) => ({ name: t.name, value: t, description: t.description })),
 		pageSize: 15,

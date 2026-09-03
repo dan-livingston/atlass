@@ -1,7 +1,7 @@
 import kleur from "kleur";
-import { expect, test, vi } from "vite-plus/test";
+import { expect, test } from "vite-plus/test";
 
-import { alignedRows, printRows } from "#/commands/search-run.ts";
+import { alignedRows, formatRows } from "#/commands/search-run.ts";
 
 kleur.enabled = false;
 
@@ -35,19 +35,6 @@ function buildRows(items: Build[]) {
 	}));
 }
 
-function captureLog(fn: () => void): string[] {
-	const lines: string[] = [];
-	const log = vi
-		.spyOn(console, "log")
-		.mockImplementation((line: string) => void lines.push(line));
-	try {
-		fn();
-	} finally {
-		log.mockRestore();
-	}
-	return lines;
-}
-
 test("alignedRows: the age column reads the timestamp the caller names", () => {
 	const rows = buildRows([build(), build({ number: 12, createdOn: "2026-08-31T09:00:00.000Z" })]);
 	expect(rows.map((r) => r.fixedColumns)).toEqual([
@@ -60,19 +47,14 @@ test("alignedRows: json carries the whole item, not only the cells", () => {
 	expect(buildRows([build()])[0]?.json).toEqual(build());
 });
 
-test("printRows: json prints the items and no rows", () => {
-	const lines = captureLog(() => printRows(buildRows([build()]), { json: true, empty: "none" }));
-	expect(JSON.parse(lines.join("\n"))).toEqual([build()]);
-});
-
-test("printRows: no rows prints the empty message and no footer", () => {
-	expect(captureLog(() => printRows([], { empty: "No builds found.", footer: "more" }))).toEqual([
+test("formatRows: no rows gives the empty message and no footer", () => {
+	expect(formatRows([], { empty: "No builds found.", footer: "more", width: 80 })).toEqual([
 		"No builds found.",
 	]);
 });
 
-test("printRows: the footer follows the rows", () => {
+test("formatRows: the footer follows the rows", () => {
 	expect(
-		captureLog(() => printRows(buildRows([build()]), { empty: "none", footer: "showing 1" })),
+		formatRows(buildRows([build()]), { empty: "none", footer: "showing 1", width: 80 }),
 	).toEqual(["#124  SUCCESSFUL  1d ago  main", "showing 1"]);
 });

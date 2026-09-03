@@ -13,7 +13,7 @@ import type {
 	TextSpec,
 } from "#/terminal.ts";
 
-import { printPaged } from "#/util/pager.ts";
+import { tryPager } from "#/terminal/pager.ts";
 
 const DEFAULT_WIDTH = 80;
 
@@ -68,8 +68,9 @@ export function ttyTerminal(): Terminal {
 		json(value: unknown): void {
 			console.log(JSON.stringify(value, null, 2));
 		},
-		page(text: string, options: PageOptions = {}): Promise<void> {
-			return printPaged(text, { pager: options.pager });
+		async page(text: string, options: PageOptions = {}): Promise<void> {
+			if (options.pager !== false && (await tryPager(text))) return;
+			console.log(text);
 		},
 		get width(): number {
 			return process.stdout.columns ?? DEFAULT_WIDTH;

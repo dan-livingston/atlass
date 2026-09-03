@@ -19,7 +19,7 @@ export interface SearchOptions {
 }
 
 export async function jiraSearch(
-	{ session }: Env,
+	{ session, term }: Env,
 	query: string | undefined,
 	options: SearchOptions,
 ): Promise<void> {
@@ -41,6 +41,7 @@ export async function jiraSearch(
 	});
 
 	await runSearch(
+		term,
 		formatIssueRows(issues, Date.now()),
 		{
 			json: options.json,
@@ -50,7 +51,7 @@ export async function jiraSearch(
 			footer: issues.length === limit ? searchFooter(limit) : undefined,
 		},
 		ISSUE_NOUN,
-		(key) => copyIssue(session, key, options.out),
+		(key) => copyIssue(term, session, key, options.out),
 	);
 }
 
@@ -62,7 +63,7 @@ export interface ListOptions {
 	out?: string;
 }
 
-export async function jiraList({ session }: Env, options: ListOptions): Promise<void> {
+export async function jiraList({ session, term }: Env, options: ListOptions): Promise<void> {
 	if (options.json && options.copy) {
 		throw new Error("--json and --copy cannot be used together.");
 	}
@@ -73,6 +74,7 @@ export async function jiraList({ session }: Env, options: ListOptions): Promise<
 	});
 
 	await runSearch(
+		term,
 		formatIssueRows(sortByCategoryThenUpdated(issues), Date.now()),
 		{
 			json: options.json,
@@ -84,7 +86,7 @@ export async function jiraList({ session }: Env, options: ListOptions): Promise<
 				: undefined,
 		},
 		ISSUE_NOUN,
-		(key) => copyIssue(session, key, options.out),
+		(key) => copyIssue(term, session, key, options.out),
 	);
 }
 

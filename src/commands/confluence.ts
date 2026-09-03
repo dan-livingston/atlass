@@ -1,4 +1,3 @@
-import { input } from "@inquirer/prompts";
 import kleur from "kleur";
 import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
@@ -10,6 +9,7 @@ import type { CopyOptions } from "#/commands/jira.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { ViewOptions } from "#/commands/view.ts";
 import type { Env } from "#/env.ts";
+import type { Terminal } from "#/terminal.ts";
 import type { LocalImage } from "#/update/plan-page.ts";
 
 import { imageHrefs } from "#/adf/from-markdown.ts";
@@ -30,7 +30,6 @@ import { runCopy } from "#/copy/run.ts";
 import { parsePageSource } from "#/markdown/copied-document.ts";
 import { planPageUpdate, withUploadedIds } from "#/update/plan-page.ts";
 import { runPlan } from "#/update/run.ts";
-import { printPaged } from "#/util/pager.ts";
 import { isExternalHref, parseLimit, parsePageId } from "#/util/parse.ts";
 
 export interface SearchOptions {
@@ -43,14 +42,14 @@ export interface SearchOptions {
 }
 
 export async function confluenceView(
-	{ session }: Env,
+	{ session, term }: Env,
 	arg: string | undefined,
 	options: ViewOptions,
 ): Promise<void> {
-	const id = await resolveRef(arg, PAGE_REF);
+	const id = await resolveRef(term.ask, arg, PAGE_REF);
 	const page = await fetchPage(session, session.site, id);
 	const lines = formatPageView(page, Date.now(), options.allComments ?? false);
-	await printPaged(lines.join("\n"), { pager: options.pager });
+	await term.page(lines.join("\n"), { pager: options.pager });
 }
 
 export function formatPageView(
@@ -76,12 +75,12 @@ export function formatPageView(
 }
 
 export async function confluenceCopy(
-	{ session }: Env,
+	{ session, term }: Env,
 	arg: string | undefined,
 	options: CopyOptions,
 ): Promise<void> {
-	const id = await resolveRef(arg, PAGE_REF);
-	await copyPage(session, id, options.out);
+	const id = await resolveRef(term.ask, arg, PAGE_REF);
+	await copyPage(term, session, id, options.out);
 }
 
 export interface UpdateOptions {
@@ -92,12 +91,17 @@ export interface UpdateOptions {
 }
 
 export async function confluenceUpdate(
-	{ session }: Env,
+	{ session, term }: Env,
 	arg: string | undefined,
 	options: UpdateOptions,
 ): Promise<void> {
 	const file =
-		arg ?? (await input({ message: "Path to the page Markdown file:", required: true }));
+		arg ??
+		(await term.ask.text({
+			message: "Path to the page Markdown file:",
+			flag: "[file]",
+			required: true,
+		}));
 	const src = parsePageSource(await readFile(file, "utf8"));
 
 	const state = await fetchPageState(session, src.id);
@@ -105,10 +109,10 @@ export async function confluenceUpdate(
 	const localImages = await statLocalImages(dirname(resolve(file)), src.body);
 
 	const plan = planPageUpdate(src, state, attachments, localImages, options);
-	await runPlan(plan, options, async () => {
+	await runPlan(term, plan, options, async () => {
 		const ids = new Map<string, string>();
 		for (const upload of plan.uploads) {
-			console.log(`Uploading ${upload.filename} ...`);
+			term.err(`Uploading ${upload.filename} ...`);
 			const bytes = await readFile(upload.path);
 			ids.set(upload.href, await uploadAttachment(session, src.id, upload.filename, bytes));
 		}
@@ -118,7 +122,7 @@ export async function confluenceUpdate(
 			body: withUploadedIds(plan.body, ids),
 			message: options.message ?? "Updated via atlass",
 		});
-		console.log(`Updated page ${src.id} to version ${version}.`);
+		term.out(`Updated page ${src.id} to version ${version}.`);
 	});
 }
 
@@ -168,7 +172,7 @@ export async function confluenceList(env: Env, options: ListOptions): Promise<vo
 }
 
 async function listPages(
-	{ session }: Env,
+	{ session, term }: Env,
 	filter: Omit<PageSearchParams, "limit">,
 	empty: string,
 	options: ListOptions,
@@ -181,6 +185,7 @@ async function listPages(
 	const { pages, hasMore } = await searchPages(session, session.site, { ...filter, limit });
 
 	await runSearch(
+		term,
 		formatPageRows(pages, Date.now()),
 		{
 			json: options.json,
@@ -190,7 +195,7 @@ async function listPages(
 			footer: hasMore ? searchFooter(limit) : undefined,
 		},
 		PAGE_NOUN,
-		(id) => copyPage(session, id, options.out),
+		(id) => copyPage(term, session, id, options.out),
 	);
 }
 
@@ -216,17 +221,19 @@ function colorForSpace(space: string): (text: string) => string {
 const PAGE_NOUN = { singular: "page", plural: "pages" };
 
 export async function copyPage(
+	term: Terminal,
 	session: AtlassianSession,
 	id: string,
 	out: string | undefined,
 ): Promise<void> {
-	console.log(`Fetching page ${id} ...`);
+	term.err(`Fetching page ${id} ...`);
 	const page = await fetchPage(session, session.site, id);
-	await runCopy(planPageCopy(page, out), (url) => session.getBinary(url));
+	await runCopy(term, planPageCopy(page, out), (url) => session.getBinary(url));
 }
 
 const PAGE_REF = {
 	message: "Confluence page id or URL:",
+	flag: "[page]",
 	parse: parsePageId,
 	notFound: (raw: string) => `Could not find a page id in "${raw}".`,
 };

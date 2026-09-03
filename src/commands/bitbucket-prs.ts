@@ -15,7 +15,7 @@ import {
 	rememberBitbucketUuid,
 	withScopeHint,
 } from "#/commands/bitbucket.ts";
-import { alignedRows, printRows, searchFooter } from "#/commands/search-run.ts";
+import { alignedRows, formatRows, searchFooter } from "#/commands/search-run.ts";
 import { parseLimit, resolveRepo } from "#/util/parse.ts";
 
 export interface PrsOptions {
@@ -33,7 +33,7 @@ const PULL_REQUEST_SCOPE = "read:pullrequest:bitbucket";
 const ACCOUNT_SCOPE = "read:account";
 
 export async function bitbucketPrs(
-	{ session }: Env<BitbucketSession>,
+	{ session, term }: Env<BitbucketSession>,
 	options: PrsOptions,
 ): Promise<void> {
 	if (options.query && (options.author || options.reviewer)) {
@@ -50,11 +50,16 @@ export async function bitbucketPrs(
 		listPullRequests(session, ref, { limit, states, query }),
 	);
 
-	printRows(pullRequestRows(prs, Date.now()), {
-		json: options.json,
-		empty: emptyMessage(options),
-		footer: prs.length === limit ? searchFooter(limit) : undefined,
-	});
+	const rows = pullRequestRows(prs, Date.now());
+	if (options.json) term.json(rows.map((r) => r.json));
+	else
+		term.out(
+			formatRows(rows, {
+				empty: emptyMessage(options),
+				footer: prs.length === limit ? searchFooter(limit) : undefined,
+				width: term.width,
+			}),
+		);
 }
 
 export function pullRequestStates(options: Pick<PrsOptions, "state" | "all">): string[] {
