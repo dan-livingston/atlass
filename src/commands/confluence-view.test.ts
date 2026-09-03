@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vite-plus/test";
 
 import { confluenceCopy, confluenceView } from "#/commands/confluence.ts";
-import { fakeEnv, routed } from "#/test/env.ts";
+import { fakeJiraEnv, routed } from "#/test/env.ts";
 
 kleur.enabled = false;
 
@@ -46,7 +46,7 @@ const PAGE = {
 };
 
 test("confluence view: the page is paged, never written line by line", async () => {
-	const env = fakeEnv({ getJson: routed(PAGE) });
+	const env = fakeJiraEnv({ getJson: routed(PAGE) });
 	await confluenceView(env, "123", {});
 
 	expect(env.term.written).toEqual([]);
@@ -57,28 +57,28 @@ test("confluence view: the page is paged, never written line by line", async () 
 });
 
 test("confluence view: --no-pager still reaches page, which decides not to spawn one", async () => {
-	const env = fakeEnv({ getJson: routed(PAGE) });
+	const env = fakeJiraEnv({ getJson: routed(PAGE) });
 	await confluenceView(env, "123", { pager: false });
 
 	expect(env.term.paged).toHaveLength(1);
 });
 
 test("confluence view: a reference the parser rejects never reaches the api", async () => {
-	const env = fakeEnv();
+	const env = fakeJiraEnv();
 	await expect(confluenceView(env, "not-a-page", {})).rejects.toThrow(
 		'Could not find a page id in "not-a-page".',
 	);
 });
 
 test("confluence view: with no argument and no terminal, it names the missing argument", async () => {
-	const env = fakeEnv();
+	const env = fakeJiraEnv();
 	await expect(confluenceView(env, undefined, {})).rejects.toThrow(
 		"Cannot prompt without a terminal. Pass [page].",
 	);
 });
 
 test("confluence copy: the document is written and progress goes to stderr", async () => {
-	const env = fakeEnv({ getJson: routed(PAGE) });
+	const env = fakeJiraEnv({ getJson: routed(PAGE) });
 	await confluenceCopy(env, "123", { out: dir });
 
 	expect(await readdir(dir)).toEqual(["123-release-notes.md"]);

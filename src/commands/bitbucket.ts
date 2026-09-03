@@ -4,8 +4,7 @@ import type { PipelineDetail, PipelineSummary, StepSummary } from "#/api/bitbuck
 import type { Transport } from "#/api/client.ts";
 import type { BitbucketSession } from "#/api/session.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
-import type { Env } from "#/env.ts";
-import type { Terminal } from "#/terminal.ts";
+import type { Env, SessionEnv } from "#/env.ts";
 
 import { getPipeline, listPipelines, listSteps } from "#/api/bitbucket-pipelines.ts";
 import { fetchCurrentUserUuid } from "#/api/bitbucket-user.ts";
@@ -22,7 +21,7 @@ interface Workspace {
 	name?: string;
 }
 
-export async function bitbucketLogin(term: Terminal): Promise<void> {
+export async function bitbucketLogin({ term }: Env): Promise<void> {
 	const existing = (await readConfig()) ?? {};
 	const email =
 		existing.email ?? (await term.ask.text({ message: "Account email:", required: true }));
@@ -60,7 +59,7 @@ export async function rememberBitbucketUuid(uuid: string): Promise<void> {
 	await writeConfig({ ...config, bitbucket: { ...config.bitbucket, uuid } });
 }
 
-export async function bitbucketLogout(term: Terminal): Promise<void> {
+export async function bitbucketLogout({ term }: Env): Promise<void> {
 	const config = await readConfig();
 	if (config?.email) deleteBitbucketToken(config.email);
 	const jiraLogin =
@@ -70,7 +69,7 @@ export async function bitbucketLogout(term: Terminal): Promise<void> {
 	term.out("Logged out of Bitbucket. Credentials removed.");
 }
 
-export async function bitbucketStatus(term: Terminal): Promise<void> {
+export async function bitbucketStatus({ term }: Env): Promise<void> {
 	const config = await readConfig();
 	if (!config?.email || !config.bitbucket?.workspace) {
 		term.out("Not logged in to Bitbucket. Run `atlass bitbucket login`.");
@@ -92,7 +91,7 @@ export interface PipelinesOptions {
 }
 
 export async function bitbucketPipelines(
-	{ session, term }: Env<BitbucketSession>,
+	{ session, term }: SessionEnv<BitbucketSession>,
 	options: PipelinesOptions,
 ): Promise<void> {
 	const ref = resolveRepo(options.repo, session);
@@ -110,7 +109,7 @@ export interface PipelineOptions {
 }
 
 export async function bitbucketPipeline(
-	{ session, term }: Env<BitbucketSession>,
+	{ session, term }: SessionEnv<BitbucketSession>,
 	arg: string | undefined,
 	options: PipelineOptions,
 ): Promise<void> {

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 import type { JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira-types.ts";
 import type { ViewOptions } from "#/commands/view.ts";
-import type { Env } from "#/env.ts";
+import type { SessionEnv } from "#/env.ts";
 
 import { fetchIssue, updateIssue } from "#/api/jira-issues.ts";
 import { listProjects } from "#/api/jira-projects.ts";
@@ -32,7 +32,7 @@ export interface ProjectsOptions {
 }
 
 export async function jiraProjects(
-	{ session, term }: Env,
+	{ session, term }: SessionEnv,
 	query: string | undefined,
 	options: ProjectsOptions,
 ): Promise<void> {
@@ -54,7 +54,7 @@ export interface StatusesOptions {
 }
 
 export async function jiraStatuses(
-	{ session, term }: Env,
+	{ session, term }: SessionEnv,
 	query: string | undefined,
 	options: StatusesOptions,
 ): Promise<void> {
@@ -76,7 +76,7 @@ export function formatStatusRows(statuses: Pick<StatusSummary, "name" | "categor
 }
 
 export async function jiraView(
-	{ session, term }: Env,
+	{ session, term }: SessionEnv,
 	arg: string | undefined,
 	options: ViewOptions,
 ): Promise<void> {
@@ -118,7 +118,7 @@ export function formatIssueView(issue: JiraIssue, nowMs: number, allComments: bo
 }
 
 export async function jiraCopy(
-	env: Env,
+	env: SessionEnv,
 	arg: string | undefined,
 	options: CopyOptions,
 ): Promise<void> {
@@ -133,7 +133,7 @@ export interface UpdateOptions {
 }
 
 export async function jiraUpdate(
-	{ session, term }: Env,
+	{ session, term }: SessionEnv,
 	arg: string | undefined,
 	options: UpdateOptions,
 ): Promise<void> {
@@ -160,7 +160,7 @@ export async function jiraUpdate(
 }
 
 export async function copyIssue(
-	{ session, term }: Env,
+	{ session, term }: SessionEnv,
 	key: string,
 	out: string | undefined,
 ): Promise<void> {

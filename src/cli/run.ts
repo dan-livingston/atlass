@@ -1,6 +1,5 @@
 import type { BitbucketSession } from "#/api/session.ts";
-import type { Env } from "#/env.ts";
-import type { Terminal } from "#/terminal.ts";
+import type { Env, SessionEnv } from "#/env.ts";
 
 import { openBitbucketSession, openSession } from "#/api/session.ts";
 import { openTerminal } from "#/terminal/open.ts";
@@ -8,30 +7,36 @@ import { ttyTerminal } from "#/terminal/tty.ts";
 
 const SIGINT_EXIT_CODE = 130;
 
-export function run<A extends unknown[]>(
-	fn: (term: Terminal, ...args: A) => Promise<void>,
-): (...args: A) => Promise<void> {
+type Action<A extends unknown[]> = (...args: A) => Promise<void>;
+
+export function bareAction<A extends unknown[]>(
+	fn: (env: Env, ...args: A) => Promise<void>,
+): Action<A> {
+	return guarded((env, args) => fn(env, ...args));
+}
+
+export function jiraAction<A extends unknown[]>(
+	fn: (env: SessionEnv, ...args: A) => Promise<void>,
+): Action<A> {
+	return guarded(async (env, args) => fn({ ...env, session: await openSession() }, ...args));
+}
+
+export function bitbucketAction<A extends unknown[]>(
+	fn: (env: SessionEnv<BitbucketSession>, ...args: A) => Promise<void>,
+): Action<A> {
+	return guarded(async (env, args) =>
+		fn({ ...env, session: await openBitbucketSession() }, ...args),
+	);
+}
+
+function guarded<A extends unknown[]>(fn: (env: Env, args: A) => Promise<void>): Action<A> {
 	return async (...args: A) => {
 		try {
-			await fn(openTerminal(args, process.stdin), ...args);
+			await fn({ term: openTerminal(args, process.stdin) }, args);
 		} catch (err) {
 			fail(err);
 		}
 	};
-}
-
-export function withJira<A extends unknown[]>(
-	fn: (env: Env, ...args: A) => Promise<void>,
-): (term: Terminal, ...args: A) => Promise<void> {
-	return async (term: Terminal, ...args: A) =>
-		fn({ session: await openSession(), term }, ...args);
-}
-
-export function withBitbucket<A extends unknown[]>(
-	fn: (env: Env<BitbucketSession>, ...args: A) => Promise<void>,
-): (term: Terminal, ...args: A) => Promise<void> {
-	return async (term: Terminal, ...args: A) =>
-		fn({ session: await openBitbucketSession(), term }, ...args);
 }
 
 export function fail(err: unknown): never {

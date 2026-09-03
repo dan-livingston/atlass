@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, test } from "vite-plus/test";
 
 import { confluenceUpdate } from "#/commands/confluence.ts";
 import { jiraUpdate } from "#/commands/jira.ts";
-import { fakeEnv, routed } from "#/test/env.ts";
+import { fakeJiraEnv, routed } from "#/test/env.ts";
 
 let dir: string;
 
@@ -61,7 +61,7 @@ const COPIED_AT = "2026-09-01T09:00:00.000Z";
 
 test("jira update: an unchanged issue is pushed and the result reported", async () => {
 	const pushed: unknown[] = [];
-	const env = fakeEnv({
+	const env = fakeJiraEnv({
 		getJson: routed(issueJson(COPIED_AT)),
 		putNoContent: (_path, body) => void pushed.push(body),
 	});
@@ -74,7 +74,7 @@ test("jira update: an unchanged issue is pushed and the result reported", async 
 
 test("jira update: an issue changed on the server is refused before any write", async () => {
 	const pushed: unknown[] = [];
-	const env = fakeEnv({
+	const env = fakeJiraEnv({
 		getJson: routed(issueJson("2026-09-02T09:00:00.000Z")),
 		putNoContent: (_path, body) => void pushed.push(body),
 	});
@@ -88,7 +88,7 @@ test("jira update: an issue changed on the server is refused before any write", 
 
 test("jira update: --dry-run reports the plan and writes nothing", async () => {
 	const pushed: unknown[] = [];
-	const env = fakeEnv({
+	const env = fakeJiraEnv({
 		getJson: routed(issueJson(COPIED_AT)),
 		putNoContent: (_path, body) => void pushed.push(body),
 	});
@@ -99,7 +99,7 @@ test("jira update: --dry-run reports the plan and writes nothing", async () => {
 });
 
 test("jira update: with no file argument and no terminal, it names the missing argument", async () => {
-	const env = fakeEnv({ getJson: routed(issueJson(COPIED_AT)) });
+	const env = fakeJiraEnv({ getJson: routed(issueJson(COPIED_AT)) });
 	await expect(jiraUpdate(env, undefined, {})).rejects.toThrow(
 		"Cannot prompt without a terminal. Pass [file].",
 	);
@@ -115,7 +115,7 @@ test("confluence update: uploads land before the page write, and ids reach the b
 		),
 		"utf8",
 	);
-	const env = fakeEnv({
+	const env = fakeJiraEnv({
 		getJson: routed({
 			"/wiki/api/v2/pages/123?body-format=atlas_doc_format": {
 				id: "123",

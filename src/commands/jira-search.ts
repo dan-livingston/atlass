@@ -1,6 +1,6 @@
 import type { IssueSummary } from "#/api/jira-types.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
-import type { Env } from "#/env.ts";
+import type { SessionEnv } from "#/env.ts";
 
 import { listAssignedIssues, searchIssues, sortByCategoryThenUpdated } from "#/api/jira-search.ts";
 import { colorForCategory, copyIssue } from "#/commands/jira.ts";
@@ -19,7 +19,7 @@ export interface SearchOptions {
 }
 
 export async function jiraSearch(
-	env: Env,
+	env: SessionEnv,
 	query: string | undefined,
 	options: SearchOptions,
 ): Promise<void> {
@@ -64,7 +64,7 @@ export interface ListOptions {
 	out?: string;
 }
 
-export async function jiraList(env: Env, options: ListOptions): Promise<void> {
+export async function jiraList(env: SessionEnv, options: ListOptions): Promise<void> {
 	const { session, term } = env;
 	if (options.json && options.copy) {
 		throw new Error("--json and --copy cannot be used together.");

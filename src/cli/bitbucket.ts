@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 
-import { run, withBitbucket } from "#/cli/run.ts";
+import { bareAction, bitbucketAction } from "#/cli/run.ts";
 import { bitbucketPrs } from "#/commands/bitbucket-prs.ts";
 import {
 	bitbucketLogin,
@@ -15,22 +15,22 @@ export function registerBitbucket(bitbucket: Command): Command {
 	bitbucket
 		.command("login")
 		.description("Store Bitbucket workspace and API token")
-		.action(run(bitbucketLogin));
+		.action(bareAction(bitbucketLogin));
 	bitbucket
 		.command("logout")
 		.description("Remove stored Bitbucket credentials")
-		.action(run(bitbucketLogout));
+		.action(bareAction(bitbucketLogout));
 	bitbucket
 		.command("status")
 		.description("Show the current Bitbucket login")
-		.action(run(bitbucketStatus));
+		.action(bareAction(bitbucketStatus));
 	bitbucket
 		.command("pipelines")
 		.description("List recent pipeline runs for a repo")
 		.option("-r, --repo <repo>", "workspace/slug, or a bare slug (defaults to config)")
 		.option("-l, --limit <n>", "max results (default 25, max 100)")
 		.option("--json", "output results as JSON")
-		.action(run(withBitbucket(bitbucketPipelines)));
+		.action(bitbucketAction(bitbucketPipelines));
 	bitbucket
 		.command("prs")
 		.description("List pull requests for a repo")
@@ -45,11 +45,11 @@ export function registerBitbucket(bitbucket: Command): Command {
 		)
 		.option("-l, --limit <n>", "max results (default 25, max 100)")
 		.option("--json", "output results as JSON")
-		.action(run(withBitbucket(bitbucketPrs)));
+		.action(bitbucketAction(bitbucketPrs));
 	bitbucket
 		.command("pipeline <number>")
 		.description("Show one pipeline run and its steps")
 		.option("-r, --repo <repo>", "workspace/slug, or a bare slug (defaults to config)")
-		.action(run(withBitbucket(bitbucketPipeline)));
+		.action(bitbucketAction(bitbucketPipeline));
 	return bitbucket;
 }

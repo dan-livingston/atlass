@@ -7,7 +7,7 @@ import type { PageSearchParams, PageSummary } from "#/api/confluence-search.ts";
 import type { CopyOptions } from "#/commands/jira.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { ViewOptions } from "#/commands/view.ts";
-import type { Env } from "#/env.ts";
+import type { SessionEnv } from "#/env.ts";
 import type { LocalImage } from "#/update/plan-page.ts";
 
 import { imageHrefs } from "#/adf/from-markdown.ts";
@@ -40,7 +40,7 @@ export interface SearchOptions {
 }
 
 export async function confluenceView(
-	{ session, term }: Env,
+	{ session, term }: SessionEnv,
 	arg: string | undefined,
 	options: ViewOptions,
 ): Promise<void> {
@@ -73,7 +73,7 @@ export function formatPageView(
 }
 
 export async function confluenceCopy(
-	env: Env,
+	env: SessionEnv,
 	arg: string | undefined,
 	options: CopyOptions,
 ): Promise<void> {
@@ -89,7 +89,7 @@ export interface UpdateOptions {
 }
 
 export async function confluenceUpdate(
-	{ session, term }: Env,
+	{ session, term }: SessionEnv,
 	arg: string | undefined,
 	options: UpdateOptions,
 ): Promise<void> {
@@ -143,7 +143,7 @@ async function fileSize(path: string): Promise<{ size?: number }> {
 }
 
 export async function confluenceSearch(
-	env: Env,
+	env: SessionEnv,
 	query: string | undefined,
 	options: SearchOptions,
 ): Promise<void> {
@@ -160,7 +160,7 @@ export async function confluenceSearch(
 
 export type ListOptions = Omit<SearchOptions, "cql">;
 
-export async function confluenceList(env: Env, options: ListOptions): Promise<void> {
+export async function confluenceList(env: SessionEnv, options: ListOptions): Promise<void> {
 	await listPages(
 		env,
 		{ starred: true, space: options.space },
@@ -170,7 +170,7 @@ export async function confluenceList(env: Env, options: ListOptions): Promise<vo
 }
 
 async function listPages(
-	env: Env,
+	env: SessionEnv,
 	filter: Omit<PageSearchParams, "limit">,
 	empty: string,
 	options: ListOptions,
@@ -220,7 +220,7 @@ function colorForSpace(space: string): (text: string) => string {
 const PAGE_NOUN = { singular: "page", plural: "pages" };
 
 export async function copyPage(
-	{ session, term }: Env,
+	{ session, term }: SessionEnv,
 	id: string,
 	out: string | undefined,
 ): Promise<void> {

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import type { CreateField } from "#/api/jira-types.ts";
 import type { FieldInput } from "#/create/encode.ts";
-import type { Env } from "#/env.ts";
+import type { SessionEnv } from "#/env.ts";
 
 import { HttpError } from "#/api/http-error.ts";
 import { createIssue, fetchCreateFields, fetchCreateIssueTypes } from "#/api/jira-createmeta.ts";
@@ -58,7 +58,7 @@ export function parseFieldFlag(raw: string): FieldInput {
 }
 
 export async function jiraCreate(
-	{ session, term }: Env,
+	{ session, term }: SessionEnv,
 	projectArg: string | undefined,
 	typeArg: string | undefined,
 	options: CreateOptions,
@@ -154,7 +154,7 @@ export interface FieldsOptions {
 }
 
 export async function jiraFields(
-	{ session, term }: Env,
+	{ session, term }: SessionEnv,
 	projectArg: string,
 	typeArg: string | undefined,
 	options: FieldsOptions,

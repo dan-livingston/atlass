@@ -1,27 +1,35 @@
-import type { BitbucketSession } from "#/api/session.ts";
-import type { Env } from "#/env.ts";
+import type { AtlassianSession, BitbucketSession } from "#/api/session.ts";
+import type { Env, SessionEnv } from "#/env.ts";
 import type { ScriptedOptions, ScriptedTerminal } from "#/terminal/scripted.ts";
 import type { FakeTransport } from "#/test/session.ts";
 
 import { scriptedTerminal } from "#/terminal/scripted.ts";
 import { fakeBitbucketSession, fakeSession } from "#/test/session.ts";
 
-export interface FakeEnv<Session> extends Env<Session> {
+export interface FakeEnv extends Env {
 	term: ScriptedTerminal;
 }
 
-export function fakeEnv(
+export interface FakeSessionEnv<Session> extends SessionEnv<Session> {
+	term: ScriptedTerminal;
+}
+
+export function fakeEnv(scripted: ScriptedOptions = {}): FakeEnv {
+	return { term: scriptedTerminal(scripted) };
+}
+
+export function fakeJiraEnv(
 	spec: FakeTransport & { site?: string } = {},
 	scripted: ScriptedOptions = {},
-): FakeEnv<ReturnType<typeof fakeSession>> {
-	return { session: fakeSession(spec), term: scriptedTerminal(scripted) };
+): FakeSessionEnv<AtlassianSession> {
+	return { ...fakeEnv(scripted), session: fakeSession(spec) };
 }
 
 export function fakeBitbucketEnv(
 	spec: Parameters<typeof fakeBitbucketSession>[0] = {},
 	scripted: ScriptedOptions = {},
-): FakeEnv<BitbucketSession> {
-	return { session: fakeBitbucketSession(spec), term: scriptedTerminal(scripted) };
+): FakeSessionEnv<BitbucketSession> {
+	return { ...fakeEnv(scripted), session: fakeBitbucketSession(spec) };
 }
 
 export function routed(json: Record<string, unknown>): FakeTransport["getJson"] {

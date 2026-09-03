@@ -2,7 +2,7 @@ import kleur from "kleur";
 import { expect, test } from "vite-plus/test";
 
 import { jiraCreate, jiraFields } from "#/commands/jira-create.ts";
-import { fakeEnv, routed } from "#/test/env.ts";
+import { fakeJiraEnv, routed } from "#/test/env.ts";
 
 kleur.enabled = false;
 
@@ -29,7 +29,7 @@ const META = {
 };
 
 function createEnv(answers?: unknown[]) {
-	return fakeEnv(
+	return fakeJiraEnv(
 		{
 			getJson: routed(META),
 			postJson: () => ({ id: "1", key: "PROJ-9" }),
@@ -58,7 +58,7 @@ test("--json emits the created issue instead of the one-line report", async () =
 
 test("--dry-run emits the payload it would post and posts nothing", async () => {
 	let posted = 0;
-	const env = fakeEnv({
+	const env = fakeJiraEnv({
 		getJson: routed(META),
 		postJson: () => {
 			posted++;
@@ -106,7 +106,7 @@ test("with a terminal to ask, the review is shown and a yes creates the issue", 
 
 test("declining the review aborts before the issue is posted", async () => {
 	let posted = 0;
-	const env = fakeEnv(
+	const env = fakeJiraEnv(
 		{
 			getJson: routed(META),
 			postJson: () => {

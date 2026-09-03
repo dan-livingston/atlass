@@ -1,4 +1,4 @@
-import type { Terminal } from "#/terminal.ts";
+import type { Env } from "#/env.ts";
 
 import { sessionFor } from "#/api/session.ts";
 import { clearConfig, siteOrigin, readConfig, writeConfig } from "#/config.ts";
@@ -9,7 +9,7 @@ interface Myself {
 	emailAddress?: string;
 }
 
-export async function login(term: Terminal): Promise<void> {
+export async function login({ term }: Env): Promise<void> {
 	const site = siteOrigin(
 		await term.ask.text({
 			message: "Atlassian site (e.g. acme.atlassian.net):",
@@ -31,7 +31,7 @@ export async function login(term: Terminal): Promise<void> {
 	term.out(`Logged in as ${me.displayName} on ${site}.`);
 }
 
-export async function logout(term: Terminal): Promise<void> {
+export async function logout({ term }: Env): Promise<void> {
 	const config = await readConfig();
 	if (config?.email) deleteToken(config.email);
 	const bitbucketLogin =
@@ -43,7 +43,7 @@ export async function logout(term: Terminal): Promise<void> {
 	term.out("Logged out. Credentials removed.");
 }
 
-export async function status(term: Terminal): Promise<void> {
+export async function status({ term }: Env): Promise<void> {
 	const config = await readConfig();
 	if (!config || !config.site || !config.email) {
 		term.out("Not logged in. Run `atlass auth login`.");

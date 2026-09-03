@@ -1,7 +1,7 @@
 import type { PullRequestSummary } from "#/api/bitbucket-pull-requests.ts";
 import type { BitbucketSession } from "#/api/session.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
-import type { Env } from "#/env.ts";
+import type { SessionEnv } from "#/env.ts";
 
 import {
 	allPullRequestStates,
@@ -33,7 +33,7 @@ const PULL_REQUEST_SCOPE = "read:pullrequest:bitbucket";
 const ACCOUNT_SCOPE = "read:account";
 
 export async function bitbucketPrs(
-	{ session, term }: Env<BitbucketSession>,
+	{ session, term }: SessionEnv<BitbucketSession>,
 	options: PrsOptions,
 ): Promise<void> {
 	if (options.query && (options.author || options.reviewer)) {
