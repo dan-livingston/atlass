@@ -43,8 +43,7 @@ export async function bitbucketPrs(options: PrsOptions): Promise<void> {
 	const client = new AtlassianClient(auth);
 	const limit = parseLimit(options.limit);
 	const query = pullRequestQuery({
-		author: await resolvePrincipal(client, auth, options.author),
-		reviewer: await resolvePrincipal(client, auth, options.reviewer),
+		...(await resolvePrincipals(client, auth, options)),
 		query: options.query,
 	});
 	const prs = await withScopeHint(PULL_REQUEST_SCOPE, () =>
@@ -78,13 +77,31 @@ export function pullRequestRows(prs: PullRequestSummary[], nowMs: number): Searc
 	});
 }
 
-async function resolvePrincipal(
+interface Principals {
+	author?: string;
+	reviewer?: string;
+}
+
+async function resolvePrincipals(
 	client: AtlassianClient,
 	auth: BitbucketAuth,
-	value: string | undefined,
-): Promise<string | undefined> {
-	if (!value) return undefined;
-	if (value.toLowerCase() !== "me") return value;
+	options: PrsOptions,
+): Promise<Principals> {
+	const mine =
+		isMe(options.author) || isMe(options.reviewer)
+			? await currentUuid(client, auth)
+			: undefined;
+	return {
+		author: isMe(options.author) ? mine : options.author,
+		reviewer: isMe(options.reviewer) ? mine : options.reviewer,
+	};
+}
+
+function isMe(value: string | undefined): boolean {
+	return value?.toLowerCase() === "me";
+}
+
+async function currentUuid(client: AtlassianClient, auth: BitbucketAuth): Promise<string> {
 	if (auth.uuid) return auth.uuid;
 	const uuid = await withScopeHint(ACCOUNT_SCOPE, () => fetchCurrentUserUuid(client));
 	await rememberBitbucketUuid(uuid);

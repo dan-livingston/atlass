@@ -4,6 +4,7 @@ import { expect, test } from "vite-plus/test";
 import type { PullRequestSummary } from "#/api/bitbucket.ts";
 
 import { pullRequestRows, pullRequestStates } from "#/commands/bitbucket-prs.ts";
+import { colorForBitbucketState } from "#/commands/bitbucket.ts";
 
 kleur.enabled = false;
 
@@ -61,4 +62,16 @@ test("states: --all and --state together are a contradiction, not a silent winne
 	expect(() => pullRequestStates({ all: true, state: ["open"] })).toThrow(
 		"--all cannot be combined with --state.",
 	);
+});
+
+test("state colors: pipeline and pull request states share one map, unknowns stay plain", () => {
+	kleur.enabled = true;
+	const paint = (state: string) => colorForBitbucketState(state)(state);
+	expect(paint("SUCCESSFUL")).toBe(kleur.green("SUCCESSFUL"));
+	expect(paint("MERGED")).toBe(kleur.green("MERGED"));
+	expect(paint("FAILED")).toBe(kleur.red("FAILED"));
+	expect(paint("DECLINED")).toBe(kleur.red("DECLINED"));
+	expect(paint("DRAFT")).toBe(kleur.gray("DRAFT"));
+	expect(paint("SOMETHING_NEW")).toBe(kleur.white("SOMETHING_NEW"));
+	kleur.enabled = false;
 });

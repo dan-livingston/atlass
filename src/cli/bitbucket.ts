@@ -39,7 +39,10 @@ export function registerBitbucket(bitbucket: Command): Command {
 		.option("--all", "include every state")
 		.option("-a, --author <who>", "limit to an author ('me', an account id, or a uuid)")
 		.option("--reviewer <who>", "limit to a reviewer ('me', an account id, or a uuid)")
-		.option("-q, --query <bbql>", "raw Bitbucket query (ignores --author and --reviewer)")
+		.option(
+			"-q, --query <bbql>",
+			"raw Bitbucket query (not for use with --author or --reviewer)",
+		)
 		.option("-l, --limit <n>", "max results (default 25, max 100)")
 		.option("--json", "output results as JSON")
 		.action(run(bitbucketPrs));

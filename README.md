@@ -179,7 +179,7 @@ atlass bitbucket pipelines --repo acme/web
 atlass bitbucket pipeline 124                 # one run and its steps
 ```
 
-`pipelines` shows runs as `#NUM  Status  Age  ref (commit)  duration`, newest
+`pipelines` shows runs as `#NUM  Status  Age  ref (commit) · duration`, newest
 first. `pipeline` adds the trigger, the creator, and the steps.
 
 ### Pull requests
@@ -193,14 +193,13 @@ atlass bitbucket prs --author me --repo acme/web
 atlass bitbucket prs --query 'destination.branch.name = "main"'
 ```
 
-`prs` shows `#ID  State  Age  Title`, most recently updated first. Only open
-pull requests are listed unless `--state` or `--all` says otherwise; `--state`
-takes commas or repeated flags. Drafts show as `DRAFT` in place of `OPEN`.
+`prs` shows `#ID  State  Age  Title`, most recently updated first, open only
+unless `--state` or `--all` says otherwise. Drafts show as `DRAFT` in place of
+`OPEN`.
 
-`--author` and `--reviewer` take `me`, an account id, or a uuid, and combine
-with OR, so passing both lists everything involving that person. `--query`
-takes a raw Bitbucket query and replaces both; it cannot mention `state`, which
-`--state` owns.
+`--author` and `--reviewer` combine with OR, so passing both lists everything
+involving that person. `--query` replaces them and cannot be used alongside
+them, and it cannot mention `state`, which `--state` owns.
 
 ## Development
 

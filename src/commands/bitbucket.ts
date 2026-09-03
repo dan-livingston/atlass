@@ -127,7 +127,7 @@ export function pipelineRows(pipelines: PipelineSummary[], nowMs: number): Searc
 		url: p.url,
 		label: p.status || "-",
 		color: colorForBitbucketState(p.status),
-		text: `${refWithCommit(p)}  ${formatDuration(p.durationSeconds)}`,
+		text: `${refWithCommit(p)} · ${formatDuration(p.durationSeconds)}`,
 		timestamp: p.createdOn,
 	}));
 }

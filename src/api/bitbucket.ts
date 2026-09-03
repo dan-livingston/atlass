@@ -144,18 +144,29 @@ async function* walkPages<T>(client: AtlassianClient, firstPath: string): AsyncG
 	}
 }
 
+async function collectPages<V, T>(
+	client: AtlassianClient,
+	first: string,
+	limit: number,
+	map: (value: V) => T,
+): Promise<T[]> {
+	const out: T[] = [];
+	for await (const value of walkPages<V>(client, first)) {
+		out.push(map(value));
+		if (out.length >= limit) break;
+	}
+	return out;
+}
+
 export async function listPipelines(
 	client: AtlassianClient,
 	ref: RepoRef,
 	limit: number,
 ): Promise<PipelineSummary[]> {
-	const out: PipelineSummary[] = [];
 	const first = `${pipelinesPath(ref)}?${pipelinesQuery(limit)}`;
-	for await (const value of walkPages<PipelineValue>(client, first)) {
-		out.push(toPipelineSummary(ref, value));
-		if (out.length >= limit) break;
-	}
-	return out;
+	return collectPages<PipelineValue, PipelineSummary>(client, first, limit, (value) =>
+		toPipelineSummary(ref, value),
+	);
 }
 
 export async function getPipeline(
@@ -277,7 +288,7 @@ export interface PullRequestFilters {
 }
 
 const PRINCIPAL_UUID = /^\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}$/i;
-const PRINCIPAL_ACCOUNT_ID = /^(?:[0-9a-z]+:[0-9a-z-]+|[0-9a-z]{24,})$/i;
+const PRINCIPAL_ACCOUNT_ID = /^(?:[0-9a-z_-]{2,}[:|][0-9a-z|_-]{8,}|[0-9a-f]{24})$/i;
 
 function principalTerm(field: string, flag: string, value: string): string {
 	if (PRINCIPAL_UUID.test(value)) return `${field}.uuid = "${value}"`;
@@ -339,13 +350,13 @@ export async function listPullRequests(
 	ref: RepoRef,
 	params: PullRequestsParams,
 ): Promise<PullRequestSummary[]> {
-	const out: PullRequestSummary[] = [];
 	const first = `${repoPath(ref, "pullrequests")}?${pullRequestsQuery(params)}`;
-	for await (const value of walkPages<PullRequestValue>(client, first)) {
-		out.push(toPullRequestSummary(ref, value));
-		if (out.length >= params.limit) break;
-	}
-	return out;
+	return collectPages<PullRequestValue, PullRequestSummary>(
+		client,
+		first,
+		params.limit,
+		(value) => toPullRequestSummary(ref, value),
+	);
 }
 
 export async function fetchCurrentUserUuid(client: AtlassianClient): Promise<string> {

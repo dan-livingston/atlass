@@ -4,6 +4,7 @@ import { expect, test } from "vite-plus/test";
 import type { PipelineSummary, StepSummary } from "#/api/bitbucket.ts";
 
 import { formatStepRows, pipelineRows } from "#/commands/bitbucket.ts";
+import { formatRow } from "#/commands/search-run.ts";
 
 kleur.enabled = false;
 
@@ -42,9 +43,14 @@ test("pipeline rows: build number, status and age align, ref and duration follow
 		"#12   FAILED      3d ago",
 	]);
 	expect(rows.map((r) => r.freeText)).toEqual([
-		"main (a1b2c3d)  2m34s",
-		"feat/login (a1b2c3d)  1m02s",
+		"main (a1b2c3d) · 2m34s",
+		"feat/login (a1b2c3d) · 1m02s",
 	]);
+});
+
+test("pipeline rows: the printed line keeps ref and duration apart", () => {
+	const rows = pipelineRows([pipeline({ buildNumber: 124 })], NOW);
+	expect(formatRow(rows[0]!, 80)).toBe("#124  SUCCESSFUL  3d ago  main (a1b2c3d) · 2m34s");
 });
 
 test("pipeline rows: age comes from when the run was created", () => {
@@ -58,12 +64,12 @@ test("pipeline rows: a running build has no duration", () => {
 		NOW,
 	);
 	expect(rows[0]?.fixedColumns).toBe("#5  IN_PROGRESS  3d ago");
-	expect(rows[0]?.freeText).toBe("main (a1b2c3d)  -");
+	expect(rows[0]?.freeText).toBe("main (a1b2c3d) · -");
 });
 
 test("pipeline rows: a commit-target run with no branch ref shows the commit", () => {
 	const rows = pipelineRows([pipeline({ ref: "", commit: "5c09b34" })], NOW);
-	expect(rows[0]?.freeText).toBe("5c09b34  2m34s");
+	expect(rows[0]?.freeText).toBe("5c09b34 · 2m34s");
 });
 
 test("pipeline rows: the row links to the run", () => {

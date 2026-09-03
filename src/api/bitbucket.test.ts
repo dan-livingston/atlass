@@ -4,6 +4,7 @@ import type { AtlassianClient } from "#/api/client.ts";
 
 import {
 	getPipeline,
+	listPullRequests,
 	parsePullRequestStates,
 	pipelinesQuery,
 	pipelineStatus,
@@ -135,8 +136,8 @@ test("pr query: an account id filters on account_id instead", () => {
 	expect(pullRequestQuery({ author: "557058:0d1b2c3d-4e5f-6789-abcd-ef0123456789" })).toBe(
 		'author.account_id = "557058:0d1b2c3d-4e5f-6789-abcd-ef0123456789"',
 	);
-	expect(pullRequestQuery({ author: "5b10a2844c20165700ede21g" })).toBe(
-		'author.account_id = "5b10a2844c20165700ede21g"',
+	expect(pullRequestQuery({ author: "5b10a2844c20165700ede21b" })).toBe(
+		'author.account_id = "5b10a2844c20165700ede21b"',
 	);
 });
 
@@ -154,6 +155,16 @@ test("pr query: a name is rejected rather than sent as a query that matches noth
 	expect(() => pullRequestQuery({ author: "Dana Scully" })).toThrow(
 		'Invalid --author "Dana Scully". Expected me, an account id, or a uuid in braces.',
 	);
+});
+
+test("pr query: shapes that only look like an account id are rejected, not sent", () => {
+	for (const value of [
+		"a:b",
+		"danascullythelongestusername",
+		"cc8e193d-1111-2222-3333-444455556666",
+	]) {
+		expect(() => pullRequestQuery({ reviewer: value })).toThrow("Invalid --reviewer");
+	}
 });
 
 test("pr query: no filters means no query at all", () => {
@@ -222,4 +233,16 @@ test("pr summary: a sparse response degrades to empty fields rather than undefin
 		sourceBranch: "",
 		commentCount: 0,
 	});
+});
+
+test("listPullRequests: stops at the limit rather than walking every page", async () => {
+	const path = "/2.0/repositories/ws/app/pullrequests?sort=-updated_on&pagelen=2";
+	const client = stubClient({
+		[path]: {
+			values: [{ id: 1 }, { id: 2 }],
+			next: `https://api.bitbucket.org${path}&page=2`,
+		},
+	});
+	const prs = await listPullRequests(client, repo, { limit: 2, states: [] });
+	expect(prs.map((pr) => pr.id)).toEqual([1, 2]);
 });
