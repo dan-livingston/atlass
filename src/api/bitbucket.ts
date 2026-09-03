@@ -49,6 +49,7 @@ export interface PipelineSummary {
 	createdOn: string;
 	creator: string;
 	uuid: string;
+	url: string;
 }
 
 export interface PipelineDetail extends PipelineSummary {
@@ -62,6 +63,7 @@ export interface StepSummary {
 	durationSeconds: number | null;
 }
 
+const BITBUCKET_WEB_ORIGIN = "https://bitbucket.org";
 const BITBUCKET_MAX_PAGELEN = 100;
 const BUILD_NUMBER_SCAN_LIMIT = 1000;
 
@@ -91,7 +93,11 @@ function shortHash(hash: string | undefined): string {
 	return hash?.slice(0, 7) ?? "";
 }
 
-export function toPipelineSummary(p: PipelineValue): PipelineSummary {
+export function pipelineUrl(ref: RepoRef, buildNumber: number): string {
+	return `${BITBUCKET_WEB_ORIGIN}/${ref.workspace}/${ref.repo}/pipelines/results/${buildNumber}`;
+}
+
+export function toPipelineSummary(ref: RepoRef, p: PipelineValue): PipelineSummary {
 	return {
 		buildNumber: p.build_number,
 		status: pipelineStatus(p.state),
@@ -101,12 +107,13 @@ export function toPipelineSummary(p: PipelineValue): PipelineSummary {
 		createdOn: p.created_on ?? "",
 		creator: p.creator?.display_name ?? "",
 		uuid: p.uuid,
+		url: pipelineUrl(ref, p.build_number),
 	};
 }
 
-function toPipelineDetail(p: PipelineValue): PipelineDetail {
+function toPipelineDetail(ref: RepoRef, p: PipelineValue): PipelineDetail {
 	return {
-		...toPipelineSummary(p),
+		...toPipelineSummary(ref, p),
 		repo: p.repository?.full_name ?? "",
 		trigger: p.trigger?.name ?? "",
 	};
@@ -141,7 +148,7 @@ export async function listPipelines(
 	const out: PipelineSummary[] = [];
 	const first = `${repoPath(ref)}?${pipelinesQuery(limit)}`;
 	for await (const value of walkPages<PipelineValue>(client, first)) {
-		out.push(toPipelineSummary(value));
+		out.push(toPipelineSummary(ref, value));
 		if (out.length >= limit) break;
 	}
 	return out;
@@ -160,7 +167,7 @@ export async function getPipeline(
 			`Could not find pipeline #${buildNumber} in the ${BUILD_NUMBER_SCAN_LIMIT} most recent runs. It may be too old.`,
 		);
 	}
-	return toPipelineDetail(found);
+	return toPipelineDetail(ref, found);
 }
 
 async function fetchByBuildNumber(

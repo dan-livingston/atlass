@@ -1,9 +1,12 @@
 import { input, password } from "@inquirer/prompts";
+import kleur from "kleur";
 
 import type { PipelineDetail, PipelineSummary, StepSummary } from "#/api/bitbucket.ts";
+import type { SearchRow } from "#/commands/search-run.ts";
 
 import { getPipeline, listPipelines, listSteps } from "#/api/bitbucket.ts";
 import { AtlassianClient, HttpError } from "#/api/client.ts";
+import { alignedRows, printRows } from "#/commands/search-run.ts";
 import { clearConfig, readConfig, writeConfig } from "#/config.ts";
 import {
 	BITBUCKET_ORIGIN,
@@ -83,15 +86,10 @@ export async function bitbucketPipelines(options: PipelinesOptions): Promise<voi
 	const limit = parseLimit(options.limit);
 	const pipelines = await withScopeHint(() => listPipelines(client, ref, limit));
 
-	if (options.json) {
-		console.log(JSON.stringify(pipelines, null, 2));
-		return;
-	}
-	if (pipelines.length === 0) {
-		console.log("No pipelines found.");
-		return;
-	}
-	for (const line of formatPipelineRows(pipelines, Date.now())) console.log(line);
+	printRows(pipelineRows(pipelines, Date.now()), {
+		json: options.json,
+		empty: "No pipelines found.",
+	});
 }
 
 export interface PipelineOptions {
@@ -111,26 +109,34 @@ export async function bitbucketPipeline(
 	printPipelineDetail(detail, steps, Date.now());
 }
 
-export function formatPipelineRows(pipelines: PipelineSummary[], nowMs: number): string[] {
-	const rows = pipelines.map((p) => ({
-		num: `#${p.buildNumber}`,
-		status: p.status || "-",
-		ref: p.ref || p.commit || "-",
-		dur: formatDuration(p.durationSeconds),
-		age: relativeTime(p.createdOn, nowMs),
-		creator: p.creator || "-",
+export function pipelineRows(pipelines: PipelineSummary[], nowMs: number): SearchRow[] {
+	return alignedRows(pipelines, nowMs, (p) => ({
+		id: `#${p.buildNumber}`,
+		url: p.url,
+		label: p.status || "-",
+		color: colorForBitbucketState(p.status),
+		text: `${refWithCommit(p)}  ${formatDuration(p.durationSeconds)}`,
+		timestamp: p.createdOn,
 	}));
-	const width = (sel: (r: (typeof rows)[number]) => string) =>
-		Math.max(...rows.map((r) => sel(r).length));
-	const wn = width((r) => r.num);
-	const ws = width((r) => r.status);
-	const wr = width((r) => r.ref);
-	const wd = width((r) => r.dur);
-	const wa = width((r) => r.age);
-	return rows.map(
-		(r) =>
-			`${r.num.padEnd(wn)}  ${r.status.padEnd(ws)}  ${r.ref.padEnd(wr)}  ${r.dur.padEnd(wd)}  ${r.age.padEnd(wa)}  ${r.creator}`,
-	);
+}
+
+const STATE_COLORS: Record<string, (text: string) => string> = {
+	SUCCESSFUL: kleur.green,
+	MERGED: kleur.green,
+	FAILED: kleur.red,
+	ERROR: kleur.red,
+	DECLINED: kleur.red,
+	IN_PROGRESS: kleur.yellow,
+	PENDING: kleur.yellow,
+	OPEN: kleur.yellow,
+	PAUSED: kleur.cyan,
+	STOPPED: kleur.gray,
+	SUPERSEDED: kleur.gray,
+	DRAFT: kleur.gray,
+};
+
+export function colorForBitbucketState(state: string): (text: string) => string {
+	return STATE_COLORS[state.toUpperCase()] ?? kleur.white;
 }
 
 export function formatStepRows(steps: StepSummary[]): string[] {
@@ -159,9 +165,9 @@ function printPipelineDetail(detail: PipelineDetail, steps: StepSummary[], nowMs
 	}
 }
 
-function refWithCommit(detail: PipelineDetail): string {
-	if (!detail.ref) return detail.commit || "-";
-	return detail.commit ? `${detail.ref} (${detail.commit})` : detail.ref;
+function refWithCommit(pipeline: Pick<PipelineSummary, "ref" | "commit">): string {
+	if (!pipeline.ref) return pipeline.commit || "-";
+	return pipeline.commit ? `${pipeline.ref} (${pipeline.commit})` : pipeline.ref;
 }
 
 async function verifyWorkspace(client: AtlassianClient, workspace: string): Promise<Workspace> {

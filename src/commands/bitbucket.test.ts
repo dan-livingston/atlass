@@ -1,8 +1,11 @@
+import kleur from "kleur";
 import { expect, test } from "vite-plus/test";
 
 import type { PipelineSummary, StepSummary } from "#/api/bitbucket.ts";
 
-import { formatPipelineRows, formatStepRows } from "#/commands/bitbucket.ts";
+import { formatStepRows, pipelineRows } from "#/commands/bitbucket.ts";
+
+kleur.enabled = false;
 
 const NOW = Date.parse("2026-07-17T12:00:00Z");
 
@@ -16,56 +19,57 @@ function pipeline(over: Partial<PipelineSummary>): PipelineSummary {
 		createdOn: "2026-07-14T12:00:00Z",
 		creator: "Dana Scully",
 		uuid: "{u}",
+		url: "https://bitbucket.org/ws/app/pipelines/results/1",
 		...over,
 	};
 }
 
-test("pipeline rows: columns align across build number, status, ref, duration, age", () => {
-	expect(
-		formatPipelineRows(
-			[
-				pipeline({
-					buildNumber: 124,
-					status: "SUCCESSFUL",
-					ref: "main",
-					durationSeconds: 154,
-				}),
-				pipeline({
-					buildNumber: 12,
-					status: "FAILED",
-					ref: "feat/login",
-					durationSeconds: 62,
-					creator: "Fox Mulder",
-				}),
-			],
-			NOW,
-		),
-	).toEqual([
-		"#124  SUCCESSFUL  main        2m34s  3d ago  Dana Scully",
-		"#12   FAILED      feat/login  1m02s  3d ago  Fox Mulder",
+test("pipeline rows: build number, status and age align, ref and duration follow", () => {
+	const rows = pipelineRows(
+		[
+			pipeline({ buildNumber: 124, status: "SUCCESSFUL", ref: "main", durationSeconds: 154 }),
+			pipeline({
+				buildNumber: 12,
+				status: "FAILED",
+				ref: "feat/login",
+				durationSeconds: 62,
+			}),
+		],
+		NOW,
+	);
+	expect(rows.map((r) => r.fixedColumns)).toEqual([
+		"#124  SUCCESSFUL  3d ago",
+		"#12   FAILED      3d ago",
+	]);
+	expect(rows.map((r) => r.freeText)).toEqual([
+		"main (a1b2c3d)  2m34s",
+		"feat/login (a1b2c3d)  1m02s",
 	]);
 });
 
-test("pipeline rows: a running build has no duration and empty fields dash", () => {
-	expect(
-		formatPipelineRows(
-			[
-				pipeline({
-					buildNumber: 5,
-					status: "IN_PROGRESS",
-					durationSeconds: null,
-					creator: "",
-				}),
-			],
-			NOW,
-		),
-	).toEqual(["#5  IN_PROGRESS  main  -  3d ago  -"]);
+test("pipeline rows: age comes from when the run was created", () => {
+	const rows = pipelineRows([pipeline({ createdOn: "2026-07-17T09:00:00Z" })], NOW);
+	expect(rows[0]?.fixedColumns).toContain("3h ago");
+});
+
+test("pipeline rows: a running build has no duration", () => {
+	const rows = pipelineRows(
+		[pipeline({ buildNumber: 5, status: "IN_PROGRESS", durationSeconds: null })],
+		NOW,
+	);
+	expect(rows[0]?.fixedColumns).toBe("#5  IN_PROGRESS  3d ago");
+	expect(rows[0]?.freeText).toBe("main (a1b2c3d)  -");
 });
 
 test("pipeline rows: a commit-target run with no branch ref shows the commit", () => {
-	expect(
-		formatPipelineRows([pipeline({ buildNumber: 7, ref: "", commit: "5c09b34" })], NOW),
-	).toEqual(["#7  SUCCESSFUL  5c09b34  2m34s  3d ago  Dana Scully"]);
+	const rows = pipelineRows([pipeline({ ref: "", commit: "5c09b34" })], NOW);
+	expect(rows[0]?.freeText).toBe("5c09b34  2m34s");
+});
+
+test("pipeline rows: the row links to the run", () => {
+	const rows = pipelineRows([pipeline({ buildNumber: 124 })], NOW);
+	expect(rows[0]?.id).toBe("#124");
+	expect(rows[0]?.url).toBe("https://bitbucket.org/ws/app/pipelines/results/1");
 });
 
 function step(over: Partial<StepSummary>): StepSummary {

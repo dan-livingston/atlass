@@ -64,7 +64,7 @@ test("summary: duration is wall clock, not build_seconds_used, which is 0 on sel
 		created_on: "2026-07-17T12:00:00Z",
 		completed_on: "2026-07-17T12:01:10Z",
 	};
-	expect(toPipelineSummary(value).durationSeconds).toBe(70);
+	expect(toPipelineSummary(repo, value).durationSeconds).toBe(70);
 });
 
 test("summary: commit is the short hash", () => {
@@ -73,7 +73,7 @@ test("summary: commit is the short hash", () => {
 		build_number: 7,
 		target: { commit: { hash: "0123456789abcdef" } },
 	};
-	expect(toPipelineSummary(value).commit).toBe("0123456");
+	expect(toPipelineSummary(repo, value).commit).toBe("0123456");
 });
 
 test("getPipeline: the build number is accepted directly in place of the uuid", async () => {
