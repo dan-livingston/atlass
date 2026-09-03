@@ -12,9 +12,9 @@ export default defineConfig({
 		exports: {
 			bin: {
 				atlass: "./src/cli.ts",
-				jira: "./src/jira.ts",
-				confluence: "./src/confluence.ts",
 				bitbucket: "./src/bitbucket.ts",
+				confluence: "./src/confluence.ts",
+				jira: "./src/jira.ts",
 			},
 		},
 	},
