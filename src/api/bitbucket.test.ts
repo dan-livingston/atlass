@@ -4,16 +4,18 @@ import type { AtlassianClient } from "#/api/client.ts";
 
 import {
 	getPipeline,
-	listPullRequests,
-	parsePullRequestStates,
 	pipelinesQuery,
 	pipelineStatus,
+	toPipelineSummary,
+	wallClockSeconds,
+} from "#/api/bitbucket-pipelines.ts";
+import {
+	listPullRequests,
+	parsePullRequestStates,
 	pullRequestQuery,
 	pullRequestsQuery,
-	toPipelineSummary,
 	toPullRequestSummary,
-	wallClockSeconds,
-} from "#/api/bitbucket.ts";
+} from "#/api/bitbucket-pull-requests.ts";
 import { HttpError } from "#/api/client.ts";
 
 const repo = { workspace: "ws", repo: "app" };

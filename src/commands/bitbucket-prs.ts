@@ -1,14 +1,14 @@
-import type { PullRequestSummary } from "#/api/bitbucket.ts";
+import type { PullRequestSummary } from "#/api/bitbucket-pull-requests.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { BitbucketAuth } from "#/credentials.ts";
 
 import {
 	allPullRequestStates,
-	fetchCurrentUserUuid,
 	listPullRequests,
 	parsePullRequestStates,
 	pullRequestQuery,
-} from "#/api/bitbucket.ts";
+} from "#/api/bitbucket-pull-requests.ts";
+import { fetchCurrentUserUuid } from "#/api/bitbucket-user.ts";
 import { AtlassianClient } from "#/api/client.ts";
 import {
 	colorForBitbucketState,

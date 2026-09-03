@@ -1,10 +1,11 @@
 import { input, password } from "@inquirer/prompts";
 import kleur from "kleur";
 
-import type { PipelineDetail, PipelineSummary, StepSummary } from "#/api/bitbucket.ts";
+import type { PipelineDetail, PipelineSummary, StepSummary } from "#/api/bitbucket-pipelines.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 
-import { fetchCurrentUserUuid, getPipeline, listPipelines, listSteps } from "#/api/bitbucket.ts";
+import { getPipeline, listPipelines, listSteps } from "#/api/bitbucket-pipelines.ts";
+import { fetchCurrentUserUuid } from "#/api/bitbucket-user.ts";
 import { AtlassianClient, HttpError } from "#/api/client.ts";
 import { alignedRows, printRows } from "#/commands/search-run.ts";
 import { clearConfig, readConfig, writeConfig } from "#/config.ts";

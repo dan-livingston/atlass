@@ -1,7 +1,7 @@
 import kleur from "kleur";
 import { expect, test } from "vite-plus/test";
 
-import type { PipelineSummary, StepSummary } from "#/api/bitbucket.ts";
+import type { PipelineSummary, StepSummary } from "#/api/bitbucket-pipelines.ts";
 
 import { formatStepRows, pipelineRows } from "#/commands/bitbucket.ts";
 import { formatRow } from "#/commands/search-run.ts";
