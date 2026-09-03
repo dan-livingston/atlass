@@ -1,6 +1,7 @@
 import type { CreateField, CreateIssueType, FieldSchema } from "#/api/jira-types.ts";
 
-import { allowedLabel, isLabels, isMultiLine } from "#/create/encode.ts";
+import { allowedLabel } from "#/create/encode-allowed-values.ts";
+import { isLabels, isMultiLine } from "#/create/encode.ts";
 
 const SCALAR_LABELS: Record<string, string> = {
 	string: "text",

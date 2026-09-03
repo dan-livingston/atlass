@@ -3,7 +3,8 @@ import { checkbox, editor, input, search, select } from "@inquirer/prompts";
 import type { AllowedValue, CreateField, JiraUser } from "#/api/jira-types.ts";
 import type { FieldInput } from "#/create/encode.ts";
 
-import { SERVER_FILLED, allowedLabel, isMultiLine } from "#/create/encode.ts";
+import { allowedLabel } from "#/create/encode-allowed-values.ts";
+import { SERVER_FILLED, isMultiLine } from "#/create/encode.ts";
 import { fieldTypeLabel } from "#/create/format.ts";
 
 export interface WalkDeps {
