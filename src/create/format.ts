@@ -39,7 +39,7 @@ export function fieldTypeLabel(schema: FieldSchema): string {
 	}
 	const known = SCALAR_LABELS[schema.type];
 	if (known) return known;
-	const custom = schema.custom?.split(":").pop();
+	const custom = schema.custom?.split(/[:/]/).pop();
 	return custom || schema.type;
 }
 

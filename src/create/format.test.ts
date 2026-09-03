@@ -33,6 +33,12 @@ test("type label: reads the schema type, items, and multi-line hint", () => {
 	expect(fieldTypeLabel({ type: "any", custom: "com.pyxis.greenhopper.jira:gh-sprint" })).toBe(
 		"gh-sprint",
 	);
+	expect(
+		fieldTypeLabel({
+			type: "any",
+			custom: "extension/11037d47-9c1c/e758ec95-a2c9/static/template-object-custom-field",
+		}),
+	).toBe("template-object-custom-field");
 });
 
 test("missing block: names the form, aligns columns, shows allowed values or the type, and hints flags", () => {

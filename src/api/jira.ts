@@ -476,12 +476,26 @@ export async function fetchCreateFields(
 	project: string,
 	issueTypeId: string,
 ): Promise<CreateField[]> {
-	return pageCreateMeta(
+	const fields = await pageCreateMeta(
 		client,
 		project,
 		`/${encodeURIComponent(issueTypeId)}`,
 		(page: FieldsPage) => page.fields ?? [],
 	);
+	return fields.map((f) => ({
+		...f,
+		name: decodeEntities(f.name),
+		allowedValues: f.allowedValues?.map(decodeAllowedValue),
+	}));
+}
+
+function decodeAllowedValue(v: AllowedValue): AllowedValue {
+	return {
+		...v,
+		name: v.name === undefined ? undefined : decodeEntities(v.name),
+		value: v.value === undefined ? undefined : decodeEntities(v.value),
+		children: v.children?.map(decodeAllowedValue),
+	};
 }
 
 async function pageCreateMeta<P extends CreateMetaPage, T>(
