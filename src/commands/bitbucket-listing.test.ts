@@ -152,9 +152,7 @@ test("prs: --author me with no cached uuid looks it up and stores it in the prof
 			workspace: "acme",
 			defaultRepo: "api",
 		},
-		{},
-		{},
-		{ config: { email: "ada@acme.com", bitbucket: { workspace: "acme" } } },
+		{ profile: { config: { email: "ada@acme.com", bitbucket: { workspace: "acme" } } } },
 	);
 	await bitbucketPrs(env, { author: "me" });
 

@@ -61,6 +61,25 @@ for (const [name, build] of adapters) {
 			expect(await profile.read()).toBeNull();
 		});
 
+		test("a config read back is not aliased to the stored one", async () => {
+			const profile = build();
+			await profile.write({ email: "ada@acme.com", bitbucket: { workspace: "acme" } });
+
+			const first = await profile.read();
+			first!.bitbucket!.workspace = "tampered";
+
+			expect((await profile.read())?.bitbucket?.workspace).toBe("acme");
+		});
+
+		test("mutating the object that was written does not change what is stored", async () => {
+			const profile = build();
+			const config = { email: "ada@acme.com", bitbucket: { workspace: "acme" } };
+			await profile.write(config);
+			config.bitbucket.workspace = "tampered";
+
+			expect((await profile.read())?.bitbucket?.workspace).toBe("acme");
+		});
+
 		test("clearing a config that was never written is not an error", async () => {
 			const profile = build();
 			await profile.clear();

@@ -11,6 +11,11 @@ import { memoryProfile } from "#/profile/memory.ts";
 import { scriptedTerminal } from "#/terminal/scripted.ts";
 import { fakeBitbucketSession, fakeSession } from "#/test/session.ts";
 
+export interface FakeOptions extends ScriptedOptions {
+	files?: FileSeed;
+	profile?: ProfileSeed;
+}
+
 export interface FakeEnv extends Env {
 	term: ScriptedTerminal;
 	files: MemoryFiles;
@@ -23,34 +28,26 @@ export interface FakeSessionEnv<Session> extends SessionEnv<Session> {
 	profile: Profile;
 }
 
-export function fakeEnv(
-	scripted: ScriptedOptions = {},
-	seed: FileSeed = {},
-	stored: ProfileSeed = {},
-): FakeEnv {
+export function fakeEnv(options: FakeOptions = {}): FakeEnv {
 	return {
-		term: scriptedTerminal(scripted),
-		files: memoryFiles(seed),
-		profile: memoryProfile(stored),
+		term: scriptedTerminal(options),
+		files: memoryFiles(options.files),
+		profile: memoryProfile(options.profile),
 	};
 }
 
 export function fakeJiraEnv(
 	spec: FakeTransport & { site?: string } = {},
-	scripted: ScriptedOptions = {},
-	seed: FileSeed = {},
-	stored: ProfileSeed = {},
+	options: FakeOptions = {},
 ): FakeSessionEnv<AtlassianSession> {
-	return { ...fakeEnv(scripted, seed, stored), session: fakeSession(spec) };
+	return { ...fakeEnv(options), session: fakeSession(spec) };
 }
 
 export function fakeBitbucketEnv(
 	spec: Parameters<typeof fakeBitbucketSession>[0] = {},
-	scripted: ScriptedOptions = {},
-	seed: FileSeed = {},
-	stored: ProfileSeed = {},
+	options: FakeOptions = {},
 ): FakeSessionEnv<BitbucketSession> {
-	return { ...fakeEnv(scripted, seed, stored), session: fakeBitbucketSession(spec) };
+	return { ...fakeEnv(options), session: fakeBitbucketSession(spec) };
 }
 
 export function routed(json: Record<string, unknown>): FakeTransport["getJson"] {

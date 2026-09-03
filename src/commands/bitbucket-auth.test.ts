@@ -35,13 +35,10 @@ test("login stores the workspace, the default repo and the uuid it looked up", a
 
 test("login takes the email from an existing Jira login instead of prompting for it", async () => {
 	http = stubFetch({ [WORKSPACE]: { name: "Acme Inc" }, [USER]: { uuid: UUID } });
-	const env = fakeEnv(
-		{ answers: ["acme", "api", "bb-token"] },
-		{},
-		{
-			config: { site: "https://acme.atlassian.net", email: "ada@acme.com" },
-		},
-	);
+	const env = fakeEnv({
+		answers: ["acme", "api", "bb-token"],
+		profile: { config: { site: "https://acme.atlassian.net", email: "ada@acme.com" } },
+	});
 	await bitbucketLogin(env);
 
 	expect(env.term.asked.map((a) => a.message)).not.toContain("Account email:");
@@ -87,10 +84,8 @@ test("login points at the scopes when the token is rejected", async () => {
 });
 
 test("logout keeps the Jira half of the config and drops only the bitbucket token", async () => {
-	const env = fakeEnv(
-		{},
-		{},
-		{
+	const env = fakeEnv({
+		profile: {
 			config: {
 				site: "https://acme.atlassian.net",
 				email: "ada@acme.com",
@@ -98,7 +93,7 @@ test("logout keeps the Jira half of the config and drops only the bitbucket toke
 			},
 			tokens: { "ada@acme.com:atlassian": "t", "ada@acme.com:bitbucket": "b" },
 		},
-	);
+	});
 	await bitbucketLogout(env);
 
 	expect(await env.profile.read()).toEqual({
@@ -110,14 +105,12 @@ test("logout keeps the Jira half of the config and drops only the bitbucket toke
 });
 
 test("logout clears the config entirely when Bitbucket was the only login", async () => {
-	const env = fakeEnv(
-		{},
-		{},
-		{
+	const env = fakeEnv({
+		profile: {
 			config: { email: "ada@acme.com", bitbucket: { workspace: "acme" } },
 			tokens: { "ada@acme.com:bitbucket": "b" },
 		},
-	);
+	});
 	await bitbucketLogout(env);
 
 	expect(await env.profile.read()).toBeNull();
@@ -125,24 +118,22 @@ test("logout clears the config entirely when Bitbucket was the only login", asyn
 });
 
 test("status without a bitbucket login points at the login command", async () => {
-	const env = fakeEnv({}, {}, { config: { email: "ada@acme.com" } });
+	const env = fakeEnv({ profile: { config: { email: "ada@acme.com" } } });
 	await bitbucketStatus(env);
 
 	expect(env.term.written).toEqual(["Not logged in to Bitbucket. Run `atlass bitbucket login`."]);
 });
 
 test("status reports the workspace, the default repo and the token", async () => {
-	const env = fakeEnv(
-		{},
-		{},
-		{
+	const env = fakeEnv({
+		profile: {
 			config: {
 				email: "ada@acme.com",
 				bitbucket: { workspace: "acme", defaultRepo: "api" },
 			},
 			tokens: { "ada@acme.com:bitbucket": "b" },
 		},
-	);
+	});
 	await bitbucketStatus(env);
 
 	expect(env.term.written[0]).toBe(
@@ -156,13 +147,11 @@ test("status reports the workspace, the default repo and the token", async () =>
 });
 
 test("status says when no default repo has been set", async () => {
-	const env = fakeEnv(
-		{},
-		{},
-		{
+	const env = fakeEnv({
+		profile: {
 			config: { email: "ada@acme.com", bitbucket: { workspace: "acme" } },
 		},
-	);
+	});
 	await bitbucketStatus(env);
 
 	expect(env.term.written[0]).toContain("Default repo: (none)");

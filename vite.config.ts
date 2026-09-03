@@ -91,13 +91,7 @@ export default defineConfig({
 				},
 			},
 			{
-				files: [
-					"src/cli/run.ts",
-					"src/terminal/open.ts",
-					"src/files/contract.test.ts",
-					"src/profile/contract.test.ts",
-					"src/terminal/tty.test.ts",
-				],
+				files: ["src/cli/run.ts", "src/terminal/open.ts", "src/terminal/tty.test.ts"],
 				rules: {
 					"no-restricted-imports": [
 						"error",
@@ -107,6 +101,16 @@ export default defineConfig({
 									group: ["./*", "../*"],
 									message: "Use #/ subpath imports instead of relative paths.",
 								},
+								{
+									group: [
+										"node:fs",
+										"node:fs/promises",
+										"node:os",
+										"@napi-rs/keyring",
+									],
+									message:
+										"Real IO lives behind a port. Use env.files or env.profile; only their disk adapters may import this.",
+								},
 							],
 						},
 					],
@@ -114,6 +118,30 @@ export default defineConfig({
 			},
 			{
 				files: ["src/files/disk.ts", "src/profile/disk.ts"],
+				rules: {
+					"no-restricted-imports": [
+						"error",
+						{
+							patterns: [
+								{
+									group: ["./*", "../*"],
+									message: "Use #/ subpath imports instead of relative paths.",
+								},
+								{
+									group: [
+										"#/files/disk.ts",
+										"#/profile/disk.ts",
+										"#/terminal/tty.ts",
+									],
+									message: "An adapter does not reach for another adapter.",
+								},
+							],
+						},
+					],
+				},
+			},
+			{
+				files: ["src/files/contract.test.ts", "src/profile/contract.test.ts"],
 				rules: {
 					"no-restricted-imports": [
 						"error",

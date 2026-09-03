@@ -16,7 +16,7 @@ afterEach(() => {
 
 function loginEnv(answers: unknown[], stored = {}) {
 	http = stubFetch({ [MYSELF]: { displayName: "Ada Lovelace" } });
-	return fakeEnv({ answers }, {}, stored);
+	return fakeEnv({ answers, profile: stored });
 }
 
 test("login stores the site and email, keeps the token in the profile, and greets the user", async () => {
@@ -64,14 +64,12 @@ test("login leaves an existing bitbucket login alone", async () => {
 });
 
 test("logout removes the token and the whole config when only Jira was logged in", async () => {
-	const env = fakeEnv(
-		{},
-		{},
-		{
+	const env = fakeEnv({
+		profile: {
 			config: { site: SITE, email: "ada@acme.com" },
 			tokens: { "ada@acme.com:atlassian": "t" },
 		},
-	);
+	});
 	await logout(env);
 
 	expect(await env.profile.read()).toBeNull();
@@ -80,14 +78,12 @@ test("logout removes the token and the whole config when only Jira was logged in
 });
 
 test("logout keeps the bitbucket half of the config and its token", async () => {
-	const env = fakeEnv(
-		{},
-		{},
-		{
+	const env = fakeEnv({
+		profile: {
 			config: { site: SITE, email: "ada@acme.com", bitbucket: { workspace: "acme" } },
 			tokens: { "ada@acme.com:atlassian": "t", "ada@acme.com:bitbucket": "b" },
 		},
-	);
+	});
 	await logout(env);
 
 	expect(await env.profile.read()).toEqual({
@@ -105,14 +101,12 @@ test("status on a machine that has never logged in says so", async () => {
 });
 
 test("status reports the site, the email and that the token is present", async () => {
-	const env = fakeEnv(
-		{},
-		{},
-		{
+	const env = fakeEnv({
+		profile: {
 			config: { site: SITE, email: "ada@acme.com" },
 			tokens: { "ada@acme.com:atlassian": "t" },
 		},
-	);
+	});
 	await status(env);
 
 	expect(env.term.written[0]).toBe(
@@ -121,7 +115,7 @@ test("status reports the site, the email and that the token is present", async (
 });
 
 test("status calls out a config with no matching token in the keyring", async () => {
-	const env = fakeEnv({}, {}, { config: { site: SITE, email: "ada@acme.com" } });
+	const env = fakeEnv({ profile: { config: { site: SITE, email: "ada@acme.com" } } });
 	await status(env);
 
 	expect(env.term.written[0]).toContain("Token: MISSING");

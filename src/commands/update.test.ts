@@ -56,8 +56,7 @@ test("jira update: an unchanged issue is pushed and the result reported", async 
 			getJson: routed(issueJson(COPIED_AT)),
 			putNoContent: (_path, body) => void pushed.push(body),
 		},
-		{},
-		issueSeed(COPIED_AT, "Rewritten steps."),
+		{ files: issueSeed(COPIED_AT, "Rewritten steps.") },
 	);
 	await jiraUpdate(env, ISSUE_FILE, {});
 
@@ -73,8 +72,7 @@ test("jira update: an issue changed on the server is refused before any write", 
 			getJson: routed(issueJson("2026-09-02T09:00:00.000Z")),
 			putNoContent: (_path, body) => void pushed.push(body),
 		},
-		{},
-		issueSeed(COPIED_AT, "Rewritten steps."),
+		{ files: issueSeed(COPIED_AT, "Rewritten steps.") },
 	);
 	await expect(jiraUpdate(env, ISSUE_FILE, {})).rejects.toThrow(
 		"Re-copy the issue or pass --force.",
@@ -91,8 +89,7 @@ test("jira update: --dry-run reports the plan and writes nothing", async () => {
 			getJson: routed(issueJson(COPIED_AT)),
 			putNoContent: (_path, body) => void pushed.push(body),
 		},
-		{},
-		issueSeed(COPIED_AT, "Rewritten steps."),
+		{ files: issueSeed(COPIED_AT, "Rewritten steps.") },
 	);
 	await jiraUpdate(env, ISSUE_FILE, { dryRun: true });
 
@@ -151,8 +148,7 @@ test("confluence update: uploads land before the page write, and ids reach the b
 				return { version: { number: 5 } };
 			},
 		},
-		{},
-		pageSeed("![](shot.png)"),
+		{ files: pageSeed("![](shot.png)") },
 	);
 	await confluenceUpdate(env, PAGE_FILE, {});
 
@@ -178,8 +174,7 @@ test("confluence update: a page with no images uploads nothing", async () => {
 				return { version: { number: 5 } };
 			},
 		},
-		{},
-		pageSeed("All good."),
+		{ files: pageSeed("All good.") },
 	);
 	await confluenceUpdate(env, PAGE_FILE, {});
 

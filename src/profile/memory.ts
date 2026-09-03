@@ -10,15 +10,15 @@ function key(email: string, kind: TokenKind): string {
 }
 
 export function memoryProfile(seed: ProfileSeed = {}): Profile {
-	let config: Config | null = seed.config ?? null;
+	let config: Config | null = seed.config ? structuredClone(seed.config) : null;
 	const tokens = new Map(Object.entries(seed.tokens ?? {}));
 
 	return {
 		async read(): Promise<Config | null> {
-			return config === null ? null : { ...config };
+			return config === null ? null : structuredClone(config);
 		},
 		async write(next: Config): Promise<void> {
-			config = { ...next };
+			config = structuredClone(next);
 		},
 		async clear(): Promise<void> {
 			config = null;
