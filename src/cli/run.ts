@@ -3,6 +3,7 @@ import type { Env } from "#/env.ts";
 import type { Terminal } from "#/terminal.ts";
 
 import { openBitbucketSession, openSession } from "#/api/session.ts";
+import { openTerminal } from "#/terminal/open.ts";
 import { ttyTerminal } from "#/terminal/tty.ts";
 
 const SIGINT_EXIT_CODE = 130;
@@ -12,7 +13,7 @@ export function run<A extends unknown[]>(
 ): (...args: A) => Promise<void> {
 	return async (...args: A) => {
 		try {
-			await fn(ttyTerminal(), ...args);
+			await fn(openTerminal(process.argv, process.stdin), ...args);
 		} catch (err) {
 			fail(err);
 		}

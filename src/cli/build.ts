@@ -14,6 +14,14 @@ const PRODUCTS = {
 
 type Product = keyof typeof PRODUCTS;
 
+const NO_INPUT = "never prompt; fail if a required value is missing";
+
+function withNoInput(command: Command): Command {
+	if (command.commands.length === 0) command.option("--no-input", NO_INPUT);
+	else for (const sub of command.commands) withNoInput(sub);
+	return command;
+}
+
 export function buildAtlass(): Command {
 	const program = new Command()
 		.name("atlass")
@@ -23,9 +31,9 @@ export function buildAtlass(): Command {
 	registerJira(program.command("jira"));
 	registerConfluence(program.command("confluence").alias("conf"));
 	registerBitbucket(program.command("bitbucket").alias("bb"));
-	return program;
+	return withNoInput(program);
 }
 
 export function buildStandalone(product: Product): Command {
-	return PRODUCTS[product](new Command().name(product).version(pkg.version));
+	return withNoInput(PRODUCTS[product](new Command().name(product).version(pkg.version)));
 }

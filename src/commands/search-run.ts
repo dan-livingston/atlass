@@ -104,9 +104,7 @@ async function copySelected(
 	noun: Noun,
 	copyOne: (id: string) => Promise<void>,
 ) {
-	if (!process.stdin.isTTY) {
-		throw new Error("--copy requires an interactive terminal.");
-	}
+	if (!term.interactive) throw new Error("--copy requires an interactive terminal.");
 	const selected = await term.ask.pickMany<string>({
 		message: `Select ${noun.plural} to copy:`,
 		choices: rows.map((r) => ({ name: formatRow(r, term.width), value: r.id })),

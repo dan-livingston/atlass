@@ -22,7 +22,6 @@ export interface CreateOptions {
 	component?: string[];
 	parent?: string;
 	field?: string[];
-	input?: boolean;
 	dryRun?: boolean;
 	json?: boolean;
 }
@@ -65,7 +64,7 @@ export async function jiraCreate(
 	options: CreateOptions,
 ): Promise<void> {
 	const inputs = await flagInputs(options);
-	const strict = inputs.length > 0 || options.input === false || !process.stdin.isTTY;
+	const strict = inputs.length > 0 || !term.interactive;
 
 	const project = await resolveProject(term.ask, session, session.site, projectArg, strict);
 	const types = await fetchCreateIssueTypes(session, project);

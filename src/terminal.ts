@@ -66,6 +66,7 @@ export interface PageOptions {
 }
 
 export interface Terminal {
+	readonly interactive: boolean;
 	out(text: string | string[]): void;
 	err(text: string): void;
 	json(value: unknown): void;

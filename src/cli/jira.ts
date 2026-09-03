@@ -31,7 +31,6 @@ export function registerJira(jira: Command): Command {
 		.option("-c, --component <name>", "component (repeatable, or comma separated)", collect)
 		.option("--parent <key>", "parent issue key for subtasks")
 		.option("-f, --field <name=value>", "any other create-screen field (repeatable)", collect)
-		.option("--no-input", "never prompt; fail if a required field is missing")
 		.option("--dry-run", "print the resolved payload instead of creating")
 		.option("--json", "print the created issue as JSON")
 		.action(run(withJira(jiraCreate)));

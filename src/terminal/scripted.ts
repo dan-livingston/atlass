@@ -60,6 +60,7 @@ export function scriptedTerminal(options: ScriptedOptions = {}): ScriptedTermina
 	}
 
 	return {
+		interactive: queue !== undefined,
 		out(value: string | string[]): void {
 			if (Array.isArray(value) && value.length === 0) return;
 			transcript.push({ stream: "out", value: join(value) });
