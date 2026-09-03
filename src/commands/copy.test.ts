@@ -28,8 +28,8 @@ function doc(text: string, media?: { id: string; alt: string }) {
 	};
 }
 
-function fakeClient(json: Record<string, unknown>, binary: Record<string, string>) {
-	return fakeSession({
+function copyEnv(json: Record<string, unknown>, binary: Record<string, string>) {
+	const session = fakeSession({
 		site: SITE,
 		getJson: (path) => {
 			if (!(path in json)) throw new Error(`unexpected GET ${path}`);
@@ -40,6 +40,7 @@ function fakeClient(json: Record<string, unknown>, binary: Record<string, string
 			return new TextEncoder().encode(binary[url]);
 		},
 	});
+	return { session, term };
 }
 
 let dir: string;
@@ -105,7 +106,7 @@ const ISSUE_BINARY = {
 };
 
 test("copyIssue writes the issue document, its attachments and the wrote line", async () => {
-	await copyIssue(term, fakeClient(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", dir);
+	await copyIssue(copyEnv(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", dir);
 
 	expect(await readFile(join(dir, "PROJ-7.md"), "utf8")).toBe(
 		[
@@ -154,7 +155,7 @@ test("copyIssue writes the issue document, its attachments and the wrote line", 
 
 test("copyIssue with an .md --out writes there and names the assets dir after it", async () => {
 	const out = join(dir, "notes", "bug.md");
-	await copyIssue(term, fakeClient(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", out);
+	await copyIssue(copyEnv(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", out);
 
 	expect(await readFile(out, "utf8")).toContain("![shot.png](bug.assets/shot.png)");
 	expect((await readdir(join(dir, "notes", "bug.assets"))).sort()).toEqual([
@@ -196,7 +197,7 @@ const PAGE_JSON = {
 };
 
 test("copyPage writes the page document named by id and slug", async () => {
-	await copyPage(term, fakeClient(PAGE_JSON, { "/wiki/download/a-1": "png" }), "123", dir);
+	await copyPage(copyEnv(PAGE_JSON, { "/wiki/download/a-1": "png" }), "123", dir);
 
 	const file = join(dir, "123-release-notes-v2.md");
 	expect(await readFile(file, "utf8")).toBe(
@@ -240,7 +241,7 @@ test("copyPage without attachments writes no assets dir and a bare wrote line", 
 		...PAGE_JSON,
 		"/wiki/api/v2/pages/123/attachments?limit=250": { results: [] },
 	};
-	await copyPage(term, fakeClient(json, {}), "123", dir);
+	await copyPage(copyEnv(json, {}), "123", dir);
 
 	expect(await readdir(dir)).toEqual(["123-release-notes-v2.md"]);
 	expect(term.written.at(-1)).toBe(`Wrote ${join(dir, "123-release-notes-v2.md")}`);

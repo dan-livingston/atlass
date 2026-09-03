@@ -4,12 +4,10 @@ import { basename, dirname, isAbsolute, resolve } from "node:path";
 
 import type { ConfluencePage } from "#/api/confluence-pages.ts";
 import type { PageSearchParams, PageSummary } from "#/api/confluence-search.ts";
-import type { AtlassianSession } from "#/api/session.ts";
 import type { CopyOptions } from "#/commands/jira.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { ViewOptions } from "#/commands/view.ts";
 import type { Env } from "#/env.ts";
-import type { Terminal } from "#/terminal.ts";
 import type { LocalImage } from "#/update/plan-page.ts";
 
 import { imageHrefs } from "#/adf/from-markdown.ts";
@@ -75,12 +73,12 @@ export function formatPageView(
 }
 
 export async function confluenceCopy(
-	{ session, term }: Env,
+	env: Env,
 	arg: string | undefined,
 	options: CopyOptions,
 ): Promise<void> {
-	const id = await resolveRef(term.ask, arg, PAGE_REF);
-	await copyPage(term, session, id, options.out);
+	const id = await resolveRef(env.term.ask, arg, PAGE_REF);
+	await copyPage(env, id, options.out);
 }
 
 export interface UpdateOptions {
@@ -172,11 +170,12 @@ export async function confluenceList(env: Env, options: ListOptions): Promise<vo
 }
 
 async function listPages(
-	{ session, term }: Env,
+	env: Env,
 	filter: Omit<PageSearchParams, "limit">,
 	empty: string,
 	options: ListOptions,
 ): Promise<void> {
+	const { session, term } = env;
 	if (options.json && options.copy) {
 		throw new Error("--json and --copy cannot be used together.");
 	}
@@ -195,7 +194,7 @@ async function listPages(
 			footer: hasMore ? searchFooter(limit) : undefined,
 		},
 		PAGE_NOUN,
-		(id) => copyPage(term, session, id, options.out),
+		(id) => copyPage(env, id, options.out),
 	);
 }
 
@@ -221,8 +220,7 @@ function colorForSpace(space: string): (text: string) => string {
 const PAGE_NOUN = { singular: "page", plural: "pages" };
 
 export async function copyPage(
-	term: Terminal,
-	session: AtlassianSession,
+	{ session, term }: Env,
 	id: string,
 	out: string | undefined,
 ): Promise<void> {

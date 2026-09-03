@@ -2,10 +2,8 @@ import kleur from "kleur";
 import { readFile } from "node:fs/promises";
 
 import type { JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira-types.ts";
-import type { AtlassianSession } from "#/api/session.ts";
 import type { ViewOptions } from "#/commands/view.ts";
 import type { Env } from "#/env.ts";
-import type { Terminal } from "#/terminal.ts";
 
 import { fetchIssue, updateIssue } from "#/api/jira-issues.ts";
 import { listProjects } from "#/api/jira-projects.ts";
@@ -120,12 +118,12 @@ export function formatIssueView(issue: JiraIssue, nowMs: number, allComments: bo
 }
 
 export async function jiraCopy(
-	{ session, term }: Env,
+	env: Env,
 	arg: string | undefined,
 	options: CopyOptions,
 ): Promise<void> {
-	const key = await resolveRef(term.ask, arg, ISSUE_REF);
-	await copyIssue(term, session, key, options.out);
+	const key = await resolveRef(env.term.ask, arg, ISSUE_REF);
+	await copyIssue(env, key, options.out);
 }
 
 export interface UpdateOptions {
@@ -162,8 +160,7 @@ export async function jiraUpdate(
 }
 
 export async function copyIssue(
-	term: Terminal,
-	session: AtlassianSession,
+	{ session, term }: Env,
 	key: string,
 	out: string | undefined,
 ): Promise<void> {

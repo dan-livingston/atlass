@@ -19,10 +19,11 @@ export interface SearchOptions {
 }
 
 export async function jiraSearch(
-	{ session, term }: Env,
+	env: Env,
 	query: string | undefined,
 	options: SearchOptions,
 ): Promise<void> {
+	const { session, term } = env;
 	if (options.jql && (query || options.project || options.assignee || options.status)) {
 		throw new Error("--jql cannot be combined with a text query or other filters.");
 	}
@@ -51,7 +52,7 @@ export async function jiraSearch(
 			footer: issues.length === limit ? searchFooter(limit) : undefined,
 		},
 		ISSUE_NOUN,
-		(key) => copyIssue(term, session, key, options.out),
+		(key) => copyIssue(env, key, options.out),
 	);
 }
 
@@ -63,7 +64,8 @@ export interface ListOptions {
 	out?: string;
 }
 
-export async function jiraList({ session, term }: Env, options: ListOptions): Promise<void> {
+export async function jiraList(env: Env, options: ListOptions): Promise<void> {
+	const { session, term } = env;
 	if (options.json && options.copy) {
 		throw new Error("--json and --copy cannot be used together.");
 	}
@@ -86,7 +88,7 @@ export async function jiraList({ session, term }: Env, options: ListOptions): Pr
 				: undefined,
 		},
 		ISSUE_NOUN,
-		(key) => copyIssue(term, session, key, options.out),
+		(key) => copyIssue(env, key, options.out),
 	);
 }
 

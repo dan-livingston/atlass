@@ -57,10 +57,18 @@ export function formatRows(rows: SearchRow[], options: FormatRowsOptions): strin
 	return options.footer ? [...lines, options.footer] : lines;
 }
 
-export interface RunSearchOptions {
+export interface WriteRowsOptions {
 	json?: boolean;
 	empty: string;
 	footer?: string;
+}
+
+export function writeRows(term: Terminal, rows: SearchRow[], options: WriteRowsOptions): void {
+	if (options.json) term.json(rows.map((r) => r.json));
+	else term.out(formatRows(rows, { ...options, width: term.width }));
+}
+
+export interface RunSearchOptions extends WriteRowsOptions {
 	copy?: boolean;
 	out?: string;
 }
@@ -81,8 +89,7 @@ export async function runSearch(
 ): Promise<void> {
 	const selecting = options.copy && !options.json && rows.length > 0;
 	if (!selecting) {
-		if (options.json) term.json(rows.map((r) => r.json));
-		else term.out(formatRows(rows, { ...options, width: term.width }));
+		writeRows(term, rows, options);
 		return;
 	}
 	if (options.out?.endsWith(".md")) {

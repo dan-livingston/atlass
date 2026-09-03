@@ -11,7 +11,7 @@ import { getPipeline, listPipelines, listSteps } from "#/api/bitbucket-pipelines
 import { fetchCurrentUserUuid } from "#/api/bitbucket-user.ts";
 import { HttpError } from "#/api/http-error.ts";
 import { bitbucketSessionFor } from "#/api/session.ts";
-import { alignedRows, formatRows } from "#/commands/search-run.ts";
+import { alignedRows, writeRows } from "#/commands/search-run.ts";
 import { clearConfig, readConfig, writeConfig } from "#/config.ts";
 import { deleteBitbucketToken, readBitbucketToken, saveBitbucketToken } from "#/credentials.ts";
 import { formatDuration, relativeTime } from "#/util/format.ts";
@@ -99,9 +99,10 @@ export async function bitbucketPipelines(
 	const limit = parseLimit(options.limit);
 	const pipelines = await withScopeHint(PIPELINE_SCOPE, () => listPipelines(session, ref, limit));
 
-	const rows = pipelineRows(pipelines, Date.now());
-	if (options.json) term.json(rows.map((r) => r.json));
-	else term.out(formatRows(rows, { empty: "No pipelines found.", width: term.width }));
+	writeRows(term, pipelineRows(pipelines, Date.now()), {
+		json: options.json,
+		empty: "No pipelines found.",
+	});
 }
 
 export interface PipelineOptions {
