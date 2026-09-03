@@ -1,5 +1,4 @@
 import kleur from "kleur";
-import { readFile } from "node:fs/promises";
 
 import type { JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira-types.ts";
 import type { ViewOptions } from "#/commands/view.ts";
@@ -133,7 +132,7 @@ export interface UpdateOptions {
 }
 
 export async function jiraUpdate(
-	{ session, term }: SessionEnv,
+	{ session, term, files }: SessionEnv,
 	arg: string | undefined,
 	options: UpdateOptions,
 ): Promise<void> {
@@ -144,7 +143,7 @@ export async function jiraUpdate(
 			flag: "[file]",
 			required: true,
 		}));
-	const src = parseIssueSource(await readFile(file, "utf8"));
+	const src = parseIssueSource(await files.readText(file));
 
 	const issue = await fetchIssue(session, session.site, src.key);
 
@@ -160,13 +159,13 @@ export async function jiraUpdate(
 }
 
 export async function copyIssue(
-	{ session, term }: SessionEnv,
+	env: SessionEnv,
 	key: string,
 	out: string | undefined,
 ): Promise<void> {
-	term.err(`Fetching ${key} ...`);
-	const issue = await fetchIssue(session, session.site, key);
-	await runCopy(term, planIssueCopy(issue, out), (url) => session.getBinary(url));
+	env.term.err(`Fetching ${key} ...`);
+	const issue = await fetchIssue(env.session, env.session.site, key);
+	await runCopy(env, planIssueCopy(issue, out));
 }
 
 const ISSUE_REF = {

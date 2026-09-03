@@ -1,12 +1,12 @@
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "vite-plus/test";
+import { join, resolve } from "node:path";
+import { expect, test } from "vite-plus/test";
+
+import type { AtlassianSession } from "#/api/session.ts";
+import type { FakeSessionEnv } from "#/test/env.ts";
 
 import { copyPage } from "#/commands/confluence.ts";
 import { copyIssue } from "#/commands/jira.ts";
-import { scriptedTerminal } from "#/terminal/scripted.ts";
-import { fakeSession } from "#/test/session.ts";
+import { fakeJiraEnv } from "#/test/env.ts";
 
 const SITE = "https://acme.atlassian.net";
 
@@ -28,8 +28,11 @@ function doc(text: string, media?: { id: string; alt: string }) {
 	};
 }
 
-function copyEnv(json: Record<string, unknown>, binary: Record<string, string>) {
-	const session = fakeSession({
+function copyEnv(
+	json: Record<string, unknown>,
+	binary: Record<string, string>,
+): FakeSessionEnv<AtlassianSession> {
+	return fakeJiraEnv({
 		site: SITE,
 		getJson: (path) => {
 			if (!(path in json)) throw new Error(`unexpected GET ${path}`);
@@ -40,20 +43,9 @@ function copyEnv(json: Record<string, unknown>, binary: Record<string, string>) 
 			return new TextEncoder().encode(binary[url]);
 		},
 	});
-	return { session, term };
 }
 
-let dir: string;
-let term: ReturnType<typeof scriptedTerminal>;
-
-beforeEach(async () => {
-	dir = await mkdtemp(join(tmpdir(), "atlass-copy-"));
-	term = scriptedTerminal();
-});
-
-afterEach(async () => {
-	await rm(dir, { recursive: true, force: true });
-});
+const dir = resolve("out");
 
 const ISSUE_JSON = {
 	"/rest/api/3/issue/PROJ-7?fields=summary,description,issuetype,status,assignee,reporter,priority,labels,created,updated,attachment":
@@ -106,9 +98,10 @@ const ISSUE_BINARY = {
 };
 
 test("copyIssue writes the issue document, its attachments and the wrote line", async () => {
-	await copyIssue(copyEnv(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", dir);
+	const env = copyEnv(ISSUE_JSON, ISSUE_BINARY);
+	await copyIssue(env, "PROJ-7", dir);
 
-	expect(await readFile(join(dir, "PROJ-7.md"), "utf8")).toBe(
+	expect(await env.files.readText(join(dir, "PROJ-7.md"))).toBe(
 		[
 			"---",
 			'key: "PROJ-7"',
@@ -144,23 +137,29 @@ test("copyIssue writes the issue document, its attachments and the wrote line", 
 			"",
 		].join("\n"),
 	);
-	expect((await readdir(join(dir, "PROJ-7.assets"))).sort()).toEqual(["shot-1.png", "shot.png"]);
-	expect(await readFile(join(dir, "PROJ-7.assets", "shot-1.png"), "utf8")).toBe("png-two");
-	expect(term.errors).toEqual([
+	expect(env.files.paths()).toEqual([
+		join(dir, "PROJ-7.assets", "shot-1.png"),
+		join(dir, "PROJ-7.assets", "shot.png"),
+		join(dir, "PROJ-7.md"),
+	]);
+	expect(await env.files.readText(join(dir, "PROJ-7.assets", "shot-1.png"))).toBe("png-two");
+	expect(env.term.errors).toEqual([
 		"Fetching PROJ-7 ...",
 		"  ! could not download gone.txt: 404 Not Found",
 	]);
-	expect(term.written).toEqual([`Wrote ${join(dir, "PROJ-7.md")} (+2 attachments)`]);
+	expect(env.term.written).toEqual([`Wrote ${join(dir, "PROJ-7.md")} (+2 attachments)`]);
 });
 
 test("copyIssue with an .md --out writes there and names the assets dir after it", async () => {
 	const out = join(dir, "notes", "bug.md");
-	await copyIssue(copyEnv(ISSUE_JSON, ISSUE_BINARY), "PROJ-7", out);
+	const env = copyEnv(ISSUE_JSON, ISSUE_BINARY);
+	await copyIssue(env, "PROJ-7", out);
 
-	expect(await readFile(out, "utf8")).toContain("![shot.png](bug.assets/shot.png)");
-	expect((await readdir(join(dir, "notes", "bug.assets"))).sort()).toEqual([
-		"shot-1.png",
-		"shot.png",
+	expect(await env.files.readText(out)).toContain("![shot.png](bug.assets/shot.png)");
+	expect(env.files.paths()).toEqual([
+		join(dir, "notes", "bug.assets", "shot-1.png"),
+		join(dir, "notes", "bug.assets", "shot.png"),
+		out,
 	]);
 });
 
@@ -197,10 +196,11 @@ const PAGE_JSON = {
 };
 
 test("copyPage writes the page document named by id and slug", async () => {
-	await copyPage(copyEnv(PAGE_JSON, { "/wiki/download/a-1": "png" }), "123", dir);
+	const env = copyEnv(PAGE_JSON, { "/wiki/download/a-1": "png" });
+	await copyPage(env, "123", dir);
 
 	const file = join(dir, "123-release-notes-v2.md");
-	expect(await readFile(file, "utf8")).toBe(
+	expect(await env.files.readText(file)).toBe(
 		[
 			"---",
 			'title: "Release Notes: v2!"',
@@ -231,9 +231,12 @@ test("copyPage writes the page document named by id and slug", async () => {
 			"",
 		].join("\n"),
 	);
-	expect(await readdir(join(dir, "123-release-notes-v2.assets"))).toEqual(["diagram.png"]);
-	expect(term.errors).toEqual(["Fetching page 123 ..."]);
-	expect(term.written).toEqual([`Wrote ${file} (+1 attachment)`]);
+	expect(env.files.paths()).toEqual([
+		join(dir, "123-release-notes-v2.assets", "diagram.png"),
+		file,
+	]);
+	expect(env.term.errors).toEqual(["Fetching page 123 ..."]);
+	expect(env.term.written).toEqual([`Wrote ${file} (+1 attachment)`]);
 });
 
 test("copyPage without attachments writes no assets dir and a bare wrote line", async () => {
@@ -241,8 +244,9 @@ test("copyPage without attachments writes no assets dir and a bare wrote line", 
 		...PAGE_JSON,
 		"/wiki/api/v2/pages/123/attachments?limit=250": { results: [] },
 	};
-	await copyPage(copyEnv(json, {}), "123", dir);
+	const env = copyEnv(json, {});
+	await copyPage(env, "123", dir);
 
-	expect(await readdir(dir)).toEqual(["123-release-notes-v2.md"]);
-	expect(term.written.at(-1)).toBe(`Wrote ${join(dir, "123-release-notes-v2.md")}`);
+	expect(env.files.paths()).toEqual([join(dir, "123-release-notes-v2.md")]);
+	expect(env.term.written.at(-1)).toBe(`Wrote ${join(dir, "123-release-notes-v2.md")}`);
 });

@@ -1,5 +1,4 @@
 import kleur from "kleur";
-import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 
 import type { ConfluencePage } from "#/api/confluence-pages.ts";
@@ -8,6 +7,7 @@ import type { CopyOptions } from "#/commands/jira.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { ViewOptions } from "#/commands/view.ts";
 import type { SessionEnv } from "#/env.ts";
+import type { Files } from "#/files.ts";
 import type { LocalImage } from "#/update/plan-page.ts";
 
 import { imageHrefs } from "#/adf/from-markdown.ts";
@@ -89,7 +89,7 @@ export interface UpdateOptions {
 }
 
 export async function confluenceUpdate(
-	{ session, term }: SessionEnv,
+	{ session, term, files }: SessionEnv,
 	arg: string | undefined,
 	options: UpdateOptions,
 ): Promise<void> {
@@ -100,18 +100,18 @@ export async function confluenceUpdate(
 			flag: "[file]",
 			required: true,
 		}));
-	const src = parsePageSource(await readFile(file, "utf8"));
+	const src = parsePageSource(await files.readText(file));
 
 	const state = await fetchPageState(session, src.id);
 	const attachments = await listAttachments(session, src.id);
-	const localImages = await statLocalImages(dirname(resolve(file)), src.body);
+	const localImages = await statLocalImages(files, dirname(resolve(file)), src.body);
 
 	const plan = planPageUpdate(src, state, attachments, localImages, options);
 	await runPlan(term, plan, options, async () => {
 		const ids = new Map<string, string>();
 		for (const upload of plan.uploads) {
 			term.err(`Uploading ${upload.filename} ...`);
-			const bytes = await readFile(upload.path);
+			const bytes = await files.readBytes(upload.path);
 			ids.set(upload.href, await uploadAttachment(session, src.id, upload.filename, bytes));
 		}
 		const version = await updatePage(session, src.id, {
@@ -124,19 +124,19 @@ export async function confluenceUpdate(
 	});
 }
 
-async function statLocalImages(dir: string, md: string): Promise<LocalImage[]> {
+async function statLocalImages(files: Files, dir: string, md: string): Promise<LocalImage[]> {
 	const hrefs = imageHrefs(md).filter((href) => !isExternalHref(href));
 	return Promise.all(
 		hrefs.map(async (href) => {
 			const path = isAbsolute(href) ? href : resolve(dir, href);
-			return { href, path, filename: basename(path), ...(await fileSize(path)) };
+			return { href, path, filename: basename(path), ...(await fileSize(files, path)) };
 		}),
 	);
 }
 
-async function fileSize(path: string): Promise<{ size?: number }> {
+async function fileSize(files: Files, path: string): Promise<{ size?: number }> {
 	try {
-		return { size: (await stat(path)).size };
+		return { size: await files.size(path) };
 	} catch {
 		return {};
 	}
@@ -220,13 +220,13 @@ function colorForSpace(space: string): (text: string) => string {
 const PAGE_NOUN = { singular: "page", plural: "pages" };
 
 export async function copyPage(
-	{ session, term }: SessionEnv,
+	env: SessionEnv,
 	id: string,
 	out: string | undefined,
 ): Promise<void> {
-	term.err(`Fetching page ${id} ...`);
-	const page = await fetchPage(session, session.site, id);
-	await runCopy(term, planPageCopy(page, out), (url) => session.getBinary(url));
+	env.term.err(`Fetching page ${id} ...`);
+	const page = await fetchPage(env.session, env.session.site, id);
+	await runCopy(env, planPageCopy(page, out));
 }
 
 const PAGE_REF = {

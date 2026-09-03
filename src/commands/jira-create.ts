@@ -1,8 +1,7 @@
-import { readFile } from "node:fs/promises";
-
 import type { CreateField } from "#/api/jira-types.ts";
 import type { FieldInput } from "#/create/encode.ts";
 import type { SessionEnv } from "#/env.ts";
+import type { Files } from "#/files.ts";
 
 import { HttpError } from "#/api/http-error.ts";
 import { createIssue, fetchCreateFields, fetchCreateIssueTypes } from "#/api/jira-createmeta.ts";
@@ -26,7 +25,7 @@ export interface CreateOptions {
 	json?: boolean;
 }
 
-export async function flagInputs(options: CreateOptions): Promise<FieldInput[]> {
+export async function flagInputs(files: Files, options: CreateOptions): Promise<FieldInput[]> {
 	const inputs: FieldInput[] = [];
 	const one = (name: string, value: string | undefined, source: string) => {
 		if (value !== undefined) inputs.push({ name, values: [value], source });
@@ -37,7 +36,7 @@ export async function flagInputs(options: CreateOptions): Promise<FieldInput[]> 
 		if (options.description !== undefined) {
 			throw new Error("--description and --description-file cannot be used together.");
 		}
-		one("description", await readFile(options.descriptionFile, "utf8"), "--description-file");
+		one("description", await files.readText(options.descriptionFile), "--description-file");
 	}
 	one("assignee", options.assignee, "--assignee");
 	one("priority", options.priority, "--priority");
@@ -58,12 +57,12 @@ export function parseFieldFlag(raw: string): FieldInput {
 }
 
 export async function jiraCreate(
-	{ session, term }: SessionEnv,
+	{ session, term, files }: SessionEnv,
 	projectArg: string | undefined,
 	typeArg: string | undefined,
 	options: CreateOptions,
 ): Promise<void> {
-	const inputs = await flagInputs(options);
+	const inputs = await flagInputs(files, options);
 	const strict = inputs.length > 0 || !term.interactive;
 
 	const project = await resolveProject(term.ask, session, session.site, projectArg, strict);

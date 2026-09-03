@@ -29,7 +29,6 @@ interface CopiedContent {
 
 export interface CopyPlan extends CopiedContent {
 	filePath: string;
-	assetsDir: string;
 	downloads: PlannedDownload[];
 }
 
@@ -107,7 +106,6 @@ function planCopy(source: CopySource, out: string | undefined): CopyPlan {
 	return {
 		...content,
 		filePath: target.filePath,
-		assetsDir: target.assetsDir,
 		downloads: planDownloads(attachments, target),
 	};
 }

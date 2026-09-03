@@ -1,23 +1,13 @@
 import kleur from "kleur";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "vite-plus/test";
+import { join, resolve } from "node:path";
+import { expect, test } from "vite-plus/test";
 
 import { confluenceCopy, confluenceView } from "#/commands/confluence.ts";
 import { fakeJiraEnv, routed } from "#/test/env.ts";
 
 kleur.enabled = false;
 
-let dir: string;
-
-beforeEach(async () => {
-	dir = await mkdtemp(join(tmpdir(), "atlass-conf-view-"));
-});
-
-afterEach(async () => {
-	await rm(dir, { recursive: true, force: true });
-});
+const dir = resolve("out");
 
 const PAGE = {
 	"/wiki/api/v2/pages/123?body-format=atlas_doc_format": {
@@ -81,8 +71,8 @@ test("confluence copy: the document is written and progress goes to stderr", asy
 	const env = fakeJiraEnv({ getJson: routed(PAGE) });
 	await confluenceCopy(env, "123", { out: dir });
 
-	expect(await readdir(dir)).toEqual(["123-release-notes.md"]);
-	expect(await readFile(join(dir, "123-release-notes.md"), "utf8")).toContain("All good.");
+	expect(env.files.paths()).toEqual([join(dir, "123-release-notes.md")]);
+	expect(await env.files.readText(join(dir, "123-release-notes.md"))).toContain("All good.");
 	expect(env.term.errors).toEqual(["Fetching page 123 ..."]);
 	expect(env.term.written).toEqual([`Wrote ${join(dir, "123-release-notes.md")}`]);
 });

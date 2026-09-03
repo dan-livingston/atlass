@@ -1,13 +1,11 @@
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "vite-plus/test";
+import { join, resolve } from "node:path";
+import { expect, test } from "vite-plus/test";
 
 import type { JiraIssue } from "#/api/jira-types.ts";
 
 import { planIssueCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
-import { scriptedTerminal } from "#/terminal/scripted.ts";
+import { fakeJiraEnv } from "#/test/env.ts";
 
 const ISSUE: JiraIssue = {
 	key: "PROJ-7",
@@ -33,51 +31,50 @@ const ISSUE: JiraIssue = {
 
 const bytes = (text: string) => new TextEncoder().encode(text);
 
-async function fetchBytes(url: string): Promise<Uint8Array> {
-	if (url === "u1") return bytes("one");
-	if (url === "u2") return bytes("two");
-	throw new Error("404 Not Found");
+const dir = resolve("out");
+
+function copyEnv() {
+	return fakeJiraEnv({
+		getBinary: (url) => {
+			if (url === "u1") return bytes("one");
+			if (url === "u2") return bytes("two");
+			throw new Error("404 Not Found");
+		},
+	});
 }
 
-let dir: string;
-let term: ReturnType<typeof scriptedTerminal>;
-
-beforeEach(async () => {
-	dir = await mkdtemp(join(tmpdir(), "atlass-run-"));
-	term = scriptedTerminal();
-});
-
-afterEach(async () => {
-	await rm(dir, { recursive: true, force: true });
-});
-
 test("runCopy downloads what it can, writes the document with only those, and reports", async () => {
-	const plan = planIssueCopy(ISSUE, join(dir, "out"));
-	await runCopy(term, plan, fetchBytes);
+	const env = copyEnv();
+	const plan = planIssueCopy(ISSUE, join(dir, "nested"));
+	await runCopy(env, plan);
 
-	expect((await readdir(join(dir, "out", "PROJ-7.assets"))).sort()).toEqual([
-		"shot-1.png",
-		"shot.png",
+	const assets = join(dir, "nested", "PROJ-7.assets");
+	expect(env.files.paths()).toEqual([
+		join(assets, "shot-1.png"),
+		join(assets, "shot.png"),
+		plan.filePath,
 	]);
-	expect(await readFile(join(dir, "out", "PROJ-7.assets", "shot-1.png"), "utf8")).toBe("two");
-	const document = await readFile(plan.filePath, "utf8");
+	expect(await env.files.readText(join(assets, "shot-1.png"))).toBe("two");
+	const document = await env.files.readText(plan.filePath);
 	expect(document).toContain("- [shot.png](PROJ-7.assets/shot-1.png)");
 	expect(document).not.toContain("gone.txt");
-	expect(term.errors).toEqual(["  ! could not download gone.txt: 404 Not Found"]);
-	expect(term.written).toEqual([`Wrote ${plan.filePath} (+2 attachments)`]);
+	expect(env.term.errors).toEqual(["  ! could not download gone.txt: 404 Not Found"]);
+	expect(env.term.written).toEqual([`Wrote ${plan.filePath} (+2 attachments)`]);
 });
 
-test("runCopy with no attachments creates no assets dir and reports a bare wrote line", async () => {
+test("runCopy with no attachments writes nothing beside the document", async () => {
+	const env = copyEnv();
 	const plan = planIssueCopy({ ...ISSUE, attachments: [] }, dir);
-	await runCopy(term, plan, fetchBytes);
+	await runCopy(env, plan);
 
-	expect(await readdir(dir)).toEqual(["PROJ-7.md"]);
-	expect(term.written).toEqual([`Wrote ${plan.filePath}`]);
+	expect(env.files.paths()).toEqual([plan.filePath]);
+	expect(env.term.written).toEqual([`Wrote ${plan.filePath}`]);
 });
 
 test("runCopy reports a single attachment in the singular", async () => {
+	const env = copyEnv();
 	const plan = planIssueCopy({ ...ISSUE, attachments: ISSUE.attachments.slice(0, 1) }, dir);
-	await runCopy(term, plan, fetchBytes);
+	await runCopy(env, plan);
 
-	expect(term.written).toEqual([`Wrote ${plan.filePath} (+1 attachment)`]);
+	expect(env.term.written).toEqual([`Wrote ${plan.filePath} (+1 attachment)`]);
 });

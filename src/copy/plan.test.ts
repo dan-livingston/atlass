@@ -27,22 +27,24 @@ function issue(overrides: Partial<JiraIssue> = {}): JiraIssue {
 	};
 }
 
+const ONE_SHOT = { attachments: [{ mediaId: "a1", filename: "shot.png", url: "u1" }] };
+
 test("issue copy lands in the cwd as KEY.md when no --out is given", () => {
-	const plan = planIssueCopy(issue(), undefined);
+	const plan = planIssueCopy(issue(ONE_SHOT), undefined);
 	expect(plan.filePath).toBe(resolve("PROJ-7.md"));
-	expect(plan.assetsDir).toBe(resolve("PROJ-7.assets"));
+	expect(plan.downloads[0]?.path).toBe(resolve("PROJ-7.assets/shot.png"));
 });
 
 test("a directory --out keeps the default name inside it", () => {
-	const plan = planIssueCopy(issue(), "notes");
+	const plan = planIssueCopy(issue(ONE_SHOT), "notes");
 	expect(plan.filePath).toBe(resolve("notes", "PROJ-7.md"));
-	expect(plan.assetsDir).toBe(resolve("notes", "PROJ-7.assets"));
+	expect(plan.downloads[0]?.path).toBe(resolve("notes/PROJ-7.assets/shot.png"));
 });
 
 test("an .md --out is used as is and names the assets dir after it", () => {
-	const plan = planIssueCopy(issue(), resolve("notes/bug.md"));
+	const plan = planIssueCopy(issue(ONE_SHOT), resolve("notes/bug.md"));
 	expect(plan.filePath).toBe(resolve("notes/bug.md"));
-	expect(plan.assetsDir).toBe(resolve("notes/bug.assets"));
+	expect(plan.downloads[0]?.path).toBe(resolve("notes/bug.assets/shot.png"));
 });
 
 test("attachments are planned into the assets dir, numbering later duplicates", () => {

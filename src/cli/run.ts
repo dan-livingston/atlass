@@ -2,6 +2,7 @@ import type { BitbucketSession } from "#/api/session.ts";
 import type { Env, SessionEnv } from "#/env.ts";
 
 import { openBitbucketSession, openSession } from "#/api/session.ts";
+import { diskFiles } from "#/files/disk.ts";
 import { openTerminal } from "#/terminal/open.ts";
 import { ttyTerminal } from "#/terminal/tty.ts";
 
@@ -32,7 +33,7 @@ export function bitbucketAction<A extends unknown[]>(
 function guarded<A extends unknown[]>(fn: (env: Env, args: A) => Promise<void>): Action<A> {
 	return async (...args: A) => {
 		try {
-			await fn({ term: openTerminal(args, process.stdin) }, args);
+			await fn({ term: openTerminal(args, process.stdin), files: diskFiles() }, args);
 		} catch (err) {
 			fail(err);
 		}
