@@ -2,7 +2,7 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
 import type { AdfNode } from "#/adf/types.ts";
 import type { DownloadedAttachment, RemoteAttachment } from "#/api/attachments.ts";
-import type { ConfluencePage } from "#/api/confluence.ts";
+import type { ConfluencePage } from "#/api/confluence-pages.ts";
 import type { JiraIssue } from "#/api/jira-types.ts";
 import type { FrontmatterValue } from "#/markdown/copied-document.ts";
 

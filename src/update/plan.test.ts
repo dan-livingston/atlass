@@ -1,7 +1,8 @@
 import { expect, test } from "vite-plus/test";
 
 import type { AdfNode } from "#/adf/types.ts";
-import type { AttachmentInfo, PageState } from "#/api/confluence.ts";
+import type { AttachmentInfo } from "#/api/confluence-attachments.ts";
+import type { PageState } from "#/api/confluence-pages.ts";
 import type { JiraIssue } from "#/api/jira-types.ts";
 import type { IssueSource, PageSource } from "#/markdown/copied-document.ts";
 import type { LocalImage } from "#/update/plan.ts";

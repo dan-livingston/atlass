@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { expect, test } from "vite-plus/test";
 
-import type { ConfluencePage } from "#/api/confluence.ts";
+import type { ConfluencePage } from "#/api/confluence-pages.ts";
 import type { JiraIssue } from "#/api/jira-types.ts";
 
 import { planIssueCopy, planPageCopy, renderCopy } from "#/copy/plan.ts";

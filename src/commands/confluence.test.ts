@@ -1,7 +1,7 @@
 import kleur from "kleur";
 import { expect, test } from "vite-plus/test";
 
-import type { ConfluenceComment, ConfluencePage } from "#/api/confluence.ts";
+import type { ConfluenceComment, ConfluencePage } from "#/api/confluence-pages.ts";
 
 import { formatPageRows, formatPageView } from "#/commands/confluence.ts";
 

@@ -2,7 +2,7 @@ import { expect, test } from "vite-plus/test";
 
 import type { AtlassianClient } from "#/api/client.ts";
 
-import { buildCql, searchPages } from "#/api/confluence.ts";
+import { buildCql, searchPages } from "#/api/confluence-search.ts";
 import { projectSearchQuery } from "#/api/jira-projects.ts";
 import {
 	buildJql,

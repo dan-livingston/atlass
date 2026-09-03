@@ -3,7 +3,8 @@ import kleur from "kleur";
 import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 
-import type { ConfluencePage, PageSearchParams, PageSummary } from "#/api/confluence.ts";
+import type { ConfluencePage } from "#/api/confluence-pages.ts";
+import type { PageSearchParams, PageSummary } from "#/api/confluence-search.ts";
 import type { CopyOptions } from "#/commands/jira.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { ViewOptions } from "#/commands/view.ts";
@@ -11,14 +12,9 @@ import type { LocalImage } from "#/update/plan.ts";
 
 import { imageHrefs } from "#/adf/from-markdown.ts";
 import { AtlassianClient } from "#/api/client.ts";
-import {
-	fetchPage,
-	fetchPageState,
-	listAttachments,
-	searchPages,
-	updatePage,
-	uploadAttachment,
-} from "#/api/confluence.ts";
+import { listAttachments, uploadAttachment } from "#/api/confluence-attachments.ts";
+import { fetchPage, fetchPageState, updatePage } from "#/api/confluence-pages.ts";
+import { searchPages } from "#/api/confluence-search.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
 import { alignedRows, runSearch, searchFooter } from "#/commands/search-run.ts";
 import {
