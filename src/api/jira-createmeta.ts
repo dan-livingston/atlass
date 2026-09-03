@@ -72,7 +72,7 @@ async function pageCreateMeta<P extends CreateMetaPage, T>(
 ): Promise<T[]> {
 	const base = `/rest/api/3/issue/createmeta/${encodeURIComponent(project)}/issuetypes${suffix}`;
 	const all: T[] = [];
-	for (let startAt = 0; ; ) {
+	for (let startAt = 0; ;) {
 		let page: P;
 		try {
 			page = await client.getJson<P>(

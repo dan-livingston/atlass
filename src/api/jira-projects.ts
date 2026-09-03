@@ -21,7 +21,7 @@ export async function listProjects(
 	query?: string,
 ): Promise<ProjectSummary[]> {
 	const projects: ProjectSummary[] = [];
-	for (let startAt = 0; ; ) {
+	for (let startAt = 0; ;) {
 		const res = await client.getJson<ProjectSearchResponse>(
 			`/rest/api/3/project/search?${projectSearchQuery(query, startAt)}`,
 		);

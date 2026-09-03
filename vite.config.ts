@@ -6,9 +6,6 @@ export default defineConfig({
 	},
 	pack: {
 		entry: ["src/cli.ts", "src/jira.ts", "src/confluence.ts", "src/bitbucket.ts"],
-		dts: {
-			tsgo: true,
-		},
 		exports: {
 			bin: {
 				atlass: "./src/cli.ts",
