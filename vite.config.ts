@@ -42,7 +42,7 @@ export default defineConfig({
 		},
 		overrides: [
 			{
-				files: ["*.test.ts"],
+				files: ["*.test.ts", "src/test/*.ts"],
 				rules: {
 					"max-lines": [
 						"error",
