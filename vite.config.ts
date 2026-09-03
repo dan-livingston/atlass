@@ -26,6 +26,7 @@ export default defineConfig({
 		jsPlugins: ["./lint/no-comments.ts"],
 		rules: {
 			"atlass/no-comments": "error",
+			"max-lines": ["error", { max: 250, skipBlankLines: false, skipComments: false }],
 			"no-restricted-imports": [
 				"error",
 				{
@@ -38,6 +39,17 @@ export default defineConfig({
 				},
 			],
 		},
+		overrides: [
+			{
+				files: ["*.test.ts"],
+				rules: {
+					"max-lines": [
+						"error",
+						{ max: 400, skipBlankLines: false, skipComments: false },
+					],
+				},
+			},
+		],
 	},
 	fmt: {
 		tabWidth: 4,
