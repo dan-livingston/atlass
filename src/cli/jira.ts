@@ -2,15 +2,8 @@ import type { Command } from "commander";
 
 import { run } from "#/cli/run.ts";
 import { jiraCreate, jiraFields } from "#/commands/jira-create.ts";
-import {
-	jiraCopy,
-	jiraList,
-	jiraProjects,
-	jiraSearch,
-	jiraStatuses,
-	jiraUpdate,
-	jiraView,
-} from "#/commands/jira.ts";
+import { jiraList, jiraSearch } from "#/commands/jira-search.ts";
+import { jiraCopy, jiraProjects, jiraStatuses, jiraUpdate, jiraView } from "#/commands/jira.ts";
 
 function collect(value: string, previous: string[] = []): string[] {
 	return [...previous, value];

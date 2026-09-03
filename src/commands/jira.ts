@@ -2,17 +2,14 @@ import { input } from "@inquirer/prompts";
 import kleur from "kleur";
 import { readFile } from "node:fs/promises";
 
-import type { IssueSummary, JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira-types.ts";
-import type { SearchRow } from "#/commands/search-run.ts";
+import type { JiraIssue, ProjectSummary, StatusSummary } from "#/api/jira-types.ts";
 import type { ViewOptions } from "#/commands/view.ts";
 
 import { AtlassianClient } from "#/api/client.ts";
 import { fetchIssue, updateIssue } from "#/api/jira-issues.ts";
 import { listProjects } from "#/api/jira-projects.ts";
-import { listAssignedIssues, searchIssues, sortByCategoryThenUpdated } from "#/api/jira-search.ts";
 import { listStatuses } from "#/api/jira-statuses.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
-import { alignedRows, runSearch, searchFooter } from "#/commands/search-run.ts";
 import {
 	attachmentSection,
 	bodyLines,
@@ -27,20 +24,9 @@ import { parseIssueSource } from "#/markdown/copied-document.ts";
 import { planIssueUpdate } from "#/update/plan.ts";
 import { runPlan } from "#/update/run.ts";
 import { printPaged } from "#/util/pager.ts";
-import { parseIssueKey, parseLimit } from "#/util/parse.ts";
+import { parseIssueKey } from "#/util/parse.ts";
 
 export interface CopyOptions {
-	out?: string;
-}
-
-export interface SearchOptions {
-	project?: string;
-	assignee?: string;
-	status?: string;
-	jql?: string;
-	limit?: string;
-	json?: boolean;
-	copy?: boolean;
 	out?: string;
 }
 
@@ -121,7 +107,7 @@ const CATEGORY_COLORS: Record<string, (text: string) => string> = {
 	done: kleur.green,
 };
 
-function colorForCategory(category: string): (text: string) => string {
+export function colorForCategory(category: string): (text: string) => string {
 	return CATEGORY_COLORS[category] ?? ((text: string) => text);
 }
 
@@ -178,89 +164,6 @@ export async function jiraUpdate(arg: string | undefined, options: UpdateOptions
 		console.log(`Updated ${src.key}.`);
 	});
 }
-
-export async function jiraSearch(query: string | undefined, options: SearchOptions): Promise<void> {
-	if (options.jql && (query || options.project || options.assignee || options.status)) {
-		throw new Error("--jql cannot be combined with a text query or other filters.");
-	}
-	if (options.json && options.copy) {
-		throw new Error("--json and --copy cannot be used together.");
-	}
-
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
-	const limit = parseLimit(options.limit);
-	const issues = await searchIssues(client, auth.site, {
-		text: query,
-		project: options.project,
-		assignee: options.assignee,
-		status: options.status,
-		jql: options.jql,
-		limit,
-	});
-
-	await runSearch(
-		formatIssueRows(issues, Date.now()),
-		{
-			json: options.json,
-			copy: options.copy,
-			out: options.out,
-			empty: "No matching issues.",
-			footer: issues.length === limit ? searchFooter(limit) : undefined,
-		},
-		ISSUE_NOUN,
-		(key) => copyIssue(client, auth.site, key, options.out),
-	);
-}
-
-export interface ListOptions {
-	project?: string;
-	all?: boolean;
-	json?: boolean;
-	copy?: boolean;
-	out?: string;
-}
-
-export async function jiraList(options: ListOptions): Promise<void> {
-	if (options.json && options.copy) {
-		throw new Error("--json and --copy cannot be used together.");
-	}
-
-	const auth = await requireAuth();
-	const client = new AtlassianClient(auth);
-	const { issues, truncated } = await listAssignedIssues(client, auth.site, {
-		all: options.all,
-		project: options.project,
-	});
-
-	await runSearch(
-		formatIssueRows(sortByCategoryThenUpdated(issues), Date.now()),
-		{
-			json: options.json,
-			copy: options.copy,
-			out: options.out,
-			empty: options.all ? "No issues assigned to you." : "No open issues assigned to you.",
-			footer: truncated
-				? `\nShowing the first ${issues.length}; narrow with --project.`
-				: undefined,
-		},
-		ISSUE_NOUN,
-		(key) => copyIssue(client, auth.site, key, options.out),
-	);
-}
-
-export function formatIssueRows(issues: IssueSummary[], nowMs: number): SearchRow[] {
-	return alignedRows(issues, nowMs, (i) => ({
-		id: i.key,
-		url: i.url,
-		label: i.status,
-		color: colorForCategory(i.statusCategory),
-		text: i.summary,
-		timestamp: i.updated,
-	}));
-}
-
-const ISSUE_NOUN = { singular: "issue", plural: "issues" };
 
 export async function copyIssue(
 	client: AtlassianClient,

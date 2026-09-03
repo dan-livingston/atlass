@@ -3,12 +3,8 @@ import { expect, test } from "vite-plus/test";
 
 import type { IssueSummary, JiraComment, JiraIssue } from "#/api/jira-types.ts";
 
-import {
-	formatIssueView,
-	formatIssueRows,
-	formatProjectRows,
-	formatStatusRows,
-} from "#/commands/jira.ts";
+import { formatIssueRows } from "#/commands/jira-search.ts";
+import { formatIssueView, formatProjectRows, formatStatusRows } from "#/commands/jira.ts";
 import { formatRow } from "#/commands/search-run.ts";
 
 kleur.enabled = false;
