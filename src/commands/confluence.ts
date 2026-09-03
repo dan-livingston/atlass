@@ -200,6 +200,7 @@ export function formatPageRows(pages: PageSummary[], nowMs: number): SearchRow[]
 		label: p.space,
 		color: colorForSpace(p.space),
 		text: p.title,
+		timestamp: p.updated,
 	}));
 }
 

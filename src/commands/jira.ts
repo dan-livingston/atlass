@@ -261,6 +261,7 @@ export function formatIssueRows(issues: IssueSummary[], nowMs: number): SearchRo
 		label: i.status,
 		color: colorForCategory(i.statusCategory),
 		text: i.summary,
+		timestamp: i.updated,
 	}));
 }
 

@@ -9,7 +9,7 @@ export interface SearchRow {
 	url: string;
 	fixedColumns: string;
 	freeText: string;
-	json: Record<string, unknown>;
+	json: unknown;
 }
 
 export interface Cells {
@@ -18,18 +18,18 @@ export interface Cells {
 	label: string;
 	color: (text: string) => string;
 	text: string;
+	timestamp: string;
 }
 
-export function alignedRows<T extends { updated: string }>(
+export function alignedRows<T extends object>(
 	items: T[],
 	nowMs: number,
 	cells: (item: T) => Cells,
 ): SearchRow[] {
-	const rows = items.map((item) => ({
-		...cells(item),
-		age: relativeTime(item.updated, nowMs),
-		json: { ...item },
-	}));
+	const rows = items.map((item) => {
+		const cell = cells(item);
+		return { ...cell, age: relativeTime(cell.timestamp, nowMs), json: { ...item } };
+	});
 	const width = (pick: (row: (typeof rows)[number]) => string) =>
 		Math.max(...rows.map((row) => pick(row).length));
 	const idWidth = width((row) => row.id);
@@ -44,12 +44,34 @@ export function alignedRows<T extends { updated: string }>(
 	}));
 }
 
-export interface RunSearchOptions {
+export interface PrintRowsOptions {
 	json?: boolean;
-	copy?: boolean;
-	out?: string;
 	empty: string;
 	footer?: string;
+}
+
+export function printRows(rows: SearchRow[], options: PrintRowsOptions): void {
+	if (options.json) {
+		console.log(
+			JSON.stringify(
+				rows.map((r) => r.json),
+				null,
+				2,
+			),
+		);
+		return;
+	}
+	if (rows.length === 0) {
+		console.log(options.empty);
+		return;
+	}
+	for (const row of rows) console.log(formatRow(row));
+	if (options.footer) console.log(options.footer);
+}
+
+export interface RunSearchOptions extends PrintRowsOptions {
+	copy?: boolean;
+	out?: string;
 }
 
 const COPY_CONCURRENCY = 5;
@@ -65,34 +87,17 @@ export async function runSearch(
 	noun: Noun,
 	copyOne: (id: string) => Promise<void>,
 ): Promise<void> {
-	if (options.json) {
-		console.log(
-			JSON.stringify(
-				rows.map((r) => r.json),
-				null,
-				2,
-			),
+	const selecting = options.copy && !options.json && rows.length > 0;
+	if (!selecting) {
+		printRows(rows, options);
+		return;
+	}
+	if (options.out?.endsWith(".md")) {
+		throw new Error(
+			"--out must be a directory when using --copy; a .md file path would overwrite each selection.",
 		);
-		return;
 	}
-
-	if (rows.length === 0) {
-		console.log(options.empty);
-		return;
-	}
-
-	if (options.copy) {
-		if (options.out?.endsWith(".md")) {
-			throw new Error(
-				"--out must be a directory when using --copy; a .md file path would overwrite each selection.",
-			);
-		}
-		await copySelected(rows, noun, copyOne);
-		return;
-	}
-
-	for (const row of rows) console.log(formatRow(row));
-	if (options.footer) console.log(options.footer);
+	await copySelected(rows, noun, copyOne);
 }
 
 export function searchFooter(limit: number): string {
