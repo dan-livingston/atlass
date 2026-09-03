@@ -7,6 +7,14 @@ test("error message: jira and confluence report errorMessages or message", () =>
 	expect(extractErrorMessage('{"message":"nope"}')).toBe("nope");
 });
 
+test("error message: jira per-field errors are listed by field id after the general messages", () => {
+	expect(
+		extractErrorMessage(
+			'{"errorMessages":["Priority is required"],"errors":{"customfield_10011":"Severity is required."}}',
+		),
+	).toBe("Priority is required; customfield_10011: Severity is required.");
+});
+
 test("error message: bitbucket nests the message under error", () => {
 	expect(extractErrorMessage('{"error":{"message":"bad token"}}')).toBe("bad token");
 });

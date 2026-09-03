@@ -97,6 +97,31 @@ body sent is everything between the H1 and `## Comments`.
 - Confluence uploads local images referenced in the body as attachments. Jira
   update does not support image changes yet.
 
+## Create
+
+```bash
+atlass jira create                              # prompts for everything
+atlass jira create BSC Bug --summary "Login loops" --priority High --label auth
+atlass jira create BSC Task -s "Rotate keys" --description-file notes.md --assignee me
+atlass jira create BSC Defect -s "..." --component API --field severity=S2 --dry-run
+atlass jira fields BSC                          # issue types you can create
+atlass jira fields BSC Defect                   # the create form for one type
+```
+
+With no field flags on a terminal, `create` walks through the create screen:
+required fields, a pick list of optional ones, then a review and confirm.
+Multi-line fields open `$EDITOR` for Markdown.
+
+Any field flag, `--no-input`, or a non-terminal switches to strict mode:
+nothing is prompted, and the command fails before creating anything if a
+required field is missing, a value is not allowed, or a field is not on the
+create screen. `--field NAME=VALUE` takes the display name or id. Multi-value
+fields take commas or repeated flags; cascading selects take `Parent > Child`;
+assignees take `me`, an account id, or a name matching one assignable user.
+
+`--dry-run` prints the resolved payload. `--json` prints the created key, id,
+and URL. `jira fields` shows what each field expects.
+
 ## List
 
 ```bash

@@ -33,6 +33,15 @@ export class AtlassianClient {
 		return res.json() as Promise<T>;
 	}
 
+	async postJson<T>(path: string, body: unknown): Promise<T> {
+		const res = await this.request(path, {
+			method: "POST",
+			headers: { Accept: "application/json", "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+		return res.json() as Promise<T>;
+	}
+
 	async putJson<T>(path: string, body: unknown): Promise<T> {
 		const res = await this.request(path, {
 			method: "PUT",
@@ -78,6 +87,7 @@ export class HttpError extends Error {
 	constructor(
 		readonly status: number,
 		message: string,
+		readonly jira: JiraErrors = { errorMessages: [], errors: {} },
 	) {
 		super(message);
 		this.name = "HttpError";
@@ -109,14 +119,15 @@ function httpError(status: number, path: string, body = ""): Error {
 	}
 	if (status === 400) {
 		const detail = extractErrorMessage(body);
-		return new HttpError(status, `Bad request (400): ${detail || path}`);
+		return new HttpError(status, `Bad request (400): ${detail || path}`, jiraErrors(body));
 	}
 	const detail = extractErrorMessage(body);
-	return new HttpError(status, `Request failed (${status}): ${detail || path}`);
+	return new HttpError(status, `Request failed (${status}): ${detail || path}`, jiraErrors(body));
 }
 
 interface JiraErrorBody {
 	errorMessages?: string[];
+	errors?: Record<string, string>;
 	message?: string;
 }
 
@@ -127,10 +138,22 @@ interface BitbucketErrorBody {
 export function extractErrorMessage(body: string): string {
 	if (!body) return "";
 	const json = tryParseJson<JiraErrorBody & BitbucketErrorBody>(body);
-	if (json?.errorMessages?.length) return json.errorMessages.join("; ");
+	const { errorMessages, errors } = jiraErrors(body);
+	const fromJira = [...errorMessages, ...Object.entries(errors).map(([f, m]) => `${f}: ${m}`)];
+	if (fromJira.length) return fromJira.join("; ");
 	if (json?.message) return json.message;
 	if (json?.error?.message) return json.error.message;
 	return body.slice(0, 300);
+}
+
+export interface JiraErrors {
+	errorMessages: string[];
+	errors: Record<string, string>;
+}
+
+export function jiraErrors(body: string): JiraErrors {
+	const json = tryParseJson<JiraErrorBody>(body);
+	return { errorMessages: json?.errorMessages ?? [], errors: json?.errors ?? {} };
 }
 
 function tryParseJson<T>(text: string): T | null {
