@@ -1,9 +1,7 @@
 import type { Credentials, Transport } from "#/api/client.ts";
-import type { BitbucketConfig } from "#/config.ts";
+import type { BitbucketConfig, Profile } from "#/profile.ts";
 
 import { AtlassianClient } from "#/api/client.ts";
-import { readConfig } from "#/config.ts";
-import { readBitbucketToken, readToken } from "#/credentials.ts";
 
 const BITBUCKET_ORIGIN = "https://api.bitbucket.org";
 
@@ -45,24 +43,24 @@ export function bitbucketSessionFor(
 	return new BitbucketClient(email, token, bitbucket);
 }
 
-export async function openSession(): Promise<AtlassianSession> {
-	const config = await readConfig();
+export async function openSession(profile: Profile): Promise<AtlassianSession> {
+	const config = await profile.read();
 	if (!config?.site || !config.email) {
 		throw new Error("Not logged in. Run `atlass auth login` first.");
 	}
-	const token = readToken(config.email);
+	const token = await profile.token(config.email, "atlassian");
 	if (!token) {
 		throw new Error("No API token found in keyring. Run `atlass auth login` again.");
 	}
 	return sessionFor({ site: config.site, email: config.email, token });
 }
 
-export async function openBitbucketSession(): Promise<BitbucketSession> {
-	const config = await readConfig();
+export async function openBitbucketSession(profile: Profile): Promise<BitbucketSession> {
+	const config = await profile.read();
 	if (!config?.email || !config.bitbucket?.workspace) {
 		throw new Error("Not logged in to Bitbucket. Run `atlass bitbucket login` first.");
 	}
-	const token = readBitbucketToken(config.email);
+	const token = await profile.token(config.email, "bitbucket");
 	if (!token) {
 		throw new Error(
 			"No Bitbucket API token found in keyring. Run `atlass bitbucket login` again.",

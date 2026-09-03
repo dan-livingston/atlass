@@ -2,6 +2,7 @@ import type { PullRequestSummary } from "#/api/bitbucket-pull-requests.ts";
 import type { BitbucketSession } from "#/api/session.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { SessionEnv } from "#/env.ts";
+import type { Profile } from "#/profile.ts";
 
 import {
 	allPullRequestStates,
@@ -10,11 +11,8 @@ import {
 	pullRequestQuery,
 } from "#/api/bitbucket-pull-requests.ts";
 import { fetchCurrentUserUuid } from "#/api/bitbucket-user.ts";
-import {
-	colorForBitbucketState,
-	rememberBitbucketUuid,
-	withScopeHint,
-} from "#/commands/bitbucket.ts";
+import { rememberBitbucketUuid } from "#/commands/bitbucket-auth.ts";
+import { colorForBitbucketState, withScopeHint } from "#/commands/bitbucket.ts";
 import { alignedRows, searchFooter, writeRows } from "#/commands/search-run.ts";
 import { parseLimit, resolveRepo } from "#/util/parse.ts";
 
@@ -33,7 +31,7 @@ const PULL_REQUEST_SCOPE = "read:pullrequest:bitbucket";
 const ACCOUNT_SCOPE = "read:account";
 
 export async function bitbucketPrs(
-	{ session, term }: SessionEnv<BitbucketSession>,
+	{ session, term, profile }: SessionEnv<BitbucketSession>,
 	options: PrsOptions,
 ): Promise<void> {
 	if (options.query && (options.author || options.reviewer)) {
@@ -43,7 +41,7 @@ export async function bitbucketPrs(
 	const ref = resolveRepo(options.repo, session);
 	const limit = parseLimit(options.limit);
 	const query = pullRequestQuery({
-		...(await resolvePrincipals(session, options)),
+		...(await resolvePrincipals(session, profile, options)),
 		query: options.query,
 	});
 	const prs = await withScopeHint(PULL_REQUEST_SCOPE, () =>
@@ -84,10 +82,13 @@ interface Principals {
 
 async function resolvePrincipals(
 	session: BitbucketSession,
+	profile: Profile,
 	options: PrsOptions,
 ): Promise<Principals> {
 	const mine =
-		isMe(options.author) || isMe(options.reviewer) ? await currentUuid(session) : undefined;
+		isMe(options.author) || isMe(options.reviewer)
+			? await currentUuid(session, profile)
+			: undefined;
 	return {
 		author: isMe(options.author) ? mine : options.author,
 		reviewer: isMe(options.reviewer) ? mine : options.reviewer,
@@ -98,10 +99,10 @@ function isMe(value: string | undefined): boolean {
 	return value?.toLowerCase() === "me";
 }
 
-async function currentUuid(session: BitbucketSession): Promise<string> {
+async function currentUuid(session: BitbucketSession, profile: Profile): Promise<string> {
 	if (session.uuid) return session.uuid;
 	const uuid = await withScopeHint(ACCOUNT_SCOPE, () => fetchCurrentUserUuid(session));
-	await rememberBitbucketUuid(uuid);
+	await rememberBitbucketUuid(profile, uuid);
 	return uuid;
 }
 

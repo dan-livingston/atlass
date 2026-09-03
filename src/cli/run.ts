@@ -3,6 +3,7 @@ import type { Env, SessionEnv } from "#/env.ts";
 
 import { openBitbucketSession, openSession } from "#/api/session.ts";
 import { diskFiles } from "#/files/disk.ts";
+import { diskProfile } from "#/profile/disk.ts";
 import { openTerminal } from "#/terminal/open.ts";
 import { ttyTerminal } from "#/terminal/tty.ts";
 
@@ -19,21 +20,30 @@ export function bareAction<A extends unknown[]>(
 export function jiraAction<A extends unknown[]>(
 	fn: (env: SessionEnv, ...args: A) => Promise<void>,
 ): Action<A> {
-	return guarded(async (env, args) => fn({ ...env, session: await openSession() }, ...args));
+	return guarded(async (env, args) =>
+		fn({ ...env, session: await openSession(env.profile) }, ...args),
+	);
 }
 
 export function bitbucketAction<A extends unknown[]>(
 	fn: (env: SessionEnv<BitbucketSession>, ...args: A) => Promise<void>,
 ): Action<A> {
 	return guarded(async (env, args) =>
-		fn({ ...env, session: await openBitbucketSession() }, ...args),
+		fn({ ...env, session: await openBitbucketSession(env.profile) }, ...args),
 	);
 }
 
 function guarded<A extends unknown[]>(fn: (env: Env, args: A) => Promise<void>): Action<A> {
 	return async (...args: A) => {
 		try {
-			await fn({ term: openTerminal(args, process.stdin), files: diskFiles() }, args);
+			await fn(
+				{
+					term: openTerminal(args, process.stdin),
+					files: diskFiles(),
+					profile: diskProfile(),
+				},
+				args,
+			);
 		} catch (err) {
 			fail(err);
 		}

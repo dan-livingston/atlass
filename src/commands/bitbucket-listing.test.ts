@@ -3,7 +3,6 @@ import { expect, test } from "vite-plus/test";
 
 import { bitbucketPrs } from "#/commands/bitbucket-prs.ts";
 import { bitbucketPipeline, bitbucketPipelines } from "#/commands/bitbucket.ts";
-import { readConfig, writeConfig } from "#/config.ts";
 import { fakeBitbucketEnv } from "#/test/env.ts";
 
 kleur.enabled = false;
@@ -142,20 +141,41 @@ test("prs: rows are written, and an empty result explains which states were sear
 	expect(env.term.written[0]).toContain("No ");
 });
 
-test("prs: --author me with no cached uuid looks it up and stores it in the config", async () => {
-	await writeConfig({ email: "ada@acme.com", bitbucket: { workspace: "acme" } });
+test("prs: --author me with no cached uuid looks it up and stores it in the profile", async () => {
 	const seen: string[] = [];
-	const env = fakeBitbucketEnv({
-		getJson: (path: string) => {
-			seen.push(path);
-			return path === "/2.0/user" ? { uuid: UUID } : { values: [] };
+	const env = fakeBitbucketEnv(
+		{
+			getJson: (path: string) => {
+				seen.push(path);
+				return path === "/2.0/user" ? { uuid: UUID } : { values: [] };
+			},
+			workspace: "acme",
+			defaultRepo: "api",
 		},
-		workspace: "acme",
-		defaultRepo: "api",
-	});
+		{},
+		{},
+		{ config: { email: "ada@acme.com", bitbucket: { workspace: "acme" } } },
+	);
 	await bitbucketPrs(env, { author: "me" });
 
 	expect(seen[0]).toBe("/2.0/user");
 	expect(seen[1]).toContain("author");
-	expect((await readConfig())?.bitbucket?.uuid).toBe(UUID);
+	expect((await env.profile.read())?.bitbucket?.uuid).toBe(UUID);
+});
+
+test("prs: a cached uuid on the session is used without a lookup", async () => {
+	const seen: string[] = [];
+	const env = fakeBitbucketEnv({
+		getJson: (path: string) => {
+			seen.push(path);
+			return { values: [] };
+		},
+		workspace: "acme",
+		defaultRepo: "api",
+		uuid: UUID,
+	});
+	await bitbucketPrs(env, { author: "me" });
+
+	expect(seen).toHaveLength(1);
+	expect(seen[0]).toContain("author");
 });

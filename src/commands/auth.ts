@@ -1,15 +1,14 @@
 import type { Env } from "#/env.ts";
 
 import { sessionFor } from "#/api/session.ts";
-import { clearConfig, siteOrigin, readConfig, writeConfig } from "#/config.ts";
-import { deleteToken, readToken, saveToken } from "#/credentials.ts";
+import { siteOrigin } from "#/util/parse.ts";
 
 interface Myself {
 	displayName: string;
 	emailAddress?: string;
 }
 
-export async function login({ term }: Env): Promise<void> {
+export async function login({ term, profile }: Env): Promise<void> {
 	const site = siteOrigin(
 		await term.ask.text({
 			message: "Atlassian site (e.g. acme.atlassian.net):",
@@ -25,31 +24,31 @@ export async function login({ term }: Env): Promise<void> {
 	const session = sessionFor({ site, email, token });
 	const me = await session.getJson<Myself>("/rest/api/3/myself");
 
-	const existing = (await readConfig()) ?? {};
-	await writeConfig({ ...existing, site, email });
-	saveToken(email, token);
+	const existing = (await profile.read()) ?? {};
+	await profile.write({ ...existing, site, email });
+	await profile.setToken(email, "atlassian", token);
 	term.out(`Logged in as ${me.displayName} on ${site}.`);
 }
 
-export async function logout({ term }: Env): Promise<void> {
-	const config = await readConfig();
-	if (config?.email) deleteToken(config.email);
+export async function logout({ term, profile }: Env): Promise<void> {
+	const config = await profile.read();
+	if (config?.email) await profile.deleteToken(config.email, "atlassian");
 	const bitbucketLogin =
 		config?.bitbucket && config.email
 			? { email: config.email, bitbucket: config.bitbucket }
 			: null;
-	if (bitbucketLogin) await writeConfig(bitbucketLogin);
-	else await clearConfig();
+	if (bitbucketLogin) await profile.write(bitbucketLogin);
+	else await profile.clear();
 	term.out("Logged out. Credentials removed.");
 }
 
-export async function status({ term }: Env): Promise<void> {
-	const config = await readConfig();
+export async function status({ term, profile }: Env): Promise<void> {
+	const config = await profile.read();
 	if (!config || !config.site || !config.email) {
 		term.out("Not logged in. Run `atlass auth login`.");
 		return;
 	}
-	const hasToken = readToken(config.email) !== null;
+	const hasToken = (await profile.token(config.email, "atlassian")) !== null;
 	term.out([
 		`Site:  ${config.site}`,
 		`Email: ${config.email}`,

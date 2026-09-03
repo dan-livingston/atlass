@@ -1,14 +1,9 @@
 import type { Command } from "commander";
 
 import { bareAction, bitbucketAction } from "#/cli/run.ts";
+import { bitbucketLogin, bitbucketLogout, bitbucketStatus } from "#/commands/bitbucket-auth.ts";
 import { bitbucketPrs } from "#/commands/bitbucket-prs.ts";
-import {
-	bitbucketLogin,
-	bitbucketLogout,
-	bitbucketPipeline,
-	bitbucketPipelines,
-	bitbucketStatus,
-} from "#/commands/bitbucket.ts";
+import { bitbucketPipeline, bitbucketPipelines } from "#/commands/bitbucket.ts";
 
 export function registerBitbucket(bitbucket: Command): Command {
 	bitbucket.description("Bitbucket commands");

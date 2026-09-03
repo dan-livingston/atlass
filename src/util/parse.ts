@@ -59,3 +59,10 @@ export function parseLimit(value: string | undefined): number {
 	if (!Number.isFinite(n) || n < 1) throw new Error(`Invalid --limit "${value}".`);
 	return Math.min(n, MAX_LIMIT);
 }
+
+export function siteOrigin(input: string): string {
+	let value = input.trim();
+	if (!/^https?:\/\//i.test(value)) value = `https://${value}`;
+	const url = new URL(value);
+	return url.origin;
+}
