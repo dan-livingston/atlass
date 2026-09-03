@@ -36,6 +36,16 @@ export default defineConfig({
 							group: ["#/test/*"],
 							message: "#/test holds test-only helpers; import it from a test file.",
 						},
+						{
+							group: ["node:fs", "node:fs/promises", "node:os", "@napi-rs/keyring"],
+							message:
+								"Real IO lives behind a port. Use env.files or env.profile; only their disk adapters may import this.",
+						},
+						{
+							group: ["#/files/disk.ts", "#/profile/disk.ts", "#/terminal/tty.ts"],
+							message:
+								"Real adapters are wired at the composition root. Take the port off Env instead.",
+						},
 					],
 				},
 			],
@@ -48,6 +58,63 @@ export default defineConfig({
 						"error",
 						{ max: 400, skipBlankLines: false, skipComments: false },
 					],
+					"no-restricted-imports": [
+						"error",
+						{
+							patterns: [
+								{
+									group: ["./*", "../*"],
+									message: "Use #/ subpath imports instead of relative paths.",
+								},
+								{
+									group: [
+										"node:fs",
+										"node:fs/promises",
+										"node:os",
+										"@napi-rs/keyring",
+									],
+									message:
+										"Tests must not touch the real disk or keyring. Seed env.files or env.profile instead.",
+								},
+								{
+									group: [
+										"#/files/disk.ts",
+										"#/profile/disk.ts",
+										"#/terminal/tty.ts",
+									],
+									message:
+										"Tests must not build real adapters. Use the fakes in #/test/env.ts.",
+								},
+							],
+						},
+					],
+				},
+			},
+			{
+				files: [
+					"src/cli/run.ts",
+					"src/terminal/open.ts",
+					"src/files/contract.test.ts",
+					"src/profile/contract.test.ts",
+					"src/terminal/tty.test.ts",
+				],
+				rules: {
+					"no-restricted-imports": [
+						"error",
+						{
+							patterns: [
+								{
+									group: ["./*", "../*"],
+									message: "Use #/ subpath imports instead of relative paths.",
+								},
+							],
+						},
+					],
+				},
+			},
+			{
+				files: ["src/files/disk.ts", "src/profile/disk.ts"],
+				rules: {
 					"no-restricted-imports": [
 						"error",
 						{
