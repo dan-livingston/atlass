@@ -54,6 +54,7 @@
 		"@types/node": "^25.6.2",
 		"bumpp": "^11.1.0",
 		"typescript": "^7.0.2",
+		"typescript-lsp": "npm:typescript@^6.0.3",
 		"vite-plus": "catalog:"
 	},
 	"packageManager": "pnpm@11.9.0"
