@@ -9,10 +9,16 @@ export const COMMENT_CAP = 200;
 export const FILE_CAP = 50;
 
 const PAGELEN = 100;
+const RESOLUTION_FIELDS = "fields=%2Bvalues.resolution.*";
 
 export interface Reviewer {
 	name: string;
 	state: string;
+}
+
+export interface PullRequestParticipant {
+	accountId: string;
+	name: string;
 }
 
 export interface PullRequestDetail {
@@ -29,13 +35,22 @@ export interface PullRequestDetail {
 	updatedOn: string;
 	url: string;
 	reviewers: Reviewer[];
+	participants: PullRequestParticipant[];
+}
+
+export interface CommentResolution {
+	by: string;
+	at: string;
 }
 
 export interface PullRequestComment {
+	id: number;
+	parentId: number | null;
 	author: string;
 	created: string;
 	body: string;
 	anchor: string;
+	resolved: CommentResolution | null;
 }
 
 export interface ChangedFile {
@@ -48,6 +63,7 @@ export interface ChangedFile {
 interface Principal {
 	display_name?: string;
 	uuid?: string;
+	account_id?: string;
 }
 
 interface Participant {
@@ -73,11 +89,19 @@ interface PullRequestDetailValue {
 	reviewers?: Principal[];
 }
 
+interface ResolutionValue {
+	user?: Principal;
+	created_on?: string;
+}
+
 interface CommentValue {
+	id: number;
 	content?: { raw?: string };
 	user?: Principal;
 	created_on?: string;
 	deleted?: boolean;
+	parent?: { id?: number };
+	resolution?: ResolutionValue | null;
 	inline?: { path?: string; to?: number | null; from?: number | null };
 }
 
@@ -112,7 +136,18 @@ export function toPullRequestDetail(
 		updatedOn: value.updated_on ?? "",
 		url: pullRequestUrl(ref, value.id),
 		reviewers: toReviewers(value),
+		participants: toParticipants(value),
 	};
+}
+
+function toParticipants(value: PullRequestDetailValue): PullRequestParticipant[] {
+	const rows = new Map<string, PullRequestParticipant>();
+	const users = [value.author, ...(value.participants ?? []).map((entry) => entry.user)];
+	for (const user of users) {
+		if (!user?.account_id || !user.display_name) continue;
+		rows.set(user.account_id, { accountId: user.account_id, name: user.display_name });
+	}
+	return [...rows.values()];
 }
 
 function toReviewers(value: PullRequestDetailValue): Reviewer[] {
@@ -145,11 +180,19 @@ export function toComment(value: CommentValue): PullRequestComment | null {
 	const body = value.content?.raw ?? "";
 	if (!body.trim()) return null;
 	return {
+		id: value.id,
+		parentId: value.parent?.id ?? null,
 		author: value.user?.display_name ?? "",
 		created: value.created_on ?? "",
 		body,
 		anchor: inlineAnchor(value),
+		resolved: toResolution(value.resolution),
 	};
+}
+
+function toResolution(value: ResolutionValue | null | undefined): CommentResolution | null {
+	if (!value?.created_on) return null;
+	return { by: value.user?.display_name ?? "", at: value.created_on };
 }
 
 function inlineAnchor(value: CommentValue): string {
@@ -184,7 +227,7 @@ export async function listComments(
 	ref: RepoRef,
 	id: number,
 ): Promise<CappedPage<PullRequestComment>> {
-	const first = `${pullRequestPath(ref, id, "comments")}?pagelen=${PAGELEN}`;
+	const first = `${pullRequestPath(ref, id, "comments")}?pagelen=${PAGELEN}&${RESOLUTION_FIELDS}`;
 	const page = await collectCapped<CommentValue, PullRequestComment | null>(
 		client,
 		first,

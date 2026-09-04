@@ -293,19 +293,22 @@ test("pr detail: someone who approved without being asked still counts", () => {
 });
 
 test("pr comments: deleted and empty ones are dropped", () => {
-	expect(toComment({ deleted: true, content: { raw: "gone" } })).toBeNull();
-	expect(toComment({ content: { raw: "   " } })).toBeNull();
+	expect(toComment({ id: 1, deleted: true, content: { raw: "gone" } })).toBeNull();
+	expect(toComment({ id: 1, content: { raw: "   " } })).toBeNull();
 });
 
 test("pr comments: an inline comment is anchored, a general one is not", () => {
-	expect(toComment({ content: { raw: "hi" }, inline: { path: "a.ts", to: 12 } })?.anchor).toBe(
-		"a.ts:12",
-	);
 	expect(
-		toComment({ content: { raw: "hi" }, inline: { path: "a.ts", to: null, from: 3 } })?.anchor,
+		toComment({ id: 1, content: { raw: "hi" }, inline: { path: "a.ts", to: 12 } })?.anchor,
+	).toBe("a.ts:12");
+	expect(
+		toComment({ id: 1, content: { raw: "hi" }, inline: { path: "a.ts", to: null, from: 3 } })
+			?.anchor,
 	).toBe("a.ts:3");
-	expect(toComment({ content: { raw: "hi" }, inline: { path: "a.ts" } })?.anchor).toBe("a.ts");
-	expect(toComment({ content: { raw: "hi" } })?.anchor).toBe("");
+	expect(toComment({ id: 1, content: { raw: "hi" }, inline: { path: "a.ts" } })?.anchor).toBe(
+		"a.ts",
+	);
+	expect(toComment({ id: 1, content: { raw: "hi" } })?.anchor).toBe("");
 });
 
 test("pr files: a rename shows both paths, a delete keeps the old one", () => {

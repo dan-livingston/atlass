@@ -23,14 +23,18 @@ export interface RenderedComment {
 	created: string;
 	markdown: string;
 	anchor?: string;
+	trailer?: string;
 }
+
+export type RenderedThread = RenderedComment[];
 
 export interface CommentSectionOptions {
 	allComments?: boolean;
 	truncated?: boolean;
 }
 
-const VISIBLE_COMMENTS = 5;
+const VISIBLE_THREADS = 5;
+const INDENT = "  ";
 
 export function fieldLines(pairs: [string, string][]): string[] {
 	const kept = pairs.filter(([, value]) => value !== "");
@@ -51,42 +55,75 @@ export function bodyLines(body: AdfNode | null): string[] {
 	return markdownBody(adfToMarkdown(body));
 }
 
-export function renderedComments(comments: ViewComment[]): RenderedComment[] {
-	return comments.map((comment) => ({
-		author: comment.author,
-		created: comment.created,
-		markdown: adfToMarkdown(comment.body),
-	}));
+export function renderedComments(comments: ViewComment[]): RenderedThread[] {
+	return comments.map((comment) => [
+		{
+			author: comment.author,
+			created: comment.created,
+			markdown: adfToMarkdown(comment.body),
+		},
+	]);
 }
 
 export function commentSection(
-	comments: RenderedComment[],
+	threads: RenderedThread[],
 	options: CommentSectionOptions,
 ): string[] {
-	if (comments.length === 0) return [];
-	const visible = options.allComments ? comments : comments.slice(-VISIBLE_COMMENTS);
-	const hidden = comments.length - visible.length;
-	const count = options.truncated ? `${comments.length}+` : String(comments.length);
-	const heading =
-		hidden > 0
-			? `Comments (${count}, showing last ${visible.length} — --all-comments for all)`
-			: `Comments (${count})`;
-	const lines = ["", kleur.bold(heading)];
-	for (const comment of visible) {
-		lines.push(
-			"",
-			commentHeader(comment),
-			...(comment.markdown ? [highlightMarkdown(comment.markdown)] : []),
-		);
+	const total = threads.reduce((running, thread) => running + thread.length, 0);
+	if (total === 0) return [];
+	const visible = options.allComments ? threads : threads.slice(-VISIBLE_THREADS);
+	const lines = ["", kleur.bold(commentHeading(total, threads.length, visible.length, options))];
+	for (const thread of visible) {
+		thread.forEach((comment, index) => {
+			lines.push(
+				"",
+				commentHeader(comment, index > 0),
+				...commentBody(comment, index > 0),
+				...commentTrailer(comment),
+			);
+		});
 	}
 	return lines;
 }
 
-function commentHeader(comment: RenderedComment): string {
+function commentHeading(
+	total: number,
+	threads: number,
+	visible: number,
+	options: CommentSectionOptions,
+): string {
+	const count = options.truncated ? `${total}+` : String(total);
+	if (visible === threads) return `Comments (${count})`;
+	if (threads === total) {
+		return `Comments (${count}, showing last ${visible} — --all-comments for all)`;
+	}
+	return (
+		`Comments (${count} in ${threads} threads, showing last ${visible} threads ` +
+		"— --all-comments for all)"
+	);
+}
+
+function commentHeader(comment: RenderedComment, reply: boolean): string {
 	const author = kleur.bold(comment.author || "Unknown");
 	const when = comment.created ? ` · ${kleur.dim(formatDateTime(comment.created))}` : "";
 	const where = comment.anchor ? ` · ${kleur.dim(comment.anchor)}` : "";
-	return `─ ${author}${when}${where}`;
+	return `${reply ? `${INDENT}↳ ` : "─ "}${author}${when}${where}`;
+}
+
+function commentBody(comment: RenderedComment, reply: boolean): string[] {
+	if (!comment.markdown) return [];
+	const body = highlightMarkdown(comment.markdown);
+	if (!reply) return [body];
+	return [
+		body
+			.split("\n")
+			.map((line) => (line ? `${INDENT}${line}` : line))
+			.join("\n"),
+	];
+}
+
+function commentTrailer(comment: RenderedComment): string[] {
+	return comment.trailer ? ["", comment.trailer] : [];
 }
 
 export function attachmentSection(attachments: RemoteAttachment[]): string[] {

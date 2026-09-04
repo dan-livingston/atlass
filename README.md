@@ -205,8 +205,10 @@ them, and it cannot mention `state`, which `--state` owns.
 
 `pr` shows one pull request: state, branches, approvals, the description, each
 reviewer and where they stand, the changed files with line counts, and the last
-five comments, inline ones anchored to `file:line`. `--all-comments` shows the
-rest, `--no-pager` prints directly, and `--json` prints the whole thing.
+five comment threads, inline ones anchored to `file:line`. A thread prints as its
+opening comment with every reply indented beneath it, a resolved one closes with
+who resolved it, and `@` mentions read as names. `--all-comments` shows the rest,
+`--no-pager` prints directly, and `--json` prints the whole thing.
 
 A pull request URL carries its own workspace and repo, so `--repo` is not needed
 alongside one. Long pull requests stop at 50 files and 200 comments. The file

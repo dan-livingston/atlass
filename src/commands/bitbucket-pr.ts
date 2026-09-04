@@ -8,12 +8,13 @@ import type {
 } from "#/api/bitbucket-pr-detail.ts";
 import type { CappedPage } from "#/api/bitbucket-repo.ts";
 import type { BitbucketSession } from "#/api/session.ts";
-import type { RenderedComment, ViewOptions } from "#/commands/view.ts";
+import type { ViewOptions } from "#/commands/view.ts";
 import type { SessionEnv } from "#/env.ts";
 import type { PullRequestRef, RepoRef } from "#/util/parse.ts";
 
 import { getPullRequest, listChangedFiles, listComments } from "#/api/bitbucket-pr-detail.ts";
 import { HttpError } from "#/api/http-error.ts";
+import { renderedPrComments } from "#/commands/bitbucket-comments.ts";
 import {
 	colorForBitbucketState,
 	PULL_REQUEST_SCOPE,
@@ -79,7 +80,7 @@ export function formatPullRequestView(
 		...markdownBody(detail.description),
 		...reviewerSection(detail.reviewers),
 		...fileSection(files),
-		...commentSection(renderedPrComments(comments.items), {
+		...commentSection(renderedPrComments(comments.items, detail.participants), {
 			allComments,
 			truncated: comments.truncated,
 		}),
@@ -150,15 +151,6 @@ function branchLine(detail: PullRequestDetail): string {
 		return detail.sourceBranch || detail.destinationBranch;
 	}
 	return `${detail.sourceBranch} → ${detail.destinationBranch}`;
-}
-
-function renderedPrComments(comments: PullRequestComment[]): RenderedComment[] {
-	return comments.map((comment) => ({
-		author: comment.author,
-		created: comment.created,
-		markdown: comment.body,
-		anchor: comment.anchor,
-	}));
 }
 
 function parseRef(arg: string | undefined): PullRequestRef {

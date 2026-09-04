@@ -8,7 +8,7 @@ import { fakeBitbucketEnv } from "#/test/env.ts";
 kleur.enabled = false;
 
 const DETAIL = "/2.0/repositories/ws/app/pullrequests/42";
-const COMMENTS = `${DETAIL}/comments?pagelen=100`;
+const COMMENTS = `${DETAIL}/comments?pagelen=100&fields=%2Bvalues.resolution.*`;
 const DIFFSTAT = `${DETAIL}/diffstat?pagelen=100`;
 
 const PR = {
@@ -16,14 +16,18 @@ const PR = {
 	title: "Fix the login redirect loop",
 	description: "Stops the bounce between /login and /.",
 	state: "OPEN",
-	author: { display_name: "Dana Scully", uuid: "{dana}" },
+	author: { display_name: "Dana Scully", uuid: "{dana}", account_id: "acc-dana" },
 	source: { branch: { name: "fix/login" } },
 	destination: { branch: { name: "main" } },
 	created_on: "2026-08-29T12:00:00Z",
 	updated_on: "2026-08-31T10:00:00Z",
 	reviewers: [{ display_name: "Fox Mulder", uuid: "{fox}" }],
 	participants: [
-		{ user: { display_name: "Fox Mulder", uuid: "{fox}" }, role: "REVIEWER", approved: true },
+		{
+			user: { display_name: "Fox Mulder", uuid: "{fox}", account_id: "acc-fox" },
+			role: "REVIEWER",
+			approved: true,
+		},
 	],
 };
 
@@ -31,11 +35,17 @@ const COMMENT_PAGE = {
 	size: 2,
 	values: [
 		{
+			id: 1,
 			user: { display_name: "Fox Mulder" },
 			created_on: "2026-08-30T09:00:00Z",
-			content: { raw: "Does this cover the SSO path?" },
+			content: { raw: "Does this cover the SSO path? cc @{acc-dana}" },
 		},
-		{ user: { display_name: "Gone" }, created_on: "2026-08-30T10:00:00Z", deleted: true },
+		{
+			id: 2,
+			user: { display_name: "Gone" },
+			created_on: "2026-08-30T10:00:00Z",
+			deleted: true,
+		},
 	],
 };
 
@@ -98,7 +108,7 @@ test("a url argument picks its own repo over the configured default", async () =
 	const { env, seen } = envFor(
 		{
 			[other]: PR,
-			[`${other}/comments?pagelen=100`]: COMMENT_PAGE,
+			[`${other}/comments?pagelen=100&fields=%2Bvalues.resolution.*`]: COMMENT_PAGE,
 			[`${other}/diffstat?pagelen=100`]: DIFFSTAT_PAGE,
 		},
 		"app",
@@ -112,7 +122,7 @@ test("--repo still applies when the argument is a bare number", async () => {
 	const other = "/2.0/repositories/acme/web/pullrequests/42";
 	const { env, seen } = envFor({
 		[other]: PR,
-		[`${other}/comments?pagelen=100`]: COMMENT_PAGE,
+		[`${other}/comments?pagelen=100&fields=%2Bvalues.resolution.*`]: COMMENT_PAGE,
 		[`${other}/diffstat?pagelen=100`]: DIFFSTAT_PAGE,
 	});
 	await bitbucketPr(env, "42", { repo: "acme/web" });
@@ -146,7 +156,11 @@ test("--json carries the detail, comments, files and the truncation flags", asyn
 		id: 42,
 		title: "Fix the login redirect loop",
 		reviewers: [{ name: "Fox Mulder", state: "APPROVED" }],
-		comments: [{ author: "Fox Mulder", anchor: "" }],
+		participants: [
+			{ accountId: "acc-dana", name: "Dana Scully" },
+			{ accountId: "acc-fox", name: "Fox Mulder" },
+		],
+		comments: [{ id: 1, parentId: null, author: "Fox Mulder", anchor: "", resolved: null }],
 		files: [{ path: "src/auth/redirect.ts", added: 9, removed: 2 }],
 		truncated: { comments: false, files: false },
 	});

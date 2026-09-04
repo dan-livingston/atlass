@@ -33,16 +33,25 @@ function detail(over: Partial<PullRequestDetail> = {}): PullRequestDetail {
 			{ name: "Sam Okafor", state: "CHANGES_REQUESTED" },
 			{ name: "Priya Raman", state: "" },
 		],
+		participants: [
+			{ accountId: "acc-dana", name: "Dana Reeve" },
+			{ accountId: "acc-sam", name: "Sam Okafor" },
+		],
 		...over,
 	};
 }
 
+let nextId = 0;
+
 function comment(over: Partial<PullRequestComment> = {}): PullRequestComment {
 	return {
+		id: ++nextId,
+		parentId: null,
 		author: "Sam Okafor",
 		created: "2026-09-02T14:20:00Z",
 		body: "This leaks the bucket when the request throws.",
 		anchor: "",
+		resolved: null,
 		...over,
 	};
 }
@@ -138,6 +147,71 @@ test("an inline comment is anchored to its file and line", () => {
 	const lines = view({}, [comment({ anchor: "src/api/rate-limit.ts:88" })]);
 	expect(lines.at(-2)).toBe("─ Sam Okafor · 2026-09-02 14:20 · src/api/rate-limit.ts:88");
 	expect(lines.at(-1)).toBe("This leaks the bucket when the request throws.");
+});
+
+test("a reply is indented under its root, which keeps the only anchor", () => {
+	const root = comment({ body: "root", anchor: "src/api/rate-limit.ts:88" });
+	const reply = comment({
+		author: "Dana Reeve",
+		body: "reply",
+		anchor: "src/api/rate-limit.ts:88",
+		parentId: root.id,
+		created: "2026-09-02T15:00:00Z",
+	});
+	expect(view({}, [root, reply]).slice(-5)).toEqual([
+		"─ Sam Okafor · 2026-09-02 14:20 · src/api/rate-limit.ts:88",
+		"root",
+		"",
+		"  ↳ Dana Reeve · 2026-09-02 15:00",
+		"  reply",
+	]);
+});
+
+test("a chain of replies flattens to a single level rather than a staircase", () => {
+	const first = comment({ body: "one" });
+	const second = comment({ body: "two", parentId: first.id });
+	const third = comment({ body: "three", parentId: second.id });
+	const lines = view({}, [first, second, third]);
+	expect(lines.filter((line) => line.startsWith("  ↳"))).toHaveLength(2);
+	expect(lines).toContain("  three");
+});
+
+test("a resolved thread closes with who resolved it and when", () => {
+	const root = comment({
+		body: "root",
+		resolved: { by: "Dana Reeve", at: "2026-09-02T16:00:00Z" },
+	});
+	const reply = comment({ body: "reply", parentId: root.id });
+	expect(view({}, [root, reply]).at(-1)).toBe("  ↳ resolved by Dana Reeve · 2026-09-02 16:00");
+});
+
+test("a mention resolves to a participant name and an unknown one is left alone", () => {
+	const lines = view({}, [comment({ body: "@{acc-dana} and @{acc-ghost} please look" })]);
+	expect(lines.at(-1)).toBe("@Dana Reeve and @{acc-ghost} please look");
+});
+
+test("threads are truncated whole, and the heading counts both comments and threads", () => {
+	const roots = Array.from({ length: 7 }, (_, i) =>
+		comment({ body: `note ${i}`, created: `2026-09-0${i + 1}T10:00:00Z` }),
+	);
+	const reply = comment({
+		body: "tail",
+		parentId: roots[6].id,
+		created: "2026-09-07T11:00:00Z",
+	});
+	const lines = formatPullRequestView(detail(), page([...roots, reply]), page(FILES), NOW);
+	expect(lines).toContain(
+		"Comments (8 in 7 threads, showing last 5 threads — --all-comments for all)",
+	);
+	expect(lines).not.toContain("note 1");
+	expect(lines).toContain("  tail");
+});
+
+test("a reply whose parent was dropped stands on its own rather than vanishing", () => {
+	const orphan = comment({ body: "orphan", parentId: 9999 });
+	const lines = view({}, [orphan]);
+	expect(lines.at(-2)).toBe("─ Sam Okafor · 2026-09-02 14:20");
+	expect(lines.at(-1)).toBe("orphan");
 });
 
 test("only the last five comments show, with the count and a hint to see the rest", () => {
