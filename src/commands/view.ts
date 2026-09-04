@@ -5,7 +5,7 @@ import type { RemoteAttachment } from "#/api/attachments.ts";
 
 import { adfToMarkdown } from "#/adf/to-markdown.ts";
 import { highlightMarkdown } from "#/markdown/highlight.ts";
-import { formatDateTime, relativeTime } from "#/util/format.ts";
+import { formatDate, formatDateTime, relativeTime } from "#/util/format.ts";
 
 export interface ViewOptions {
 	allComments?: boolean;
@@ -44,7 +44,7 @@ export function fieldLines(pairs: [string, string][]): string[] {
 
 export function dateWithAge(iso: string, nowMs: number): string {
 	if (!iso) return "";
-	return `${formatDateTime(iso).slice(0, 10)} (${relativeTime(iso, nowMs)})`;
+	return `${formatDate(iso)} (${relativeTime(iso, nowMs)})`;
 }
 
 export function markdownBody(md: string): string[] {

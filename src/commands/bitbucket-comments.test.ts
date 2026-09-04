@@ -73,7 +73,7 @@ test("the resolved line hangs off the last comment in the thread", () => {
 		[],
 	);
 	expect(thread[0].trailer).toBeUndefined();
-	expect(thread[1].trailer).toBe("  ↳ resolved by Dana Reeve · 2026-09-02 16:00");
+	expect(thread[1].trailer).toBe("  ↳ resolved by Dana Reeve · 2026-09-03 02:00");
 });
 
 test("a resolution with no named resolver still reports when it happened", () => {
@@ -81,7 +81,7 @@ test("a resolution with no named resolver still reports when it happened", () =>
 		[comment({ id: 1, resolved: { by: "", at: "2026-09-02T16:00:00Z" } })],
 		[],
 	);
-	expect(thread[0].trailer).toBe("  ↳ resolved · 2026-09-02 16:00");
+	expect(thread[0].trailer).toBe("  ↳ resolved · 2026-09-03 02:00");
 });
 
 test("mentions swap in a known name and leave an unknown account id alone", () => {

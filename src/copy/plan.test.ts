@@ -189,7 +189,7 @@ test("renderCopy writes issue frontmatter in the copied order with the body and 
 			"",
 			"## Comments",
 			"",
-			"### Linus - 2026-08-02 09:00",
+			"### Linus - 2026-08-02 19:00",
 			"",
 			"See",
 			"",

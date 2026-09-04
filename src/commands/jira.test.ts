@@ -110,11 +110,11 @@ test("view: shows the last 5 comments with a hint about the rest", () => {
 	expect(lines).toContain("Comments (7, showing last 5 — --all-comments for all)");
 	expect(lines).not.toContain("c2");
 	expect(lines.filter((l) => l.startsWith("─ "))).toEqual([
-		"─ Author 3 · 2026-08-20 10:00",
-		"─ Author 4 · 2026-08-20 10:00",
-		"─ Author 5 · 2026-08-20 10:00",
-		"─ Author 6 · 2026-08-20 10:00",
-		"─ Author 7 · 2026-08-20 10:00",
+		"─ Author 3 · 2026-08-20 20:00",
+		"─ Author 4 · 2026-08-20 20:00",
+		"─ Author 5 · 2026-08-20 20:00",
+		"─ Author 6 · 2026-08-20 20:00",
+		"─ Author 7 · 2026-08-20 20:00",
 	]);
 });
 

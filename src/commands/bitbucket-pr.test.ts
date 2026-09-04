@@ -82,7 +82,7 @@ test("the header lays out every field in a fixed order with aligned labels", () 
 		"Branch:     feat/export-limits → main",
 		"Approvals:  1/3",
 		"Created:    2026-08-28 (7d ago)",
-		"Updated:    2026-09-03 (20h ago)",
+		"Updated:    2026-09-04 (20h ago)",
 		"URL:        https://bitbucket.org/acme/web/pull-requests/842",
 	]);
 });
@@ -145,7 +145,7 @@ test("a capped file list with no total from the server still admits it is partia
 
 test("an inline comment is anchored to its file and line", () => {
 	const lines = view({}, [comment({ anchor: "src/api/rate-limit.ts:88" })]);
-	expect(lines.at(-2)).toBe("─ Sam Okafor · 2026-09-02 14:20 · src/api/rate-limit.ts:88");
+	expect(lines.at(-2)).toBe("─ Sam Okafor · 2026-09-03 00:20 · src/api/rate-limit.ts:88");
 	expect(lines.at(-1)).toBe("This leaks the bucket when the request throws.");
 });
 
@@ -159,10 +159,10 @@ test("a reply is indented under its root, which keeps the only anchor", () => {
 		created: "2026-09-02T15:00:00Z",
 	});
 	expect(view({}, [root, reply]).slice(-5)).toEqual([
-		"─ Sam Okafor · 2026-09-02 14:20 · src/api/rate-limit.ts:88",
+		"─ Sam Okafor · 2026-09-03 00:20 · src/api/rate-limit.ts:88",
 		"root",
 		"",
-		"  ↳ Dana Reeve · 2026-09-02 15:00",
+		"  ↳ Dana Reeve · 2026-09-03 01:00",
 		"  reply",
 	]);
 });
@@ -182,7 +182,7 @@ test("a resolved thread closes with who resolved it and when", () => {
 		resolved: { by: "Dana Reeve", at: "2026-09-02T16:00:00Z" },
 	});
 	const reply = comment({ body: "reply", parentId: root.id });
-	expect(view({}, [root, reply]).at(-1)).toBe("  ↳ resolved by Dana Reeve · 2026-09-02 16:00");
+	expect(view({}, [root, reply]).at(-1)).toBe("  ↳ resolved by Dana Reeve · 2026-09-03 02:00");
 });
 
 test("a mention resolves to a participant name and an unknown one is left alone", () => {
@@ -210,7 +210,7 @@ test("threads are truncated whole, and the heading counts both comments and thre
 test("a reply whose parent was dropped stands on its own rather than vanishing", () => {
 	const orphan = comment({ body: "orphan", parentId: 9999 });
 	const lines = view({}, [orphan]);
-	expect(lines.at(-2)).toBe("─ Sam Okafor · 2026-09-02 14:20");
+	expect(lines.at(-2)).toBe("─ Sam Okafor · 2026-09-03 00:20");
 	expect(lines.at(-1)).toBe("orphan");
 });
 

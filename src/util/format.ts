@@ -8,10 +8,18 @@ export function formatDuration(seconds: number | null | undefined): string {
 	return `${h}h${String(m % 60).padStart(2, "0")}m`;
 }
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
+export function formatDate(iso: string): string {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return iso;
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 export function formatDateTime(iso: string): string {
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return iso;
-	return date.toISOString().replace("T", " ").slice(0, 16);
+	return `${formatDate(iso)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 const MINUTE = 60;
