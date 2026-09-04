@@ -146,17 +146,30 @@ For both, `--json` and `--copy` work as for search.
 
 ```bash
 atlass jira search "safari login"
-atlass jira search --project PROJ --assignee me --status "In Progress"
-atlass jira search --jql "project = PROJ AND labels = regression"
-atlass confluence search "onboarding" --space DOCS
-atlass confluence search --cql "label = runbook ORDER BY created DESC"
+atlass jira search --project PROJ --assignee me --open
+atlass jira search --status "In Progress" --status "In Review" --updated 2w
+atlass confluence search "onboarding" --space DOCS --label runbook
 ```
 
-Filters combine with AND and sort by most recently updated. Rows use the same
-columns as `jira list` and `confluence list`. `--jql` and `--cql` replace the
-friendly filters. `--limit` defaults to 25, max 100. `--json` prints machine
-output. Add `--copy` to pick results interactively and copy each one, with
-`--out` as the target directory.
+Jira filters on `--project`, `--assignee`, `--reporter`, `--status`, `--type`,
+`--label`, `--updated` and `--open`; Confluence on `--space`, `--label`,
+`--updated` and `--starred`. Repeating a flag matches any of its values;
+different flags must all match. `--assignee` and `--reporter` take `me`, an
+account id, or a name to look up. `--updated` takes `7d`, `2w`, `3m` or
+`YYYY-MM-DD`, and defaults to the last 30 days when you search on filters
+alone. Results sort by most recently updated and use the same columns as
+`jira list` and `confluence list`.
+
+For anything the filters do not cover, write the query yourself:
+
+```bash
+atlass jira jql "project = PROJ AND labels = regression ORDER BY created DESC"
+atlass confluence cql "label = runbook AND creator = currentUser()"
+```
+
+`--limit` defaults to 25, max 100. `--json` prints machine output. Add `--copy`
+to pick results interactively and copy each one, with `--out` as the target
+directory. All four work on both search commands.
 
 Discovery aids for the filters:
 

@@ -2,9 +2,7 @@ import kleur from "kleur";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 
 import type { ConfluencePage } from "#/api/confluence-pages.ts";
-import type { PageSearchParams, PageSummary } from "#/api/confluence-search.ts";
 import type { CopyOptions } from "#/commands/jira.ts";
-import type { SearchRow } from "#/commands/search-run.ts";
 import type { ViewOptions } from "#/commands/view.ts";
 import type { SessionEnv } from "#/env.ts";
 import type { Files } from "#/files.ts";
@@ -13,9 +11,7 @@ import type { LocalImage } from "#/update/plan-page.ts";
 import { imageHrefs } from "#/adf/from-markdown.ts";
 import { listAttachments, uploadAttachment } from "#/api/confluence-attachments.ts";
 import { fetchPage, fetchPageState, updatePage } from "#/api/confluence-pages.ts";
-import { searchPages } from "#/api/confluence-search.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
-import { alignedRows, runSearch, searchFooter } from "#/commands/search-run.ts";
 import {
 	attachmentSection,
 	bodyLines,
@@ -29,16 +25,7 @@ import { runCopy } from "#/copy/run.ts";
 import { parsePageSource } from "#/markdown/copied-document.ts";
 import { planPageUpdate, withUploadedIds } from "#/update/plan-page.ts";
 import { runPlan } from "#/update/run.ts";
-import { isExternalHref, parseLimit, parsePageId } from "#/util/parse.ts";
-
-export interface SearchOptions {
-	space?: string;
-	cql?: string;
-	limit?: string;
-	json?: boolean;
-	copy?: boolean;
-	out?: string;
-}
+import { isExternalHref, parsePageId } from "#/util/parse.ts";
 
 export async function confluenceView(
 	{ session, term }: SessionEnv,
@@ -142,83 +129,6 @@ async function fileSize(files: Files, path: string): Promise<{ size?: number }> 
 		return {};
 	}
 }
-
-export async function confluenceSearch(
-	env: SessionEnv,
-	query: string | undefined,
-	options: SearchOptions,
-): Promise<void> {
-	if (options.cql && (query || options.space)) {
-		throw new Error("--cql cannot be combined with a text query or --space.");
-	}
-	await listPages(
-		env,
-		{ text: query, space: options.space, cql: options.cql },
-		"No matching pages.",
-		options,
-	);
-}
-
-export type ListOptions = Omit<SearchOptions, "cql">;
-
-export async function confluenceList(env: SessionEnv, options: ListOptions): Promise<void> {
-	await listPages(
-		env,
-		{ starred: true, space: options.space },
-		options.space ? `No starred pages in ${options.space}.` : "No starred pages.",
-		options,
-	);
-}
-
-async function listPages(
-	env: SessionEnv,
-	filter: Omit<PageSearchParams, "limit">,
-	empty: string,
-	options: ListOptions,
-): Promise<void> {
-	const { session, term } = env;
-	if (options.json && options.copy) {
-		throw new Error("--json and --copy cannot be used together.");
-	}
-
-	const limit = parseLimit(options.limit);
-	const { pages, hasMore } = await searchPages(session, session.site, { ...filter, limit });
-
-	await runSearch(
-		term,
-		formatPageRows(pages, Date.now()),
-		{
-			json: options.json,
-			copy: options.copy,
-			out: options.out,
-			empty,
-			footer: hasMore ? searchFooter(limit) : undefined,
-		},
-		PAGE_NOUN,
-		(id) => copyPage(env, id, options.out),
-	);
-}
-
-export function formatPageRows(pages: PageSummary[], nowMs: number): SearchRow[] {
-	return alignedRows(pages, nowMs, (p) => ({
-		id: p.id,
-		url: p.url,
-		label: p.space,
-		color: colorForSpace(p.space),
-		text: p.title,
-		timestamp: p.updated,
-	}));
-}
-
-const SPACE_COLORS = [kleur.cyan, kleur.yellow, kleur.green, kleur.magenta, kleur.blue];
-
-function colorForSpace(space: string): (text: string) => string {
-	let hash = 0;
-	for (const char of space) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
-	return SPACE_COLORS[hash % SPACE_COLORS.length] ?? kleur.cyan;
-}
-
-const PAGE_NOUN = { singular: "page", plural: "pages" };
 
 export async function copyPage(
 	env: SessionEnv,

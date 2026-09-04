@@ -41,10 +41,14 @@ export interface IssueSummary {
 
 export interface IssueSearchParams {
 	text?: string;
-	project?: string;
-	assignee?: string;
-	status?: string;
-	jql?: string;
+	project?: string[];
+	assignee?: string[];
+	reporter?: string[];
+	status?: string[];
+	type?: string[];
+	label?: string[];
+	updatedSince?: string;
+	open?: boolean;
 	limit: number;
 }
 

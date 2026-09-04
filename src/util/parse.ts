@@ -98,3 +98,48 @@ export function siteOrigin(input: string): string {
 	const url = new URL(value);
 	return url.origin;
 }
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const RELATIVE = /^(\d+)([dwm])$/i;
+
+export function parseSince(value: string, nowMs: number): string {
+	const raw = value.trim();
+	const iso = ISO_DATE.exec(raw);
+	if (iso) {
+		if (!isRealDate(iso)) throw invalidSince(value);
+		return raw;
+	}
+	const relative = RELATIVE.exec(raw);
+	if (!relative) throw invalidSince(value);
+	const amount = Number.parseInt(relative[1]!, 10);
+	const date = new Date(nowMs);
+	switch (relative[2]!.toLowerCase()) {
+		case "d":
+			date.setDate(date.getDate() - amount);
+			break;
+		case "w":
+			date.setDate(date.getDate() - amount * 7);
+			break;
+		default:
+			date.setMonth(date.getMonth() - amount);
+	}
+	return localDate(date);
+}
+
+function isRealDate([, year = "", month = "", day = ""]: RegExpExecArray): boolean {
+	const date = new Date(Number(year), Number(month) - 1, Number(day));
+	return (
+		date.getFullYear() === Number(year) &&
+		date.getMonth() === Number(month) - 1 &&
+		date.getDate() === Number(day)
+	);
+}
+
+function localDate(date: Date): string {
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	return `${date.getFullYear()}-${month}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function invalidSince(value: string): Error {
+	return new Error(`Invalid --updated "${value}". Expected 7d, 2w, 3m, or YYYY-MM-DD.`);
+}

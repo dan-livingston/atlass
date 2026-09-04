@@ -3,7 +3,8 @@ import { expect, test } from "vite-plus/test";
 
 import type { ConfluenceComment, ConfluencePage } from "#/api/confluence-pages.ts";
 
-import { formatPageRows, formatPageView } from "#/commands/confluence.ts";
+import { formatPageRows } from "#/commands/confluence-search.ts";
+import { formatPageView } from "#/commands/confluence.ts";
 
 const NOW = Date.parse("2026-08-31T10:00:00.000Z");
 

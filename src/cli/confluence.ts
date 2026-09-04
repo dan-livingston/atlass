@@ -1,13 +1,9 @@
 import type { Command } from "commander";
 
 import { jiraAction } from "#/cli/run.ts";
-import {
-	confluenceCopy,
-	confluenceList,
-	confluenceSearch,
-	confluenceUpdate,
-	confluenceView,
-} from "#/commands/confluence.ts";
+import { collect, moved, outputOptions } from "#/cli/search-options.ts";
+import { confluenceCql, confluenceList, confluenceSearch } from "#/commands/confluence-search.ts";
+import { confluenceCopy, confluenceUpdate, confluenceView } from "#/commands/confluence.ts";
 
 export function registerConfluence(confluence: Command): Command {
 	confluence.description("Confluence commands");
@@ -30,24 +26,26 @@ export function registerConfluence(confluence: Command): Command {
 		.option("-f, --force", "skip the stale-version and data-loss checks")
 		.option("--dry-run", "show what would change without writing")
 		.action(jiraAction(confluenceUpdate));
-	confluence
-		.command("list")
-		.description("List pages you starred")
-		.option("-s, --space <key>", "limit to a space")
-		.option("-l, --limit <n>", "max results (default 25, max 100)")
-		.option("--json", "output results as JSON")
-		.option("-c, --copy", "pick results to copy to Markdown")
-		.option("-o, --out <dir>", "output directory for --copy")
-		.action(jiraAction(confluenceList));
-	confluence
-		.command("search [query]")
-		.description("Search Confluence pages (text query, --space, or --cql)")
-		.option("-s, --space <key>", "limit to a space")
-		.option("--cql <cql>", "raw CQL query (ignores other filters)")
-		.option("-l, --limit <n>", "max results (default 25, max 100)")
-		.option("--json", "output results as JSON")
-		.option("-c, --copy", "pick results to copy to Markdown")
-		.option("-o, --out <dir>", "output directory for --copy")
-		.action(jiraAction(confluenceSearch));
+	outputOptions(
+		confluence
+			.command("list")
+			.description("List pages you starred")
+			.option("-s, --space <key>", "limit to a space"),
+	).action(jiraAction(confluenceList));
+	outputOptions(
+		confluence
+			.command("search [query]")
+			.description("Search Confluence pages by text and filters")
+			.option("-s, --space <key>", "limit to a space (repeatable)", collect)
+			.option("--label <label>", "limit to a label (repeatable)", collect)
+			.option("--starred", "limit to pages you starred")
+			.option("-u, --updated <when>", "changed since 7d, 2w, 3m, or YYYY-MM-DD")
+			.addOption(moved("--cql <cql>", "confluence cql")),
+	).action(jiraAction(confluenceSearch));
+	outputOptions(
+		confluence
+			.command("cql <query>")
+			.description("Search Confluence pages with a raw CQL query"),
+	).action(jiraAction(confluenceCql));
 	return confluence;
 }

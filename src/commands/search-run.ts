@@ -4,6 +4,50 @@ import type { Terminal } from "#/terminal.ts";
 
 import { relativeTime } from "#/util/format.ts";
 import { hyperlink } from "#/util/link.ts";
+import { parseLimit } from "#/util/parse.ts";
+
+export interface OutputOptions {
+	limit?: string;
+	json?: boolean;
+	copy?: boolean;
+	out?: string;
+}
+
+export function checkedLimit(options: OutputOptions): number {
+	if (options.json && options.copy) {
+		throw new Error("--json and --copy cannot be used together.");
+	}
+	return parseLimit(options.limit);
+}
+
+export interface Listing {
+	empty: string;
+	hasMore: boolean;
+	limit: number;
+}
+
+export async function showRows(
+	term: Terminal,
+	rows: SearchRow[],
+	listing: Listing,
+	options: OutputOptions,
+	noun: Noun,
+	copyOne: (id: string) => Promise<void>,
+): Promise<void> {
+	await runSearch(
+		term,
+		rows,
+		{
+			json: options.json,
+			copy: options.copy,
+			out: options.out,
+			empty: listing.empty,
+			footer: listing.hasMore ? searchFooter(listing.limit) : undefined,
+		},
+		noun,
+		copyOne,
+	);
+}
 
 export interface SearchRow {
 	id: string;

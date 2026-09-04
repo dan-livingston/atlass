@@ -1,13 +1,10 @@
 import type { Command } from "commander";
 
 import { jiraAction } from "#/cli/run.ts";
+import { collect, moved, outputOptions } from "#/cli/search-options.ts";
 import { jiraCreate, jiraFields } from "#/commands/jira-create.ts";
-import { jiraList, jiraSearch } from "#/commands/jira-search.ts";
+import { jiraJql, jiraList, jiraSearch } from "#/commands/jira-search.ts";
 import { jiraCopy, jiraProjects, jiraStatuses, jiraUpdate, jiraView } from "#/commands/jira.ts";
-
-function collect(value: string, previous: string[] = []): string[] {
-	return [...previous, value];
-}
 
 export function registerJira(jira: Command): Command {
 	jira.description("Jira commands");
@@ -27,8 +24,8 @@ export function registerJira(jira: Command): Command {
 		.option("--description-file <path>", "read the description from a Markdown file")
 		.option("-a, --assignee <who>", "assignee: me, an account id, or a name to look up")
 		.option("--priority <name>", "priority name")
-		.option("-l, --label <label>", "label (repeatable, or comma separated)", collect)
-		.option("-c, --component <name>", "component (repeatable, or comma separated)", collect)
+		.option("-l, --label <label>", "label (repeatable)", collect)
+		.option("-c, --component <name>", "component (repeatable)", collect)
 		.option("--parent <key>", "parent issue key for subtasks")
 		.option("-f, --field <name=value>", "any other create-screen field (repeatable)", collect)
 		.option("--dry-run", "print the resolved payload instead of creating")
@@ -55,24 +52,37 @@ export function registerJira(jira: Command): Command {
 		.option("-f, --force", "skip the stale-issue and data-loss checks")
 		.option("--dry-run", "show what would change without writing")
 		.action(jiraAction(jiraUpdate));
-	jira.command("list")
-		.description("List open issues assigned to you")
-		.option("-p, --project <key>", "limit to a project")
-		.option("-a, --all", "include Done issues updated in the last 30 days")
-		.option("--json", "output results as JSON")
-		.option("-c, --copy", "pick results to copy to Markdown")
-		.option("-o, --out <dir>", "output directory for --copy")
-		.action(jiraAction(jiraList));
-	jira.command("search [query]")
-		.description("Search Jira issues (text query, filters, or --jql)")
-		.option("-p, --project <key>", "limit to a project")
-		.option("-a, --assignee <who>", "limit to an assignee (or 'me')")
-		.option("-s, --status <status>", "limit to a status")
-		.option("--jql <jql>", "raw JQL query (ignores other filters)")
-		.option("-l, --limit <n>", "max results (default 25, max 100)")
-		.option("--json", "output results as JSON")
-		.option("-c, --copy", "pick results to copy to Markdown")
-		.option("-o, --out <dir>", "output directory for --copy")
-		.action(jiraAction(jiraSearch));
+	outputOptions(
+		jira
+			.command("list")
+			.description("List open issues assigned to you")
+			.option("-p, --project <key>", "limit to a project")
+			.option("-a, --all", "include Done issues updated in the last 30 days"),
+	).action(jiraAction(jiraList));
+	outputOptions(
+		jira
+			.command("search [query]")
+			.description("Search Jira issues by text and filters")
+			.option("-p, --project <key>", "limit to a project (repeatable)", collect)
+			.option(
+				"-a, --assignee <who>",
+				"limit to an assignee: me, a name, or an account id",
+				collect,
+			)
+			.option(
+				"--reporter <who>",
+				"limit to a reporter: me, a name, or an account id",
+				collect,
+			)
+			.option("-s, --status <status>", "limit to a status (repeatable)", collect)
+			.option("-t, --type <type>", "limit to an issue type (repeatable)", collect)
+			.option("--label <label>", "limit to a label (repeatable)", collect)
+			.option("-u, --updated <when>", "changed since 7d, 2w, 3m, or YYYY-MM-DD")
+			.option("--open", "exclude issues in the Done category")
+			.addOption(moved("--jql <jql>", "jira jql")),
+	).action(jiraAction(jiraSearch));
+	outputOptions(
+		jira.command("jql <query>").description("Search Jira issues with a raw JQL query"),
+	).action(jiraAction(jiraJql));
 	return jira;
 }

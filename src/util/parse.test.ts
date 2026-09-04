@@ -5,8 +5,11 @@ import {
 	parseIssueKey,
 	parsePageId,
 	parsePullRequestRef,
+	parseSince,
 	resolveRepo,
 } from "#/util/parse.ts";
+
+const NOW = Date.parse("2026-09-04T12:00:00Z");
 
 test("parseIssueKey from bare key", () => {
 	expect(parseIssueKey("PROJ-123")).toBe("PROJ-123");
@@ -125,4 +128,38 @@ test("parsePullRequestRef: anything else is rejected rather than guessed at", ()
 	expect(parsePullRequestRef("not-a-pr")).toBeNull();
 	expect(parsePullRequestRef("42a")).toBeNull();
 	expect(parsePullRequestRef("-1")).toBeNull();
+});
+
+test("parseSince: days count back from today", () => {
+	expect(parseSince("7d", NOW)).toBe("2026-08-28");
+});
+
+test("parseSince: weeks are days times seven", () => {
+	expect(parseSince("2w", NOW)).toBe("2026-08-21");
+});
+
+test("parseSince: months step the calendar, not thirty days", () => {
+	expect(parseSince("3m", NOW)).toBe("2026-06-04");
+});
+
+test("parseSince: unit case does not matter", () => {
+	expect(parseSince("2W", NOW)).toBe("2026-08-21");
+});
+
+test("parseSince: an iso date passes through", () => {
+	expect(parseSince("2026-01-31", NOW)).toBe("2026-01-31");
+});
+
+test("parseSince: a date that does not exist is rejected", () => {
+	expect(() => parseSince("2026-02-30", NOW)).toThrow('Invalid --updated "2026-02-30"');
+});
+
+test("parseSince: junk is rejected with the accepted shapes", () => {
+	expect(() => parseSince("last tuesday", NOW)).toThrow("Expected 7d, 2w, 3m, or YYYY-MM-DD");
+});
+
+test("parseSince: only days, weeks and months are units", () => {
+	expect(() => parseSince("30m ago", NOW)).toThrow("Invalid --updated");
+	expect(() => parseSince("6h", NOW)).toThrow("Invalid --updated");
+	expect(() => parseSince("1y", NOW)).toThrow("Invalid --updated");
 });

@@ -7,9 +7,11 @@ import type {
 } from "#/api/jira-types.ts";
 
 import { browseUrl } from "#/api/jira-url.ts";
+import { inClause, joinClauses, quote, userClause } from "#/api/query.ts";
 import { decodeEntities } from "#/util/html.ts";
 
 const RECENT_ISSUES_CLAUSE = "updated >= -30d";
+const OPEN_CLAUSE = "statusCategory != Done";
 
 interface SearchIssueResponse {
 	key: string;
@@ -33,7 +35,16 @@ export async function searchIssues(
 	site: string,
 	params: IssueSearchParams,
 ): Promise<IssueSummary[]> {
-	const res = await fetchSearchPage(client, buildJql(params), params.limit);
+	return searchIssuesByJql(client, site, buildJql(params), params.limit);
+}
+
+export async function searchIssuesByJql(
+	client: Transport,
+	site: string,
+	jql: string,
+	limit: number,
+): Promise<IssueSummary[]> {
+	const res = await fetchSearchPage(client, jql, limit);
 	return (res.issues ?? []).map((i) => toIssueSummary(site, i));
 }
 
@@ -63,30 +74,33 @@ function toIssueSummary(site: string, i: SearchIssueResponse): IssueSummary {
 	};
 }
 
+const ISSUE_ORDER = "updated DESC";
+
 export function buildJql(params: IssueSearchParams): string {
-	if (params.jql) return params.jql;
-	const clauses: string[] = [];
-	if (params.project) clauses.push(`project = ${jqlStringLiteral(params.project)}`);
-	if (params.assignee) {
-		clauses.push(
-			params.assignee === "me"
-				? "assignee = currentUser()"
-				: `assignee = ${jqlStringLiteral(params.assignee)}`,
-		);
-	}
-	if (params.status) clauses.push(`status = ${jqlStringLiteral(params.status)}`);
-	if (params.text) clauses.push(`text ~ ${jqlStringLiteral(params.text)}`);
+	const clauses = [
+		inClause("project", params.project),
+		inClause("type", params.type),
+		inClause("status", params.status),
+		params.open ? OPEN_CLAUSE : null,
+		userClause("assignee", params.assignee),
+		userClause("reporter", params.reporter),
+		inClause("labels", params.label),
+		params.updatedSince ? `updated >= ${quote(params.updatedSince)}` : null,
+		params.text ? `text ~ ${quote(params.text)}` : null,
+	].filter((c) => c !== null);
 	if (clauses.length === 0) clauses.push(RECENT_ISSUES_CLAUSE);
-	return `${clauses.join(" AND ")} ORDER BY updated DESC`;
+	return joinClauses(clauses, ISSUE_ORDER);
 }
 
-const OPEN_CLAUSE = "statusCategory != Done";
-
 export function buildListJql(params: IssueListParams): string {
-	const clauses = ["assignee = currentUser()"];
-	if (params.project) clauses.push(`project = ${jqlStringLiteral(params.project)}`);
-	clauses.push(params.all ? `(${OPEN_CLAUSE} OR ${RECENT_ISSUES_CLAUSE})` : OPEN_CLAUSE);
-	return `${clauses.join(" AND ")} ORDER BY updated DESC`;
+	return joinClauses(
+		[
+			"assignee = currentUser()",
+			params.project ? `project = ${quote(params.project)}` : null,
+			params.all ? `(${OPEN_CLAUSE} OR ${RECENT_ISSUES_CLAUSE})` : OPEN_CLAUSE,
+		],
+		ISSUE_ORDER,
+	);
 }
 
 const LIST_PAGE_SIZE = 100;
@@ -126,8 +140,4 @@ export function sortByCategoryThenUpdated(issues: IssueSummary[]): IssueSummary[
 		LIST_CATEGORY_ORDER[i.statusCategory] ?? LIST_UNKNOWN_CATEGORY_RANK;
 	const updatedMs = (i: IssueSummary) => Date.parse(i.updated) || 0;
 	return [...issues].sort((a, b) => rank(a) - rank(b) || updatedMs(b) - updatedMs(a));
-}
-
-function jqlStringLiteral(value: string): string {
-	return `"${value.replace(/(["\\])/g, "\\$1")}"`;
 }
