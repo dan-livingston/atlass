@@ -70,15 +70,15 @@ test("search: an ambiguous name is reported rather than guessed at", async () =>
 	);
 });
 
-test("search: filters without a text query still bound the window to the last 30 days", async () => {
+test("search: filters alone search all of history, since --limit already bounds the rows", async () => {
 	const paths: string[] = [];
 	const env = fakeJiraEnv(capturing(paths));
 	await jiraSearch(env, undefined, { project: ["PROJ"] });
 
-	expect(jqlOf(paths[0]!)).toMatch(/updated >= "\d{4}-\d{2}-\d{2}"/);
+	expect(jqlOf(paths[0]!)).toBe('project = "PROJ" ORDER BY updated DESC');
 });
 
-test("search: a text query searches all of history, not just the last 30 days", async () => {
+test("search: a text query searches all of history too", async () => {
 	const paths: string[] = [];
 	const env = fakeJiraEnv(capturing(paths));
 	await jiraSearch(env, "login", {});
@@ -86,7 +86,7 @@ test("search: a text query searches all of history, not just the last 30 days", 
 	expect(jqlOf(paths[0]!)).toBe('text ~ "login" ORDER BY updated DESC');
 });
 
-test("search: an explicit --updated wins over the default window", async () => {
+test("search: --updated is the only thing that bounds the window", async () => {
 	const paths: string[] = [];
 	const env = fakeJiraEnv(capturing(paths));
 	await jiraSearch(env, undefined, { project: ["PROJ"], updated: "2026-01-01" });

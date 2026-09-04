@@ -18,7 +18,6 @@ export interface Filters {
 }
 
 const FILTER_FLAGS = ["project", "assignee", "reporter", "status", "type", "label"] as const;
-const DEFAULT_WINDOW = "30d";
 const ISSUE_KEY = /^[A-Z][A-Z0-9]+-\d+$/i;
 
 export function hasFilters(filters: Filters): boolean {
@@ -57,19 +56,10 @@ export async function searchParams(
 		status: filters.status,
 		type: filters.type,
 		label: filters.label,
-		updatedSince: updatedFloor(query, filters, nowMs),
+		updatedSince: filters.updated ? parseSince(filters.updated, nowMs) : undefined,
 		open: filters.open,
 		limit,
 	};
-}
-
-function updatedFloor(
-	query: string | undefined,
-	filters: Filters,
-	nowMs: number,
-): string | undefined {
-	if (filters.updated) return parseSince(filters.updated, nowMs);
-	return query ? undefined : parseSince(DEFAULT_WINDOW, nowMs);
 }
 
 async function resolveUsers(

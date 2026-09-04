@@ -156,9 +156,8 @@ Jira filters on `--project`, `--assignee`, `--reporter`, `--status`, `--type`,
 `--updated` and `--starred`. Repeating a flag matches any of its values;
 different flags must all match. `--assignee` and `--reporter` take `me`, an
 account id, or a name to look up. `--updated` takes `7d`, `2w`, `3m` or
-`YYYY-MM-DD`, and defaults to the last 30 days when you search on filters
-alone. Results sort by most recently updated and use the same columns as
-`jira list` and `confluence list`.
+`YYYY-MM-DD`. Results sort by most recently updated and use the same columns
+as `jira list` and `confluence list`.
 
 For anything the filters do not cover, write the query yourself:
 
