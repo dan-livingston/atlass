@@ -13,6 +13,38 @@ export function parsePageId(input: string): string | null {
 	return null;
 }
 
+export interface PullRequestRef {
+	id: number;
+	repo?: RepoRef;
+}
+
+const PULL_REQUEST_HOSTS = ["bitbucket.org", "www.bitbucket.org"];
+const PULL_REQUEST_PATH = /^\/([^/]+)\/([^/]+)\/pull-requests\/(\d+)(?:\/|$)/;
+
+export function parsePullRequestRef(input: string): PullRequestRef | null {
+	const trimmed = input.trim();
+	const bare = trimmed.replace(/^#/, "");
+	if (/^\d+$/.test(bare)) return { id: Number.parseInt(bare, 10) };
+	if (!/^https?:\/\//i.test(trimmed)) return null;
+	const url = parseUrl(trimmed);
+	if (!url || !PULL_REQUEST_HOSTS.includes(url.hostname.toLowerCase())) return null;
+	const match = PULL_REQUEST_PATH.exec(url.pathname);
+	if (!match) return null;
+	const [, workspace = "", repo = "", id = ""] = match;
+	return {
+		id: Number.parseInt(id, 10),
+		repo: { workspace: decodeURIComponent(workspace), repo: decodeURIComponent(repo) },
+	};
+}
+
+function parseUrl(value: string): URL | null {
+	try {
+		return new URL(value);
+	} catch {
+		return null;
+	}
+}
+
 export function isExternalHref(href: string): boolean {
 	return /^[a-z][a-z0-9+.-]*:\/\//i.test(href);
 }

@@ -14,6 +14,7 @@ import {
 	commentSection,
 	dateWithAge,
 	fieldLines,
+	renderedComments,
 } from "#/commands/view.ts";
 import { planIssueCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
@@ -111,7 +112,7 @@ export function formatIssueView(issue: JiraIssue, nowMs: number, allComments: bo
 			["URL", issue.url],
 		]),
 		...bodyLines(issue.description),
-		...commentSection(issue.comments, allComments),
+		...commentSection(renderedComments(issue.comments), { allComments }),
 		...attachmentSection(issue.attachments),
 	];
 }

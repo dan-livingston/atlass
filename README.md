@@ -2,7 +2,7 @@
 
 CLI for Atlassian Cloud. Views Jira issues in the terminal, copies Jira issues
 and Confluence pages to Markdown, pushes edits back, searches both, and shows
-Bitbucket pipeline runs.
+Bitbucket pipeline runs and pull requests.
 
 ## Install
 
@@ -191,6 +191,8 @@ atlass bitbucket prs --all                    # every state
 atlass bitbucket prs --reviewer me            # waiting on your review
 atlass bitbucket prs --author me --repo acme/web
 atlass bitbucket prs --query 'destination.branch.name = "main"'
+atlass bitbucket pr 842                       # one pull request in full
+atlass bitbucket pr https://bitbucket.org/acme/web/pull-requests/842
 ```
 
 `prs` shows `#ID  State  Age  Title`, most recently updated first, open only
@@ -200,6 +202,14 @@ unless `--state` or `--all` says otherwise. Drafts show as `DRAFT` in place of
 `--author` and `--reviewer` combine with OR, so passing both lists everything
 involving that person. `--query` replaces them and cannot be used alongside
 them, and it cannot mention `state`, which `--state` owns.
+
+`pr` shows one pull request: state, branches, approvals, the description, each
+reviewer and where they stand, the changed files with line counts, and the last
+five comments, inline ones anchored to `file:line`. `--all-comments` shows the
+rest, `--no-pager` prints directly, and `--json` prints the whole thing.
+
+A pull request URL carries its own workspace and repo, so `--repo` is not needed
+alongside one. Long pull requests stop at 50 files and 200 comments.
 
 ## Development
 

@@ -2,6 +2,7 @@ import type { Command } from "commander";
 
 import { bareAction, bitbucketAction } from "#/cli/run.ts";
 import { bitbucketLogin, bitbucketLogout, bitbucketStatus } from "#/commands/bitbucket-auth.ts";
+import { bitbucketPr } from "#/commands/bitbucket-pr.ts";
 import { bitbucketPrs } from "#/commands/bitbucket-prs.ts";
 import { bitbucketPipeline, bitbucketPipelines } from "#/commands/bitbucket.ts";
 
@@ -41,6 +42,14 @@ export function registerBitbucket(bitbucket: Command): Command {
 		.option("-l, --limit <n>", "max results (default 25, max 100)")
 		.option("--json", "output results as JSON")
 		.action(bitbucketAction(bitbucketPrs));
+	bitbucket
+		.command("pr <id>")
+		.description("Show one pull request, its reviewers, files, and comments")
+		.option("-r, --repo <repo>", "workspace/slug, or a bare slug (defaults to config)")
+		.option("--all-comments", "show all comments instead of the last 5")
+		.option("--no-pager", "print directly instead of paging long output")
+		.option("--json", "output the pull request as JSON")
+		.action(bitbucketAction(bitbucketPr));
 	bitbucket
 		.command("pipeline <number>")
 		.description("Show one pipeline run and its steps")

@@ -7,6 +7,7 @@ import {
 	toPipelineSummary,
 	wallClockSeconds,
 } from "#/api/bitbucket-pipelines.ts";
+import { toChangedFile, toComment, toPullRequestDetail } from "#/api/bitbucket-pr-detail.ts";
 import {
 	listPullRequests,
 	parsePullRequestStates,
@@ -246,4 +247,72 @@ test("listPullRequests: stops at the limit rather than walking every page", asyn
 	});
 	const prs = await listPullRequests(client, repo, { limit: 2, states: [] });
 	expect(prs.map((pr) => pr.id)).toEqual([1, 2]);
+});
+
+test("pr detail: a requested reviewer with no verdict yet is listed as pending", () => {
+	const detail = toPullRequestDetail(repo, {
+		id: 7,
+		reviewers: [
+			{ display_name: "Fox", uuid: "{fox}" },
+			{ display_name: "Dana", uuid: "{dana}" },
+		],
+		participants: [
+			{ user: { display_name: "Fox", uuid: "{fox}" }, role: "REVIEWER", approved: true },
+		],
+	});
+	expect(detail.reviewers).toEqual([
+		{ name: "Fox", state: "APPROVED" },
+		{ name: "Dana", state: "" },
+	]);
+});
+
+test("pr detail: an explicit participant state wins over the approved flag", () => {
+	const detail = toPullRequestDetail(repo, {
+		id: 7,
+		participants: [
+			{
+				user: { display_name: "Dana", uuid: "{dana}" },
+				role: "REVIEWER",
+				approved: false,
+				state: "changes_requested",
+			},
+		],
+	});
+	expect(detail.reviewers).toEqual([{ name: "Dana", state: "CHANGES_REQUESTED" }]);
+});
+
+test("pr detail: someone who approved without being asked still counts", () => {
+	const detail = toPullRequestDetail(repo, {
+		id: 7,
+		participants: [
+			{ user: { display_name: "Walter", uuid: "{w}" }, role: "PARTICIPANT", approved: true },
+			{ user: { display_name: "Byers", uuid: "{b}" }, role: "PARTICIPANT", approved: false },
+		],
+	});
+	expect(detail.reviewers).toEqual([{ name: "Walter", state: "APPROVED" }]);
+});
+
+test("pr comments: deleted and empty ones are dropped", () => {
+	expect(toComment({ deleted: true, content: { raw: "gone" } })).toBeNull();
+	expect(toComment({ content: { raw: "   " } })).toBeNull();
+});
+
+test("pr comments: an inline comment is anchored, a general one is not", () => {
+	expect(toComment({ content: { raw: "hi" }, inline: { path: "a.ts", to: 12 } })?.anchor).toBe(
+		"a.ts:12",
+	);
+	expect(
+		toComment({ content: { raw: "hi" }, inline: { path: "a.ts", to: null, from: 3 } })?.anchor,
+	).toBe("a.ts:3");
+	expect(toComment({ content: { raw: "hi" }, inline: { path: "a.ts" } })?.anchor).toBe("a.ts");
+	expect(toComment({ content: { raw: "hi" } })?.anchor).toBe("");
+});
+
+test("pr files: a rename shows both paths, a delete keeps the old one", () => {
+	expect(
+		toChangedFile({ status: "renamed", old: { path: "a.ts" }, new: { path: "b.ts" } }).path,
+	).toBe("a.ts -> b.ts");
+	expect(toChangedFile({ status: "removed", old: { path: "a.ts" }, new: null }).path).toBe(
+		"a.ts",
+	);
 });

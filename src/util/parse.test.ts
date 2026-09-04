@@ -1,6 +1,12 @@
 import { expect, test } from "vite-plus/test";
 
-import { isExternalHref, parseIssueKey, parsePageId, resolveRepo } from "#/util/parse.ts";
+import {
+	isExternalHref,
+	parseIssueKey,
+	parsePageId,
+	parsePullRequestRef,
+	resolveRepo,
+} from "#/util/parse.ts";
 
 test("parseIssueKey from bare key", () => {
 	expect(parseIssueKey("PROJ-123")).toBe("PROJ-123");
@@ -80,4 +86,43 @@ test("isExternalHref: any scheme with // is external, paths are not", () => {
 	expect(isExternalHref("ftp://x.test/a.png")).toBe(true);
 	expect(isExternalHref("./a.png")).toBe(false);
 	expect(isExternalHref("C:/a.png")).toBe(false);
+});
+
+test("parsePullRequestRef: a bare number or a #-prefixed one has no repo of its own", () => {
+	expect(parsePullRequestRef("42")).toEqual({ id: 42 });
+	expect(parsePullRequestRef("#42")).toEqual({ id: 42 });
+	expect(parsePullRequestRef("  42  ")).toEqual({ id: 42 });
+});
+
+test("parsePullRequestRef: a url carries its workspace and repo", () => {
+	expect(parsePullRequestRef("https://bitbucket.org/acme/web/pull-requests/842")).toEqual({
+		id: 842,
+		repo: { workspace: "acme", repo: "web" },
+	});
+});
+
+test("parsePullRequestRef: trailing path segments, queries and fragments are ignored", () => {
+	const base = "https://bitbucket.org/acme/web/pull-requests/842";
+	const expected = { id: 842, repo: { workspace: "acme", repo: "web" } };
+	expect(parsePullRequestRef(`${base}/diff`)).toEqual(expected);
+	expect(parsePullRequestRef(`${base}/commits`)).toEqual(expected);
+	expect(parsePullRequestRef(`${base}?w=1`)).toEqual(expected);
+	expect(parsePullRequestRef(`${base}#comment-1`)).toEqual(expected);
+	expect(parsePullRequestRef(`http://www.bitbucket.org/acme/web/pull-requests/842`)).toEqual(
+		expected,
+	);
+});
+
+test("parsePullRequestRef: another host or another bitbucket page is not a pull request", () => {
+	expect(parsePullRequestRef("https://github.com/acme/web/pull/842")).toBeNull();
+	expect(parsePullRequestRef("https://evil.test/acme/web/pull-requests/842")).toBeNull();
+	expect(parsePullRequestRef("https://bitbucket.org/acme/web/pipelines/842")).toBeNull();
+	expect(parsePullRequestRef("https://bitbucket.org/acme/web/pull-requests/abc")).toBeNull();
+});
+
+test("parsePullRequestRef: anything else is rejected rather than guessed at", () => {
+	expect(parsePullRequestRef("")).toBeNull();
+	expect(parsePullRequestRef("not-a-pr")).toBeNull();
+	expect(parsePullRequestRef("42a")).toBeNull();
+	expect(parsePullRequestRef("-1")).toBeNull();
 });

@@ -22,6 +22,7 @@ import {
 	commentSection,
 	dateWithAge,
 	fieldLines,
+	renderedComments,
 } from "#/commands/view.ts";
 import { planPageCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
@@ -67,7 +68,7 @@ export function formatPageView(
 			["URL", page.url],
 		]),
 		...bodyLines(page.body),
-		...commentSection(page.comments, allComments),
+		...commentSection(renderedComments(page.comments), { allComments }),
 		...attachmentSection(page.attachments),
 	];
 }
