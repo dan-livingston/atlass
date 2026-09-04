@@ -22,12 +22,11 @@ export interface PageSearchParams {
 
 interface SearchResponse {
 	results?: {
-		content?: { id?: string; title?: string };
+		content?: { id?: string; title?: string; space?: { key?: string } };
 		title?: string;
 		url?: string;
 		lastModified?: string;
-		space?: { key?: string };
-		resultGlobalContainer?: { title?: string };
+		resultGlobalContainer?: { displayUrl?: string };
 	}[];
 }
 
@@ -53,7 +52,7 @@ export async function searchPagesByCql(
 	const query = new URLSearchParams({
 		cql,
 		limit: String(limit),
-		expand: "space",
+		expand: "content.space",
 	});
 	const res = await client.getJson<SearchResponse>(`/wiki/rest/api/search?${query.toString()}`);
 	const results = res.results ?? [];
@@ -62,12 +61,18 @@ export async function searchPagesByCql(
 		.filter((r) => r.content?.id)
 		.map((r) => ({
 			id: r.content?.id ?? "",
-			space: r.space?.key ?? r.resultGlobalContainer?.title ?? "",
+			space: r.content?.space?.key ?? spaceKeyOf(r.resultGlobalContainer?.displayUrl),
 			title: decodeEntities(r.content?.title ?? r.title ?? ""),
 			updated: r.lastModified ?? "",
 			url: r.url ? `${site}/wiki${r.url}` : "",
 		}));
 	return { pages, hasMore: serverPageWasFull };
+}
+
+const SPACE_URL = /\/spaces\/([^/?#]+)/;
+
+function spaceKeyOf(displayUrl: string | undefined): string {
+	return SPACE_URL.exec(displayUrl ?? "")?.[1] ?? "";
 }
 
 export function buildCql(params: PageSearchParams): string {

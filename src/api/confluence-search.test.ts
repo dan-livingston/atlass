@@ -48,6 +48,48 @@ test("cql search: a full server page means more results, even when rows without 
 	expect(res.hasMore).toBe(true);
 });
 
+test("cql search: the space column shows the key, which is what --space takes", async () => {
+	const client = fakeSession({
+		getJson: async () => ({
+			results: [
+				{
+					content: { id: "1", title: "A", space: { key: "CT", name: "Content Team" } },
+					resultGlobalContainer: { title: "Content Team", displayUrl: "/spaces/CT" },
+				},
+			],
+		}),
+	});
+	const res = await searchPages(client, "https://acme.atlassian.net", { limit: 25 });
+	expect(res.pages[0]?.space).toBe("CT");
+});
+
+test("cql search: without the expanded space the key still comes from the container url", async () => {
+	const client = fakeSession({
+		getJson: async () => ({
+			results: [
+				{
+					content: { id: "1", title: "A" },
+					resultGlobalContainer: { title: "Content Team", displayUrl: "/spaces/CT" },
+				},
+			],
+		}),
+	});
+	const res = await searchPages(client, "https://acme.atlassian.net", { limit: 25 });
+	expect(res.pages[0]?.space).toBe("CT");
+});
+
+test("cql search: the space is expanded under content, where the api puts it", async () => {
+	const paths: string[] = [];
+	const client = fakeSession({
+		getJson: async (path: string) => {
+			paths.push(path);
+			return { results: [] };
+		},
+	});
+	await searchPages(client, "https://acme.atlassian.net", { limit: 25 });
+	expect(new URL(paths[0]!, "https://x").searchParams.get("expand")).toBe("content.space");
+});
+
 test("cql search: last modified is carried through as updated", async () => {
 	const client = fakeSession({
 		getJson: async () => ({
