@@ -12,7 +12,12 @@ import {
 } from "#/api/bitbucket-pull-requests.ts";
 import { fetchCurrentUserUuid } from "#/api/bitbucket-user.ts";
 import { rememberBitbucketUuid } from "#/commands/bitbucket-auth.ts";
-import { colorForBitbucketState, withScopeHint } from "#/commands/bitbucket.ts";
+import {
+	ACCOUNT_SCOPE,
+	colorForBitbucketState,
+	PULL_REQUEST_SCOPE,
+	withScopeHint,
+} from "#/commands/bitbucket-shared.ts";
 import { alignedRows, searchFooter, writeRows } from "#/commands/search-run.ts";
 import { parseLimit, resolveRepo } from "#/util/parse.ts";
 
@@ -26,9 +31,6 @@ export interface PrsOptions {
 	limit?: string;
 	json?: boolean;
 }
-
-const PULL_REQUEST_SCOPE = "read:pullrequest:bitbucket";
-const ACCOUNT_SCOPE = "read:account";
 
 export async function bitbucketPrs(
 	{ session, term, profile }: SessionEnv<BitbucketSession>,

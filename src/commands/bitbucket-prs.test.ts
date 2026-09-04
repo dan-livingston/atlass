@@ -4,7 +4,7 @@ import { expect, test } from "vite-plus/test";
 import type { PullRequestSummary } from "#/api/bitbucket-pull-requests.ts";
 
 import { pullRequestRows, pullRequestStates } from "#/commands/bitbucket-prs.ts";
-import { colorForBitbucketState } from "#/commands/bitbucket.ts";
+import { colorForBitbucketState } from "#/commands/bitbucket-shared.ts";
 
 kleur.enabled = false;
 

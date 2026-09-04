@@ -1,12 +1,14 @@
-import kleur from "kleur";
-
 import type { PipelineDetail, PipelineSummary, StepSummary } from "#/api/bitbucket-pipelines.ts";
 import type { BitbucketSession } from "#/api/session.ts";
 import type { SearchRow } from "#/commands/search-run.ts";
 import type { SessionEnv } from "#/env.ts";
 
 import { getPipeline, listPipelines, listSteps } from "#/api/bitbucket-pipelines.ts";
-import { HttpError } from "#/api/http-error.ts";
+import {
+	colorForBitbucketState,
+	PIPELINE_SCOPE,
+	withScopeHint,
+} from "#/commands/bitbucket-shared.ts";
 import { alignedRows, writeRows } from "#/commands/search-run.ts";
 import { formatDuration, relativeTime } from "#/util/format.ts";
 import { parseLimit, resolveRepo } from "#/util/parse.ts";
@@ -60,25 +62,6 @@ export function pipelineRows(pipelines: PipelineSummary[], nowMs: number): Searc
 	}));
 }
 
-const STATE_COLORS: Record<string, (text: string) => string> = {
-	SUCCESSFUL: kleur.green,
-	MERGED: kleur.green,
-	FAILED: kleur.red,
-	ERROR: kleur.red,
-	DECLINED: kleur.red,
-	IN_PROGRESS: kleur.yellow,
-	PENDING: kleur.yellow,
-	OPEN: kleur.yellow,
-	PAUSED: kleur.cyan,
-	STOPPED: kleur.gray,
-	SUPERSEDED: kleur.gray,
-	DRAFT: kleur.gray,
-};
-
-export function colorForBitbucketState(state: string): (text: string) => string {
-	return STATE_COLORS[state.toUpperCase()] ?? kleur.white;
-}
-
 export function formatStepRows(steps: StepSummary[]): string[] {
 	const rows = steps.map((s) => ({
 		name: s.name || "-",
@@ -120,20 +103,4 @@ function parseBuildNumber(arg: string | undefined): number {
 		);
 	}
 	return Number.parseInt(raw, 10);
-}
-
-const PIPELINE_SCOPE = "read:pipeline:bitbucket";
-
-export async function withScopeHint<T>(scope: string, fn: () => Promise<T>): Promise<T> {
-	try {
-		return await fn();
-	} catch (err) {
-		if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
-			throw new Error(
-				`Bitbucket rejected the request (401/403). Check the token has the ${scope} ` +
-					"scope, or run `atlass bitbucket login` to update it.",
-			);
-		}
-		throw err;
-	}
 }
