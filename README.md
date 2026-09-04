@@ -31,8 +31,8 @@ Site and email go in `~/.config/atlass/config.json`. The token goes in the OS
 keyring. One account at a time.
 
 Bitbucket needs its own Bitbucket-scoped token with pipeline, pull request,
-account, and workspace read scopes, since Atlassian tokens are scoped per
-product:
+repository, account, and workspace read scopes, since Atlassian tokens are
+scoped per product:
 
 ```bash
 atlass bitbucket login    # prompts for workspace, default repo, and token
@@ -209,7 +209,9 @@ five comments, inline ones anchored to `file:line`. `--all-comments` shows the
 rest, `--no-pager` prints directly, and `--json` prints the whole thing.
 
 A pull request URL carries its own workspace and repo, so `--repo` is not needed
-alongside one. Long pull requests stop at 50 files and 200 comments.
+alongside one. Long pull requests stop at 50 files and 200 comments. The file
+list needs the repository read scope; without it that section says so and the
+rest still prints.
 
 ## Development
 

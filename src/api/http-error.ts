@@ -3,6 +3,7 @@ export class HttpError extends Error {
 		readonly status: number,
 		message: string,
 		readonly jira: JiraErrors = { errorMessages: [], errors: {} },
+		readonly path = "",
 	) {
 		super(message);
 		this.name = "HttpError";
@@ -19,6 +20,8 @@ export function httpError(
 		return new HttpError(
 			status,
 			`Authentication failed (401/403). Run \`${loginHint}\` to update your token.`,
+			undefined,
+			path,
 		);
 	}
 	if (status === 404) {

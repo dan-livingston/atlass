@@ -166,3 +166,11 @@ test("a capped comment walk marks the count as a floor", () => {
 	);
 	expect(lines).toContain("Comments (1+)");
 });
+
+test("files the token cannot read say so instead of vanishing", () => {
+	expect(fileSection(null)).toEqual([
+		"",
+		"Files",
+		"  Unavailable: the token needs the read:repository:bitbucket scope.",
+	]);
+});

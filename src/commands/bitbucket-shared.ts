@@ -4,6 +4,7 @@ import { HttpError } from "#/api/http-error.ts";
 
 export const PIPELINE_SCOPE = "read:pipeline:bitbucket";
 export const PULL_REQUEST_SCOPE = "read:pullrequest:bitbucket";
+export const REPOSITORY_SCOPE = "read:repository:bitbucket";
 export const ACCOUNT_SCOPE = "read:account";
 
 const STATE_COLORS: Record<string, (text: string) => string> = {
@@ -33,8 +34,8 @@ export async function withScopeHint<T>(scope: string, fn: () => Promise<T>): Pro
 	} catch (err) {
 		if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
 			throw new Error(
-				`Bitbucket rejected the request (401/403). Check the token has the ${scope} ` +
-					"scope, or run `atlass bitbucket login` to update it.",
+				`Bitbucket rejected ${err.path || "the request"} (401/403). Check the token ` +
+					`has the ${scope} scope, or run \`atlass bitbucket login\` to update it.`,
 			);
 		}
 		throw err;

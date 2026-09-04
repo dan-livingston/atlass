@@ -17,6 +17,7 @@ import { HttpError } from "#/api/http-error.ts";
 import {
 	colorForBitbucketState,
 	PULL_REQUEST_SCOPE,
+	REPOSITORY_SCOPE,
 	withScopeHint,
 } from "#/commands/bitbucket-shared.ts";
 import { commentSection, dateWithAge, fieldLines, markdownBody } from "#/commands/view.ts";
@@ -39,15 +40,15 @@ export async function bitbucketPr(
 	);
 	const [comments, files] = await Promise.all([
 		withScopeHint(PULL_REQUEST_SCOPE, () => listComments(session, repo, ref.id)),
-		withScopeHint(PULL_REQUEST_SCOPE, () => listChangedFiles(session, repo, ref.id)),
+		fetchFiles(session, repo, ref.id),
 	]);
 
 	if (options.json) {
 		term.json({
 			...detail,
 			comments: comments.items,
-			files: files.items,
-			truncated: { comments: comments.truncated, files: files.truncated },
+			files: files?.items ?? null,
+			truncated: { comments: comments.truncated, files: files?.truncated ?? false },
 		});
 		return;
 	}
@@ -58,7 +59,7 @@ export async function bitbucketPr(
 export function formatPullRequestView(
 	detail: PullRequestDetail,
 	comments: CappedPage<PullRequestComment>,
-	files: CappedPage<ChangedFile>,
+	files: CappedPage<ChangedFile> | null,
 	nowMs: number,
 	allComments = false,
 ): string[] {
@@ -92,7 +93,14 @@ export function reviewerSection(reviewers: Reviewer[]): string[] {
 	return [...heading, ...reviewers.map((r) => `  ${r.name.padEnd(width)}  ${reviewerState(r)}`)];
 }
 
-export function fileSection(files: CappedPage<ChangedFile>): string[] {
+export function fileSection(files: CappedPage<ChangedFile> | null): string[] {
+	if (!files) {
+		return [
+			"",
+			kleur.bold("Files"),
+			`  ${kleur.dim(`Unavailable: the token needs the ${REPOSITORY_SCOPE} scope.`)}`,
+		];
+	}
 	if (files.items.length === 0) return [];
 	const rows = files.items.map((file) => ({
 		added: `+${file.added}`,
@@ -162,6 +170,19 @@ function parseRef(arg: string | undefined): PullRequestRef {
 		);
 	}
 	return ref;
+}
+
+async function fetchFiles(
+	session: BitbucketSession,
+	repo: RepoRef,
+	id: number,
+): Promise<CappedPage<ChangedFile> | null> {
+	try {
+		return await listChangedFiles(session, repo, id);
+	} catch (err) {
+		if (err instanceof HttpError && (err.status === 401 || err.status === 403)) return null;
+		throw err;
+	}
 }
 
 async function fetchDetail(

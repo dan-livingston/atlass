@@ -151,3 +151,20 @@ test("--json carries the detail, comments, files and the truncation flags", asyn
 		truncated: { comments: false, files: false },
 	});
 });
+
+test("a diffstat the token cannot read leaves the rest of the view standing", async () => {
+	const { env } = envFor({ [DIFFSTAT]: new HttpError(403, "Forbidden") });
+	await bitbucketPr(env, "42", {});
+
+	const text = env.term.paged[0] ?? "";
+	expect(text).toContain("Unavailable: the token needs the read:repository:bitbucket scope.");
+	expect(text).toContain("Fix the login redirect loop");
+	expect(text).toContain("Does this cover the SSO path?");
+});
+
+test("--json reports unreadable files as null rather than an empty list", async () => {
+	const { env } = envFor({ [DIFFSTAT]: new HttpError(403, "Forbidden") });
+	await bitbucketPr(env, "42", { json: true });
+
+	expect(env.term.emitted[0]).toMatchObject({ files: null });
+});
