@@ -153,6 +153,20 @@ test("html blocks are dropped", () => {
 	expect(markdownToAdf("<div>raw</div>").content).toEqual([]);
 });
 
+test("inline html comments are stripped while other inline tags stay as text", () => {
+	expect(markdownToAdf("a<!-- note -->b <br/> c").content).toEqual([
+		{
+			type: "paragraph",
+			content: [
+				{ type: "text", text: "a" },
+				{ type: "text", text: "b " },
+				{ type: "text", text: "<br/>" },
+				{ type: "text", text: " c" },
+			],
+		},
+	]);
+});
+
 test("the clean subset round-trips: Markdown to ADF and back reproduces the source", () => {
 	const md = [
 		"# Title",

@@ -23,6 +23,7 @@ export async function runPlan(
 		}
 		return;
 	}
+	for (const warning of plan.warnings) term.err(`warning: ${warning}`);
 	if (verdict.kind === "refuse") throw new Error(verdict.message);
 	if (verdict.kind === "confirm") {
 		const ok = await term.ask.confirm({ ...forcePrompt(verdict.message), default: false });

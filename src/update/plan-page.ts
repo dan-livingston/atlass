@@ -5,6 +5,7 @@ import type { PageSource } from "#/markdown/copied-document.ts";
 import type { UpdatePlan } from "#/update/plan.ts";
 
 import { externalMedia, imageHrefs, markdownToAdf, mediaNode } from "#/adf/from-markdown.ts";
+import { htmlWarnings } from "#/adf/html.ts";
 import { findLossyNodes } from "#/adf/lossy.ts";
 import { emptyBodyRefusal, headline, revision, withVerdict } from "#/update/plan.ts";
 import { isExternalHref } from "#/util/parse.ts";
@@ -54,6 +55,7 @@ export function planPageUpdate(
 			headline: headline("title", state.title, source.title, options.title),
 			revision: revision(`v${source.version}`, `v${state.version}`),
 			lossy: findLossyNodes(state.body),
+			warnings: htmlWarnings(source.body),
 			images: entries.map(({ href, kind }) => ({ href, kind })),
 			uploads: entries.flatMap((e) =>
 				e.kind === "upload" || e.kind === "changed"

@@ -5,6 +5,8 @@ import { randomUUID } from "node:crypto";
 
 import type { AdfDoc, AdfMark, AdfNode } from "#/adf/types.ts";
 
+import { isOnlyComments } from "#/adf/html.ts";
+
 export interface FromMarkdownOptions {
 	resolveImage?: (href: string, alt: string) => AdfNode | undefined;
 }
@@ -209,8 +211,10 @@ function inlineNode(token: Token, ctx: Ctx, marks: AdfMark[]): AdfNode[] {
 		}
 		case "br":
 			return [{ type: "hardBreak" }];
-		case "html":
-			return textNode((token as Tokens.HTML).text, marks);
+		case "html": {
+			const html = (token as Tokens.HTML).text;
+			return isOnlyComments(html) ? [] : textNode(html, marks);
+		}
 		default:
 			return "text" in token && token.text ? textNode(token.text, marks) : [];
 	}

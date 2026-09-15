@@ -176,6 +176,16 @@ test("issue: dry run lines cover headline, images, blockers, lossy and staleness
 	]);
 });
 
+test("issue: dry run warns about HTML that will be dropped or sent as text", () => {
+	const src = issueSource({ body: "New <b>body</b>.\n\n<div>gone</div>\n\n<!-- note -->" });
+	expect(formatPlan(planIssueUpdate(src, issue(), {}))).toEqual([
+		'Dry run for issue PROJ-1 "Fix login"',
+		"  warning: 1 HTML block will be dropped",
+		"  warning: 2 inline HTML tags will be sent as text",
+		"  nothing was written (dry run)",
+	]);
+});
+
 test("issue: a clean dry run prints only the header and footer", () => {
 	expect(formatPlan(planIssueUpdate(issueSource(), issue(), {}))).toEqual([
 		'Dry run for issue PROJ-1 "Fix login"',

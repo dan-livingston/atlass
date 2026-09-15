@@ -12,6 +12,7 @@ function plan(verdict: Verdict): UpdatePlan {
 		headline: { label: "summary", current: "Login broken", next: "Login broken" },
 		revision: { local: "v1", server: "v1", stale: false },
 		lossy: new Map(),
+		warnings: [],
 		images: [],
 		uploads: [],
 		body: { type: "doc", version: 1, content: [] },
@@ -32,6 +33,16 @@ test("a proceed verdict pushes without asking anything", async () => {
 
 	expect(count()).toBe(1);
 	expect(term.asked).toEqual([]);
+});
+
+test("warnings go to stderr before a real push", async () => {
+	const term = scriptedTerminal();
+	const { count, push } = pushCounter();
+	const warned = { ...plan({ kind: "proceed" }), warnings: ["1 HTML block will be dropped"] };
+	await runPlan(term, warned, {}, push);
+
+	expect(count()).toBe(1);
+	expect(term.errors).toEqual(["warning: 1 HTML block will be dropped"]);
 });
 
 test("a refuse verdict throws its message and never pushes", async () => {

@@ -3,6 +3,7 @@ import type { JiraIssue } from "#/api/jira-types.ts";
 import type { IssueSource } from "#/markdown/copied-document.ts";
 
 import { externalMedia, imageHrefs, markdownToAdf } from "#/adf/from-markdown.ts";
+import { htmlWarnings } from "#/adf/html.ts";
 import { findLossyNodes, formatLossy, JIRA_LOSSY_LABELS } from "#/adf/lossy.ts";
 import { isExternalHref } from "#/util/parse.ts";
 
@@ -42,6 +43,7 @@ export interface UpdatePlan {
 	headline: Headline;
 	revision: Revision;
 	lossy: Map<string, number>;
+	warnings: string[];
 	images: PlannedImage[];
 	uploads: PendingUpload[];
 	body: AdfDoc;
@@ -83,6 +85,7 @@ export function planIssueUpdate(
 			headline: headline("summary", issue.summary, source.title, options.summary),
 			revision: revision(source.updatedAtCopy, issue.updated),
 			lossy: findLossyNodes(issue.description, JIRA_LOSSY_LABELS),
+			warnings: htmlWarnings(source.body),
 			images,
 			uploads: [],
 			body,
@@ -104,6 +107,7 @@ export function formatPlan(plan: UpdatePlan): string[] {
 	for (const refusal of plan.refusals) lines.push(row("blocked", refusal));
 	if (plan.lossy.size > 0)
 		lines.push(row("warning", `${formatLossy(plan.lossy)} will be removed`));
+	for (const warning of plan.warnings) lines.push(row("warning", warning));
 	if (plan.revision.stale) {
 		lines.push(row("stale", `${revisionText(plan.revision)} (would refuse without --force)`));
 	}
