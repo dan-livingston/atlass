@@ -72,9 +72,10 @@ Writes `PROJ-123.md` or `123456-title-slug.md` to the current directory, with
 attachments in a sibling `<name>.assets/` folder. Pass `--out` with a directory
 or file path to write elsewhere. Existing files are overwritten.
 
-Each file has YAML frontmatter, an H1, the body as Markdown, a `## Comments`
-section, and an `## Attachments` section. Inline images link to the local copy
-when they can be matched to an attachment.
+Each file has YAML frontmatter, an H1, the body as Markdown, then a
+`<!-- atlass:generated -->` line followed by the `## Comments` and
+`## Attachments` sections. Inline images link to the local copy when they can be
+matched to an attachment.
 
 ## Update
 
@@ -89,7 +90,9 @@ atlass confluence update file.md -m "fix typo"
 ```
 
 Both accept `--dry-run` to preview and `--force` to skip the checks below. The
-body sent is everything between the H1 and `## Comments`.
+body sent is everything between the H1 and the `<!-- atlass:generated -->` line.
+Files copied before that line existed end the body at `## Comments` or
+`## Attachments`.
 
 - The update aborts if the issue or page changed on the server since the copy.
 - Panels, macros, expands, and layouts were flattened on copy and cannot be

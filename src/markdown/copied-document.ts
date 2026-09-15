@@ -35,19 +35,21 @@ export interface PageSource extends CopiedSource {
 	version: number;
 }
 
+const GENERATED_MARKER = "<!-- atlass:generated -->";
 const COMMENTS_HEADING = "## Comments";
 const ATTACHMENTS_HEADING = "## Attachments";
 const FRONTMATTER_BLOCK = /^---\n([\s\S]*?)\n---\n?/;
 const FRONTMATTER_KEY = /^([A-Za-z0-9_]+):\s*(.*)$/;
 const FRONTMATTER_LIST_ITEM = /^ {2}- (.*)$/;
 const BARE_NUMBER = /^-?\d+(\.\d+)?$/;
-const TRAILING_SECTION_HEADING = /^## (Comments|Attachments)\s*$/;
+const LEGACY_SECTION_HEADING = /^## (Comments|Attachments)\s*$/;
 
 export function render(doc: CopiedDoc): string {
 	const sections = [
 		frontmatter(doc.fields),
 		`# ${doc.title}`,
 		doc.body,
+		GENERATED_MARKER,
 		commentsSection(doc.comments),
 		attachmentsSection(doc.attachments),
 	];
@@ -64,10 +66,7 @@ export function parse(raw: string): CopiedSource {
 	const lines = text.slice(match[0].length).split("\n");
 	const h1 = leadingH1(lines);
 	const start = h1 ? h1.index + 1 : 0;
-	const trailing = lines.findIndex(
-		(line, i) => i >= start && TRAILING_SECTION_HEADING.test(line),
-	);
-	const end = trailing === -1 ? lines.length : trailing;
+	const end = generatedStart(lines, start);
 	const fallbackTitle = typeof fields["title"] === "string" ? fields["title"] : "";
 	return {
 		fields,
@@ -161,6 +160,15 @@ function leadingH1(lines: string[]): { index: number; title: string } | null {
 		if (line.trim().length > 0) return null;
 	}
 	return null;
+}
+
+function generatedStart(lines: string[], start: number): number {
+	const after = (test: (line: string) => boolean) =>
+		lines.findIndex((line, i) => i >= start && test(line));
+	const marker = after((line) => line.trim() === GENERATED_MARKER);
+	if (marker !== -1) return marker;
+	const legacy = after((line) => LEGACY_SECTION_HEADING.test(line));
+	return legacy === -1 ? lines.length : legacy;
 }
 
 function commentsSection(comments: CopiedComment[]): string {

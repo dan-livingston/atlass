@@ -48,6 +48,8 @@ const pageFile = [
 	"- a",
 	"- b",
 	"",
+	"<!-- atlass:generated -->",
+	"",
 	"## Comments",
 	"",
 	"### Someone - 2025-01-01 10:00",
@@ -60,7 +62,7 @@ const pageFile = [
 	"",
 ].join("\n");
 
-test("render writes frontmatter, H1, body, comments, and attachments in order", () => {
+test("render writes frontmatter, H1, body, marker, comments, and attachments in order", () => {
 	expect(render(page)).toBe(pageFile);
 });
 
@@ -81,8 +83,10 @@ test("render writes an empty list inline", () => {
 	expect(render(doc({ fields: { labels: [] } }))).toContain("labels: []");
 });
 
-test("render drops empty sections and ends with a newline", () => {
-	expect(render(doc({ body: "" }))).toBe('---\nid: "123456"\nversion: 7\n---\n\n# My Page\n');
+test("render drops empty sections but keeps the marker, and ends with a newline", () => {
+	expect(render(doc({ body: "" }))).toBe(
+		'---\nid: "123456"\nversion: 7\n---\n\n# My Page\n\n<!-- atlass:generated -->\n',
+	);
 });
 
 test("render names unknown comment authors and omits missing dates and bodies", () => {
@@ -125,7 +129,30 @@ test("parse falls back to the frontmatter title when the H1 is missing", () => {
 	});
 });
 
-test("parse stops the body at the first trailing section, even one written by the user", () => {
+test("parse stops the body at the marker, keeping the user's own Comments heading", () => {
+	const text = [
+		"---",
+		'id: "9"',
+		"---",
+		"",
+		"# T",
+		"",
+		"body",
+		"",
+		"## Comments",
+		"",
+		"mine",
+		"",
+		"<!-- atlass:generated -->",
+		"",
+		"## Comments",
+		"",
+		"### Someone",
+	].join("\n");
+	expect(parse(text).body).toBe("body\n\n## Comments\n\nmine");
+});
+
+test("parse of a file without the marker stops the body at the first trailing section", () => {
 	const text = [
 		"---",
 		'id: "9"',
@@ -174,6 +201,13 @@ const roundTrips: [string, CopiedDoc][] = [
 	[
 		"body containing a heading that looks like a trailing section",
 		doc({ body: "Intro\n\n## Comments on design\n\nstill body" }),
+	],
+	[
+		"body containing a real Attachments section",
+		doc({
+			body: "Intro\n\n## Attachments\n\nSee the drive.",
+			attachments: [{ filename: "f.png", relativePath: "x.assets/f.png" }],
+		}),
 	],
 ];
 

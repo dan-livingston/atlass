@@ -187,6 +187,8 @@ test("renderCopy writes issue frontmatter in the copied order with the body and 
 			"",
 			"![shot.png](PROJ-7.assets/shot.png)",
 			"",
+			"<!-- atlass:generated -->",
+			"",
 			"## Comments",
 			"",
 			"### Linus - 2026-08-02 19:00",
@@ -219,6 +221,8 @@ test("renderCopy writes page frontmatter with the id as a string and the version
 			"---",
 			"",
 			"# Release Notes: v2!",
+			"",
+			"<!-- atlass:generated -->",
 			"",
 		].join("\n"),
 	);
