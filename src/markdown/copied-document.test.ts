@@ -160,6 +160,11 @@ test("parse stops the body at the marker, keeping the user's own Comments headin
 	expect(parse(text).body).toBe("body\n\n## Comments\n\nmine");
 });
 
+test("parse treats only an unindented marker line as the marker", () => {
+	const text = ["---", 'id: "9"', "---", "", "# T", "", "    <!-- atlass:generated -->", "after"];
+	expect(parse(text.join("\n")).body).toBe("<!-- atlass:generated -->\nafter");
+});
+
 test("parse of a file without the marker stops the body at the first trailing section", () => {
 	const text = [
 		"---",

@@ -58,12 +58,12 @@ export function parse(raw: string): CopiedSource {
 	if (!split) {
 		throw new Error("Not an atlass file: no YAML frontmatter found.");
 	}
-	return sourceOf(split, LEGACY_SECTION_HEADING);
+	return sourceOf(split, "marker-or-legacy-heading");
 }
 
 export function parseDraft(raw: string): CopiedSource {
 	const text = normalized(raw);
-	return sourceOf(splitFrontmatter(text) ?? { fields: {}, rest: text }, null);
+	return sourceOf(splitFrontmatter(text) ?? { fields: {}, rest: text }, "marker");
 }
 
 export function withGeneratedMarker(text: string): string {
@@ -71,11 +71,13 @@ export function withGeneratedMarker(text: string): string {
 	return `${text.trimEnd()}\n\n${GENERATED_MARKER}\n`;
 }
 
-function sourceOf({ fields, rest }: Frontmatter, legacyHeading: RegExp | null): CopiedSource {
+type BodyEnd = "marker" | "marker-or-legacy-heading";
+
+function sourceOf({ fields, rest }: Frontmatter, ending: BodyEnd): CopiedSource {
 	const lines = rest.split("\n");
 	const h1 = leadingH1(lines);
 	const start = h1 ? h1.index + 1 : 0;
-	const end = generatedStart(lines, start, legacyHeading);
+	const end = bodyEnd(lines, start, ending);
 	const fallbackTitle = typeof fields["title"] === "string" ? fields["title"] : "";
 	return {
 		fields,
@@ -117,17 +119,17 @@ function leadingH1(lines: string[]): { index: number; title: string } | null {
 	return null;
 }
 
-function generatedStart(lines: string[], start: number, legacyHeading: RegExp | null): number {
+function bodyEnd(lines: string[], start: number, ending: BodyEnd): number {
 	const after = (test: (line: string) => boolean) =>
 		lines.findIndex((line, i) => i >= start && test(line));
 	const marker = after(isMarker);
-	if (marker !== -1 || !legacyHeading) return marker === -1 ? lines.length : marker;
-	const legacy = after((line) => legacyHeading.test(line));
+	if (marker !== -1) return marker;
+	const legacy = ending === "marker" ? -1 : after((line) => LEGACY_SECTION_HEADING.test(line));
 	return legacy === -1 ? lines.length : legacy;
 }
 
 function isMarker(line: string): boolean {
-	return line.trim() === GENERATED_MARKER;
+	return line.trimEnd() === GENERATED_MARKER;
 }
 
 function commentsSection(comments: CopiedComment[]): string {
