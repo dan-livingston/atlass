@@ -1,4 +1,4 @@
-import type { AdfDoc } from "#/adf/types.ts";
+import type { AdfDoc, AdfNode } from "#/adf/types.ts";
 import type { JiraIssue } from "#/api/jira-types.ts";
 import type { IssueSource } from "#/markdown/copied-document.ts";
 
@@ -69,7 +69,7 @@ export function planIssueUpdate(
 	}));
 	const unsupported = images.filter((i) => i.kind === "unsupported").map((i) => i.href);
 	const body = markdownToAdf(source.body, {
-		resolveImage: (href, alt) => (isExternalHref(href) ? externalMedia(href, alt) : undefined),
+		resolveImage: externalImagesOnly,
 	});
 	const refusals = [
 		...(unsupported.length > 0
@@ -157,6 +157,14 @@ export function revision(local: string, server: string): Revision {
 
 function revisionText(revision: Revision): string {
 	return `copied at ${revision.local}, server now ${revision.server}`;
+}
+
+export function externalImagesOnly(href: string, alt: string): AdfNode | undefined {
+	return isExternalHref(href) ? externalMedia(href, alt) : undefined;
+}
+
+export function missingImagesRefusal(missing: string[]): string[] {
+	return missing.length > 0 ? [`Image file(s) not found: ${missing.join(", ")}`] : [];
 }
 
 export function emptyBodyRefusal(body: AdfDoc): string[] {

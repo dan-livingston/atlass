@@ -2,14 +2,20 @@ import type { AdfDoc, AdfNode } from "#/adf/types.ts";
 import type { AttachmentInfo } from "#/api/confluence-attachments.ts";
 import type { PageState } from "#/api/confluence-pages.ts";
 import type { PageSource } from "#/markdown/copied-document.ts";
-import type { UpdatePlan } from "#/update/plan.ts";
+import type { PendingUpload, UpdatePlan } from "#/update/plan.ts";
 
 import { externalMedia, imageHrefs, markdownToAdf, mediaNode } from "#/adf/from-markdown.ts";
 import { htmlWarnings, withoutComments } from "#/adf/html.ts";
 import { findLossyNodes } from "#/adf/lossy.ts";
 import { adfToMarkdown } from "#/adf/to-markdown.ts";
 import { unifiedDiff } from "#/update/body-diff.ts";
-import { emptyBodyRefusal, headline, revision, withVerdict } from "#/update/plan.ts";
+import {
+	emptyBodyRefusal,
+	headline,
+	missingImagesRefusal,
+	revision,
+	withVerdict,
+} from "#/update/plan.ts";
 import { isExternalHref } from "#/util/parse.ts";
 
 export interface LocalImage {
@@ -20,8 +26,40 @@ export interface LocalImage {
 }
 
 export interface PagePlanOptions {
+	file: string;
 	title?: boolean;
 	force?: boolean;
+}
+
+export interface PageBody {
+	images: PageImage[];
+	body: AdfDoc;
+	uploads: PendingUpload[];
+}
+
+export function planPageBody(
+	page: { id: string; body: string },
+	attachments: AttachmentInfo[],
+	localImages: LocalImage[],
+): PageBody {
+	const collection = `contentId-${page.id}`;
+	const images = imageHrefs(page.body).map((href) => pageImage(href, localImages, attachments));
+	const byHref = new Map(images.map((e) => [e.href, e]));
+	const body = markdownToAdf(page.body, {
+		resolveImage: (href, alt) => {
+			const entry = byHref.get(href);
+			if (!entry || entry.kind === "missing") return undefined;
+			if (entry.kind === "external") return externalMedia(href, alt);
+			const id = entry.kind === "reuse" ? entry.fileId : href;
+			return mediaNode({ type: "file", id, collection }, alt);
+		},
+	});
+	const uploads = images.flatMap((e) =>
+		e.kind === "upload" || e.kind === "changed"
+			? [{ href: e.href, path: e.path, filename: e.filename }]
+			: [],
+	);
+	return { images, body, uploads };
 }
 
 export function planPageUpdate(
@@ -31,25 +69,8 @@ export function planPageUpdate(
 	localImages: LocalImage[],
 	options: PagePlanOptions,
 ): UpdatePlan {
-	const collection = `contentId-${source.id}`;
-	const entries = imageHrefs(source.body).map((href) =>
-		pageImage(href, localImages, attachments),
-	);
-	const byHref = new Map(entries.map((e) => [e.href, e]));
-	const body = markdownToAdf(source.body, {
-		resolveImage: (href, alt) => {
-			const entry = byHref.get(href);
-			if (!entry || entry.kind === "missing") return undefined;
-			if (entry.kind === "external") return externalMedia(href, alt);
-			const id = entry.kind === "reuse" ? entry.fileId : href;
-			return mediaNode({ type: "file", id, collection }, alt);
-		},
-	});
-	const missing = entries.filter((e) => e.kind === "missing").map((e) => e.href);
-	const refusals = [
-		...(missing.length > 0 ? [`Image file(s) not found: ${missing.join(", ")}`] : []),
-		...emptyBodyRefusal(body),
-	];
+	const { images, body, uploads } = planPageBody(source, attachments, localImages);
+	const missing = images.filter((e) => e.kind === "missing").map((e) => e.href);
 	return withVerdict(
 		{
 			noun: "page",
@@ -59,18 +80,14 @@ export function planPageUpdate(
 			lossy: findLossyNodes(state.body),
 			warnings: htmlWarnings(source.body),
 			diff: unifiedDiff(
-				serverMarkdown(state, attachments, entries),
+				serverMarkdown(state, attachments, images),
 				withoutComments(source.body),
-				[`server v${state.version}`, `file v${source.version}`],
+				[`server v${state.version}`, options.file],
 			),
-			images: entries.map(({ href, kind }) => ({ href, kind })),
-			uploads: entries.flatMap((e) =>
-				e.kind === "upload" || e.kind === "changed"
-					? [{ href: e.href, path: e.path, filename: e.filename }]
-					: [],
-			),
+			images: images.map(({ href, kind }) => ({ href, kind })),
+			uploads,
 			body,
-			refusals,
+			refusals: [...missingImagesRefusal(missing), ...emptyBodyRefusal(body)],
 		},
 		options.force ?? false,
 	);
@@ -79,18 +96,16 @@ export function planPageUpdate(
 function serverMarkdown(
 	state: PageState,
 	attachments: AttachmentInfo[],
-	entries: PageImage[],
+	images: PageImage[],
 ): string {
-	const reused = new Map(
-		entries.flatMap((e) => (e.kind === "reuse" ? [[e.fileId, e.href]] : [])),
-	);
+	const reused = new Map(images.flatMap((e) => (e.kind === "reuse" ? [[e.fileId, e.href]] : [])));
 	return adfToMarkdown(state.body, {
 		resolveMedia: ({ id }) =>
 			reused.get(id ?? "") ?? attachments.find((a) => a.fileId === id)?.filename,
 	});
 }
 
-type PageImage =
+export type PageImage =
 	| { href: string; kind: "external" | "missing" }
 	| { href: string; kind: "reuse"; fileId: string }
 	| { href: string; kind: "upload" | "changed"; path: string; filename: string };

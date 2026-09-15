@@ -3,9 +3,9 @@ import type { CopiedSource } from "#/markdown/copied-document.ts";
 import type { LocalImage } from "#/update/plan-page.ts";
 import type { PlannedImage } from "#/update/plan.ts";
 
-import { externalMedia, imageHrefs, markdownToAdf } from "#/adf/from-markdown.ts";
+import { imageHrefs, markdownToAdf } from "#/adf/from-markdown.ts";
 import { htmlWarnings } from "#/adf/html.ts";
-import { imageCounts, row } from "#/update/plan.ts";
+import { externalImagesOnly, imageCounts, missingImagesRefusal, row } from "#/update/plan.ts";
 import { isExternalHref } from "#/util/parse.ts";
 
 export interface CreateTarget {
@@ -36,15 +36,12 @@ export function planPageCreate(
 		...target,
 		title: draft.title,
 		images,
-		body: markdownToAdf(draft.body, {
-			resolveImage: (href, alt) =>
-				isExternalHref(href) ? externalMedia(href, alt) : undefined,
-		}),
+		body: markdownToAdf(draft.body, { resolveImage: externalImagesOnly }),
 		warnings: htmlWarnings(draft.body),
 		refusals: [
 			...(draft.title ? [] : ["No title. Add an H1 or a `title` to the frontmatter."]),
 			...spaceRefusal(target),
-			...(missing.length > 0 ? [`Image file(s) not found: ${missing.join(", ")}`] : []),
+			...missingImagesRefusal(missing),
 		],
 	};
 }

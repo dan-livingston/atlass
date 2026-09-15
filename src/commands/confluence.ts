@@ -97,9 +97,10 @@ export async function confluenceUpdate(
 	const attachments = await listAttachments(session, src.id);
 	const localImages = await statLocalImages(files, dirname(resolve(file)), src.body);
 
-	const plan = planPageUpdate(src, state, attachments, localImages, options);
+	const plan = planPageUpdate(src, state, attachments, localImages, { ...options, file });
 	await runPlan(term, plan, options, async () => {
-		const version = await pushPage(env, plan, {
+		const content = { title: plan.headline.next, body: plan.body, uploads: plan.uploads };
+		const version = await pushPage(env, content, {
 			id: src.id,
 			nextVersion: state.version + 1,
 			message: options.message ?? "Updated via atlass",

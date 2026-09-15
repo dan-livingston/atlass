@@ -4,7 +4,7 @@ import type { AdfNode } from "#/adf/types.ts";
 import type { AttachmentInfo } from "#/api/confluence-attachments.ts";
 import type { PageState } from "#/api/confluence-pages.ts";
 import type { PageSource } from "#/markdown/copied-document.ts";
-import type { LocalImage } from "#/update/plan-page.ts";
+import type { LocalImage, PagePlanOptions } from "#/update/plan-page.ts";
 
 import { planPageUpdate, withUploadedIds } from "#/update/plan-page.ts";
 import { formatPlan } from "#/update/plan.ts";
@@ -26,6 +26,10 @@ function pageSource(over: Partial<PageSource> = {}): PageSource {
 		version: 7,
 		...over,
 	};
+}
+
+function options(over: Partial<PagePlanOptions> = {}): PagePlanOptions {
+	return { file: "page.md", ...over };
 }
 
 function pageState(over: Partial<PageState> = {}): PageState {
@@ -54,9 +58,13 @@ function media(attrs: Record<string, unknown>): AdfNode {
 }
 
 test("page: an unchanged, edit-only file proceeds and --title pushes the H1", () => {
-	const plan = planPageUpdate(pageSource({ title: "Renamed" }), pageState(), [], [], {
-		title: true,
-	});
+	const plan = planPageUpdate(
+		pageSource({ title: "Renamed" }),
+		pageState(),
+		[],
+		[],
+		options({ title: true }),
+	);
 	expect(plan.verdict).toEqual({ kind: "proceed" });
 	expect(plan.noun).toBe("page");
 	expect(plan.headline).toEqual({ label: "title", current: "My Page", next: "Renamed" });
@@ -65,7 +73,7 @@ test("page: an unchanged, edit-only file proceeds and --title pushes the H1", ()
 });
 
 test("page: a newer server version refuses unless forced", () => {
-	const plan = planPageUpdate(pageSource(), pageState({ version: 9 }), [], [], {});
+	const plan = planPageUpdate(pageSource(), pageState({ version: 9 }), [], [], options());
 	expect(plan.verdict).toEqual({
 		kind: "refuse",
 		message:
@@ -78,16 +86,18 @@ test("page: lossy content on the server asks for confirmation and an empty body 
 	const state = pageState({
 		body: doc({ type: "layoutSection", content: [paragraph("cols")] }),
 	});
-	expect(planPageUpdate(pageSource(), state, [], [], {}).verdict).toEqual({
+	expect(planPageUpdate(pageSource(), state, [], [], options()).verdict).toEqual({
 		kind: "confirm",
 		message:
 			"This page contains 1 layout that Markdown cannot represent and will be removed. " +
 			"Continue?",
 	});
-	expect(planPageUpdate(pageSource(), state, [], [], { force: true }).verdict).toEqual({
+	expect(planPageUpdate(pageSource(), state, [], [], options({ force: true })).verdict).toEqual({
 		kind: "proceed",
 	});
-	expect(planPageUpdate(pageSource({ body: "" }), pageState(), [], [], {}).verdict).toEqual({
+	expect(
+		planPageUpdate(pageSource({ body: "" }), pageState(), [], [], options()).verdict,
+	).toEqual({
 		kind: "refuse",
 		message: "Refusing to update: the converted body is empty.",
 	});
@@ -111,7 +121,7 @@ test("page: images are reused when name and size match, uploaded otherwise, and 
 		local("p.assets/grown.png", 11),
 		local("p.assets/fresh.png", 5),
 	];
-	const plan = planPageUpdate(src, pageState(), attachments, locals, {});
+	const plan = planPageUpdate(src, pageState(), attachments, locals, options());
 	expect(plan.images).toEqual([
 		{ href: "p.assets/same.png", kind: "reuse" },
 		{ href: "p.assets/grown.png", kind: "changed" },
@@ -143,9 +153,13 @@ test("page: images are reused when name and size match, uploaded otherwise, and 
 
 test("page: a missing image file is refused even with --force", () => {
 	const src = pageSource({ body: "Text.\n\n![gone](p.assets/gone.png)" });
-	const plan = planPageUpdate(src, pageState(), [], [local("p.assets/gone.png")], {
-		force: true,
-	});
+	const plan = planPageUpdate(
+		src,
+		pageState(),
+		[],
+		[local("p.assets/gone.png")],
+		options({ force: true }),
+	);
 	expect(plan.images).toEqual([{ href: "p.assets/gone.png", kind: "missing" }]);
 	expect(plan.verdict).toEqual({
 		kind: "refuse",
@@ -163,14 +177,14 @@ test("page: dry run lines count images by kind", () => {
 		pageState({ version: 8 }),
 		[attachment("same.png", "f-same", 10)],
 		[local("p.assets/same.png", 10), local("p.assets/fresh.png", 5)],
-		{},
+		options(),
 	);
 	expect(formatPlan(plan)).toEqual([
 		'Dry run for page 123 "My Page"',
 		"  images:  1 new, 1 reused, 1 external",
 		"  stale:   copied at v7, server now v8 (would refuse without --force)",
 		"--- server v8",
-		"+++ file v7",
+		"+++ page.md",
 		"@@ -1,1 +1,1 @@",
 		"-Old body.",
 		"+![same](p.assets/same.png) ![fresh](p.assets/fresh.png) ![logo](https://cdn/logo.png)",
@@ -191,7 +205,7 @@ test("page: the diff is empty when the body matches the server, reused images in
 		state,
 		[attachment("same.png", "f-same", 10)],
 		[local("img/same.png", 10)],
-		{},
+		options(),
 	);
 	expect(plan.diff).toEqual([]);
 });
@@ -199,7 +213,7 @@ test("page: the diff is empty when the body matches the server, reused images in
 test("page: author comments never reach the page, so they never show in the diff", () => {
 	const state = pageState({ body: doc(paragraph("One."), paragraph("Two.")) });
 	const src = pageSource({ body: "One.\n\n<!-- note to self -->\n\nTwo." });
-	expect(planPageUpdate(src, state, [], [], {}).diff).toEqual([]);
+	expect(planPageUpdate(src, state, [], [], options()).diff).toEqual([]);
 });
 
 test("page: the diff shows edited lines with context", () => {
@@ -211,11 +225,11 @@ test("page: the diff shows edited lines with context", () => {
 		state,
 		[],
 		[],
-		{},
+		options(),
 	);
 	expect(plan.diff).toEqual([
 		"--- server v7",
-		"+++ file v7",
+		"+++ page.md",
 		"@@ -1,5 +1,5 @@",
 		" One.",
 		" ",

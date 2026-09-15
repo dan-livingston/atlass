@@ -12,7 +12,7 @@ const FILE = join(dir, "notes.md");
 const SITE = "https://acme.atlassian.net";
 const FAVOURITE = "/wiki/rest/api/relation/favourite/from/user/current/to/content/900";
 
-function created(version: number) {
+function routesAfterCreate(version: number) {
 	return {
 		"/wiki/api/v2/spaces?keys=DEV": { results: [{ id: "S1", key: "DEV" }] },
 		"/wiki/api/v2/pages/900?body-format=atlas_doc_format": {
@@ -32,7 +32,7 @@ function created(version: number) {
 	} as Record<string, unknown>;
 }
 
-function createEnv(files: FileSeed, spec: FakeTransport = {}, json = created(1)) {
+function createEnv(files: FileSeed, spec: FakeTransport = {}, json = routesAfterCreate(1)) {
 	const calls: string[] = [];
 	const bodies: unknown[] = [];
 	const env = fakeJiraEnv(
@@ -136,7 +136,7 @@ test("create with a local image creates, records the id, uploads, then pushes v2
 				return { version: { number: 2 } };
 			},
 		},
-		created(2),
+		routesAfterCreate(2),
 	);
 	await confluenceCreate(env, FILE, { space: "DEV" });
 

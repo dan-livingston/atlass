@@ -6,15 +6,15 @@ import type { CopiedSource } from "#/markdown/copied-document.ts";
 import type { LocalImage } from "#/update/plan-page.ts";
 
 import { createPage, findSpaceId } from "#/api/confluence-create.ts";
-import { starPage } from "#/api/confluence-favourites.ts";
 import { fetchPage } from "#/api/confluence-pages.ts";
 import { pushPage, statLocalImages } from "#/commands/confluence-push.ts";
+import { starById } from "#/commands/confluence-star.ts";
 import { pageFields } from "#/copy/plan.ts";
 import { formatCreatePlan, planPageCreate } from "#/create/page-plan.ts";
 import { parseDraft, scalarString, withGeneratedMarker } from "#/markdown/copied-document.ts";
 import { rewriteFields, withFields } from "#/markdown/frontmatter.ts";
 import { editKeepingLayout } from "#/markdown/text-layout.ts";
-import { planPageUpdate } from "#/update/plan-page.ts";
+import { planPageBody } from "#/update/plan-page.ts";
 import { parsePageId } from "#/util/parse.ts";
 
 export interface CreateOptions {
@@ -57,10 +57,10 @@ export async function confluenceCreate(
 	for (const warning of plan.warnings) term.err(`warning: ${warning}`);
 
 	const created = await createPage(session, { ...plan, spaceId: plan.spaceId });
-	const recovery = { title: plan.title, id: created.id, space, version: created.version };
+	const createdFields = { title: plan.title, id: created.id, space, version: created.version };
 	await files.writeText(
 		file,
-		editKeepingLayout(raw, (text) => withGeneratedMarker(withFields(text, recovery))),
+		editKeepingLayout(raw, (text) => withGeneratedMarker(withFields(text, createdFields))),
 	);
 	if (plan.images.some((i) => i.kind === "upload")) {
 		await addImages(env, draft, created, localImages);
@@ -84,23 +84,21 @@ async function addImages(
 	created: CreatedPage,
 	localImages: LocalImage[],
 ): Promise<void> {
-	const plan = planPageUpdate(
-		{ ...draft, id: created.id, version: created.version },
-		{ version: created.version, title: draft.title, body: null },
-		[],
-		localImages,
-		{},
+	const { body, uploads } = planPageBody({ id: created.id, body: draft.body }, [], localImages);
+	await pushPage(
+		env,
+		{ title: draft.title, body, uploads },
+		{
+			id: created.id,
+			nextVersion: created.version + 1,
+			message: "Added images via atlass",
+		},
 	);
-	await pushPage(env, plan, {
-		id: created.id,
-		nextVersion: created.version + 1,
-		message: "Added images via atlass",
-	});
 }
 
-async function starCreated({ session, term }: SessionEnv, id: string, file: string) {
+async function starCreated(env: SessionEnv, id: string, file: string): Promise<void> {
 	try {
-		await starPage(session, id);
+		await starById(env, id);
 	} catch (err) {
 		const reason = err instanceof Error ? err.message : String(err);
 		throw new Error(
@@ -108,5 +106,4 @@ async function starCreated({ session, term }: SessionEnv, id: string, file: stri
 				`Run \`atlass confluence star ${file}\`.`,
 		);
 	}
-	term.out(`Starred page ${id}.`);
 }
