@@ -78,13 +78,44 @@ test("a confirm with no terminal to ask points at the flag that would answer it"
 	expect(count()).toBe(0);
 });
 
-test("a dry run prints the plan and pushes nothing, whatever the verdict", async () => {
+test("a dry run of a plan that would proceed prints it and succeeds", async () => {
 	const term = scriptedTerminal();
+	const { count, push } = pushCounter();
+	await runPlan(term, plan({ kind: "proceed" }), { dryRun: true }, push);
+
+	expect(count()).toBe(0);
+	expect(term.written).toHaveLength(1);
+	expect(term.written[0]).toContain("nothing was written (dry run)");
+});
+
+test("a dry run of a refused plan prints it, then fails with the refusal", async () => {
+	const term = scriptedTerminal();
+	const { count, push } = pushCounter();
+	await expect(
+		runPlan(term, plan({ kind: "refuse", message: "Issue changed." }), { dryRun: true }, push),
+	).rejects.toThrow("Issue changed.");
+
+	expect(count()).toBe(0);
+	expect(term.written[0]).toContain("nothing was written (dry run)");
+});
+
+test("a dry run of a confirm fails when there is no terminal to answer it", async () => {
+	const term = scriptedTerminal();
+	const { count, push } = pushCounter();
+	await expect(
+		runPlan(term, plan({ kind: "confirm", message: "Continue?" }), { dryRun: true }, push),
+	).rejects.toThrow("Cannot prompt without a terminal. Pass --force.");
+
+	expect(count()).toBe(0);
+	expect(term.asked).toEqual([]);
+	expect(term.written[0]).toContain("nothing was written (dry run)");
+});
+
+test("a dry run of a confirm succeeds without asking when a terminal could answer it", async () => {
+	const term = scriptedTerminal({ answers: [] });
 	const { count, push } = pushCounter();
 	await runPlan(term, plan({ kind: "confirm", message: "Continue?" }), { dryRun: true }, push);
 
 	expect(count()).toBe(0);
 	expect(term.asked).toEqual([]);
-	expect(term.written).toHaveLength(1);
-	expect(term.written[0]).toContain("nothing was written (dry run)");
 });

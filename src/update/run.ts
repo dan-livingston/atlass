@@ -1,6 +1,7 @@
-import type { Terminal } from "#/terminal.ts";
+import type { PromptSpec, Terminal } from "#/terminal.ts";
 import type { UpdatePlan } from "#/update/plan.ts";
 
+import { NotInteractiveError } from "#/terminal.ts";
 import { formatPlan } from "#/update/plan.ts";
 
 export interface RunOptions {
@@ -13,22 +14,26 @@ export async function runPlan(
 	options: RunOptions,
 	push: () => Promise<void>,
 ): Promise<void> {
+	const verdict = plan.verdict;
 	if (options.dryRun) {
 		term.out(formatPlan(plan));
+		if (verdict.kind === "refuse") throw new Error(verdict.message);
+		if (verdict.kind === "confirm" && !term.interactive) {
+			throw new NotInteractiveError(forcePrompt(verdict.message));
+		}
 		return;
 	}
-	const verdict = plan.verdict;
 	if (verdict.kind === "refuse") throw new Error(verdict.message);
 	if (verdict.kind === "confirm") {
-		const ok = await term.ask.confirm({
-			message: verdict.message,
-			flag: "--force",
-			default: false,
-		});
+		const ok = await term.ask.confirm({ ...forcePrompt(verdict.message), default: false });
 		if (!ok) {
 			term.out("Aborted.");
 			return;
 		}
 	}
 	await push();
+}
+
+function forcePrompt(message: string): PromptSpec {
+	return { message, flag: "--force" };
 }
