@@ -19,6 +19,7 @@ import {
 import { planIssueCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
 import { parseIssueSource } from "#/markdown/copied-document.ts";
+import { rewriteFields } from "#/markdown/frontmatter.ts";
 import { planIssueUpdate } from "#/update/plan.ts";
 import { runPlan } from "#/update/run.ts";
 import { parseIssueKey } from "#/util/parse.ts";
@@ -144,18 +145,20 @@ export async function jiraUpdate(
 			flag: "[file]",
 			required: true,
 		}));
-	const src = parseIssueSource(await files.readText(file));
+	const raw = await files.readText(file);
+	const src = parseIssueSource(raw);
 
 	const issue = await fetchIssue(session, session.site, src.key);
 
 	const plan = planIssueUpdate(src, issue, options);
 	await runPlan(term, plan, options, async () => {
 		const { current, next } = plan.headline;
-		await updateIssue(session, src.key, {
+		const updated = await updateIssue(session, src.key, {
 			description: plan.body,
 			summary: next !== current ? next : undefined,
 		});
 		term.out(`Updated ${src.key}.`);
+		if (updated) await files.writeText(file, rewriteFields(raw, { updated }));
 	});
 }
 

@@ -26,8 +26,14 @@ function issueJson(updated: string) {
 			},
 		},
 		"/rest/api/3/issue/PROJ-7/comment?maxResults=100&orderBy=created": { comments: [] },
+		"/rest/api/3/issue/PROJ-7?fields=updated": {
+			key: "PROJ-7",
+			fields: { updated: PUSHED_AT },
+		},
 	};
 }
+
+const PUSHED_AT = "2026-09-15T02:00:00.000+0000";
 
 const ISSUE_FILE = join(dir, "PROJ-7.md");
 
@@ -63,6 +69,17 @@ test("jira update: an unchanged issue is pushed and the result reported", async 
 	expect(pushed).toHaveLength(1);
 	expect(env.term.written).toEqual(["Updated PROJ-7."]);
 	expect(env.term.asked).toEqual([]);
+});
+
+test("jira update: the issue's new updated time is written back for the next push", async () => {
+	const env = fakeJiraEnv(
+		{ getJson: routed(issueJson(COPIED_AT)), putNoContent: () => undefined },
+		{ files: issueSeed(COPIED_AT, "Rewritten steps.") },
+	);
+	const before = await env.files.readText(ISSUE_FILE);
+	await jiraUpdate(env, ISSUE_FILE, {});
+
+	expect(await env.files.readText(ISSUE_FILE)).toBe(before.replace(COPIED_AT, PUSHED_AT));
 });
 
 test("jira update: an issue changed on the server is refused before any write", async () => {

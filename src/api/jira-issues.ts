@@ -76,10 +76,13 @@ export async function updateIssue(
 	client: Transport,
 	key: string,
 	update: IssueUpdate,
-): Promise<void> {
+): Promise<string> {
 	const fields: Record<string, unknown> = { description: update.description };
 	if (update.summary !== undefined) fields["summary"] = update.summary;
-	await client.putNoContent(`/rest/api/3/issue/${encodeURIComponent(key)}`, { fields });
+	const path = `/rest/api/3/issue/${encodeURIComponent(key)}`;
+	await client.putNoContent(path, { fields });
+	const updated = await client.getJson<IssueResponse>(`${path}?fields=updated`);
+	return updated.fields.updated ?? "";
 }
 
 async function fetchComments(client: Transport, key: string): Promise<JiraComment[]> {
