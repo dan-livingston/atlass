@@ -5,7 +5,7 @@ import type { PageSource } from "#/markdown/copied-document.ts";
 import type { UpdatePlan } from "#/update/plan.ts";
 
 import { externalMedia, imageHrefs, markdownToAdf, mediaNode } from "#/adf/from-markdown.ts";
-import { htmlWarnings } from "#/adf/html.ts";
+import { htmlWarnings, withoutComments } from "#/adf/html.ts";
 import { findLossyNodes } from "#/adf/lossy.ts";
 import { adfToMarkdown } from "#/adf/to-markdown.ts";
 import { unifiedDiff } from "#/update/body-diff.ts";
@@ -58,10 +58,11 @@ export function planPageUpdate(
 			revision: revision(`v${source.version}`, `v${state.version}`),
 			lossy: findLossyNodes(state.body),
 			warnings: htmlWarnings(source.body),
-			diff: unifiedDiff(serverMarkdown(state, attachments, entries), source.body, [
-				`server v${state.version}`,
-				`file v${source.version}`,
-			]),
+			diff: unifiedDiff(
+				serverMarkdown(state, attachments, entries),
+				withoutComments(source.body),
+				[`server v${state.version}`, `file v${source.version}`],
+			),
 			images: entries.map(({ href, kind }) => ({ href, kind })),
 			uploads: entries.flatMap((e) =>
 				e.kind === "upload" || e.kind === "changed"

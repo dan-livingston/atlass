@@ -196,6 +196,12 @@ test("page: the diff is empty when the body matches the server, reused images in
 	expect(plan.diff).toEqual([]);
 });
 
+test("page: author comments never reach the page, so they never show in the diff", () => {
+	const state = pageState({ body: doc(paragraph("One."), paragraph("Two.")) });
+	const src = pageSource({ body: "One.\n\n<!-- note to self -->\n\nTwo." });
+	expect(planPageUpdate(src, state, [], [], {}).diff).toEqual([]);
+});
+
 test("page: the diff shows edited lines with context", () => {
 	const state = pageState({
 		body: doc(paragraph("One."), paragraph("Two."), paragraph("Three.")),

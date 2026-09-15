@@ -1,12 +1,18 @@
 import { expect, test } from "vite-plus/test";
 
-import { htmlWarnings, isOnlyComments } from "#/adf/html.ts";
+import { htmlWarnings, isOnlyComments, withoutComments } from "#/adf/html.ts";
 
 test("isOnlyComments is true for comments and whitespace, false for any tag", () => {
 	expect(isOnlyComments("<!-- note -->")).toBe(true);
 	expect(isOnlyComments("<!-- one -->\n<!-- two\nlines -->\n")).toBe(true);
 	expect(isOnlyComments("<!-- note --><br>")).toBe(false);
 	expect(isOnlyComments("<div>x</div>")).toBe(false);
+});
+
+test("withoutComments drops comment blocks and inline comments, but not code", () => {
+	const md =
+		"A\n\n<!-- c -->\n\nB <!-- inline -->b\n\n```\n<!-- in code -->\n```\n\n<!-- end -->";
+	expect(withoutComments(md)).toBe("A\n\nB b\n\n```\n<!-- in code -->\n```");
 });
 
 test("htmlWarnings counts dropped blocks and literal inline tags, ignoring comments", () => {

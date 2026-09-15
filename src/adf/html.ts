@@ -8,6 +8,18 @@ export function isOnlyComments(html: string): boolean {
 	return html.replace(COMMENT, "").trim().length === 0;
 }
 
+export function withoutComments(md: string): string {
+	const kept: string[] = [];
+	let skipSpace = false;
+	for (const token of marked.lexer(md)) {
+		if (skipSpace && token.type === "space") continue;
+		skipSpace = token.type === "html" && isOnlyComments(token.text);
+		if (skipSpace) continue;
+		kept.push(token.type === "code" ? token.raw : token.raw.replace(COMMENT, ""));
+	}
+	return kept.join("").trim();
+}
+
 export function htmlWarnings(md: string): string[] {
 	let blocks = 0;
 	let inline = 0;
