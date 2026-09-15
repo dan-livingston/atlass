@@ -91,9 +91,11 @@ atlass confluence update file.md -m "fix typo"
 
 Both accept `--dry-run` to preview and `--force` to skip the checks below. A
 Confluence dry run also prints a diff of the body against the server. A dry run
-exits 1 when the real update would refuse or would need to ask. The body sent is everything between the H1 and the `<!-- atlass:generated -->` line.
-Files copied before that line existed end the body at `## Comments` or
-`## Attachments`.
+exits 1 when the real update would refuse, or would need to ask and cannot
+because there is no terminal or `--no-input` is set.
+
+The body sent is everything between the H1 and the `<!-- atlass:generated -->`
+line, or the first `## Comments` or `## Attachments` in older copies.
 
 - The update aborts if the issue or page changed on the server since the copy.
 - Panels, macros, expands, and layouts were flattened on copy and cannot be
@@ -101,8 +103,8 @@ Files copied before that line existed end the body at `## Comments` or
   overwriting.
 - Confluence uploads local images referenced in the body as attachments. Jira
   update does not support image changes yet.
-- After a Confluence update, the new `version` and `updated` (and `title` with
-  `--title`) are written back to the frontmatter, so the file can be pushed
+- After an update, the new `updated` (and for Confluence, `version`, and `title`
+  with `--title`) is written back to the frontmatter, so the file can be pushed
   again without a fresh copy.
 
 ## Create
