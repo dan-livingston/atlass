@@ -1,18 +1,16 @@
 import kleur from "kleur";
-import { basename, dirname, isAbsolute, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 import type { ConfluencePage, PageVersion } from "#/api/confluence-pages.ts";
 import type { CopyOptions } from "#/commands/jira.ts";
 import type { ViewOptions } from "#/commands/view.ts";
 import type { SessionEnv } from "#/env.ts";
-import type { Files } from "#/files.ts";
 import type { Fields } from "#/markdown/frontmatter.ts";
-import type { LocalImage } from "#/update/plan-page.ts";
 import type { UpdatePlan } from "#/update/plan.ts";
 
-import { imageHrefs } from "#/adf/from-markdown.ts";
-import { listAttachments, uploadAttachment } from "#/api/confluence-attachments.ts";
-import { fetchPage, fetchPageState, updatePage } from "#/api/confluence-pages.ts";
+import { listAttachments } from "#/api/confluence-attachments.ts";
+import { fetchPage, fetchPageState } from "#/api/confluence-pages.ts";
+import { pushPage, statLocalImages } from "#/commands/confluence-push.ts";
 import { PAGE_REF } from "#/commands/page-ref.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
 import {
@@ -27,9 +25,8 @@ import { planPageCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
 import { parsePageSource } from "#/markdown/copied-document.ts";
 import { rewriteFields } from "#/markdown/frontmatter.ts";
-import { planPageUpdate, withUploadedIds } from "#/update/plan-page.ts";
+import { planPageUpdate } from "#/update/plan-page.ts";
 import { runPlan } from "#/update/run.ts";
-import { isExternalHref } from "#/util/parse.ts";
 
 export async function confluenceView(
 	{ session, term }: SessionEnv,
@@ -81,10 +78,11 @@ export interface UpdateOptions {
 }
 
 export async function confluenceUpdate(
-	{ session, term, files }: SessionEnv,
+	env: SessionEnv,
 	arg: string | undefined,
 	options: UpdateOptions,
 ): Promise<void> {
+	const { session, term, files } = env;
 	const file =
 		arg ??
 		(await term.ask.text({
@@ -101,16 +99,9 @@ export async function confluenceUpdate(
 
 	const plan = planPageUpdate(src, state, attachments, localImages, options);
 	await runPlan(term, plan, options, async () => {
-		const ids = new Map<string, string>();
-		for (const upload of plan.uploads) {
-			term.err(`Uploading ${upload.filename} ...`);
-			const bytes = await files.readBytes(upload.path);
-			ids.set(upload.href, await uploadAttachment(session, src.id, upload.filename, bytes));
-		}
-		const version = await updatePage(session, src.id, {
-			title: plan.headline.next,
+		const version = await pushPage(env, plan, {
+			id: src.id,
 			nextVersion: state.version + 1,
-			body: withUploadedIds(plan.body, ids),
 			message: options.message ?? "Updated via atlass",
 		});
 		term.out(`Updated page ${src.id} to version ${version.number}.`);
@@ -123,24 +114,6 @@ function pushedFields(plan: UpdatePlan, version: PageVersion): Fields {
 	if (version.createdAt) fields["updated"] = version.createdAt;
 	if (plan.headline.next !== plan.headline.current) fields["title"] = plan.headline.next;
 	return fields;
-}
-
-async function statLocalImages(files: Files, dir: string, md: string): Promise<LocalImage[]> {
-	const hrefs = imageHrefs(md).filter((href) => !isExternalHref(href));
-	return Promise.all(
-		hrefs.map(async (href) => {
-			const path = isAbsolute(href) ? href : resolve(dir, href);
-			return { href, path, filename: basename(path), ...(await fileSize(files, path)) };
-		}),
-	);
-}
-
-async function fileSize(files: Files, path: string): Promise<{ size?: number }> {
-	try {
-		return { size: await files.size(path) };
-	} catch {
-		return {};
-	}
 }
 
 export async function copyPage(

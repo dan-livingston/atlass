@@ -2,6 +2,7 @@ import type { Command } from "commander";
 
 import { jiraAction } from "#/cli/run.ts";
 import { collect, moved, outputOptions } from "#/cli/search-options.ts";
+import { confluenceCreate } from "#/commands/confluence-create.ts";
 import { confluenceCql, confluenceList, confluenceSearch } from "#/commands/confluence-search.ts";
 import { confluenceStar, confluenceUnstar } from "#/commands/confluence-star.ts";
 import { confluenceCopy, confluenceUpdate, confluenceView } from "#/commands/confluence.ts";
@@ -27,6 +28,14 @@ export function registerConfluence(confluence: Command): Command {
 		.option("-f, --force", "skip the stale-version and data-loss checks")
 		.option("--dry-run", "show what would change without writing")
 		.action(jiraAction(confluenceUpdate));
+	confluence
+		.command("create [file]")
+		.description("Create a Confluence page from a Markdown file")
+		.option("-s, --space <key>", "space to create it in (default: the frontmatter space)")
+		.option("--parent <page>", "parent page id or URL (default: the space homepage)")
+		.option("--star", "star the new page")
+		.option("--dry-run", "show what would be created without writing")
+		.action(jiraAction(confluenceCreate));
 	confluence
 		.command("star [page]")
 		.description("Star a Confluence page (id, URL, or copied file)")

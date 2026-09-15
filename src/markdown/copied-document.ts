@@ -1,4 +1,4 @@
-import type { Fields, FrontmatterValue } from "#/markdown/frontmatter.ts";
+import type { Fields, Frontmatter, FrontmatterValue } from "#/markdown/frontmatter.ts";
 
 import { formatFrontmatter, splitFrontmatter } from "#/markdown/frontmatter.ts";
 import { normalized } from "#/markdown/text-layout.ts";
@@ -58,11 +58,24 @@ export function parse(raw: string): CopiedSource {
 	if (!split) {
 		throw new Error("Not an atlass file: no YAML frontmatter found.");
 	}
-	const { fields, rest } = split;
+	return sourceOf(split, LEGACY_SECTION_HEADING);
+}
+
+export function parseDraft(raw: string): CopiedSource {
+	const text = normalized(raw);
+	return sourceOf(splitFrontmatter(text) ?? { fields: {}, rest: text }, null);
+}
+
+export function withGeneratedMarker(text: string): string {
+	if (text.split("\n").some(isMarker)) return text;
+	return `${text.trimEnd()}\n\n${GENERATED_MARKER}\n`;
+}
+
+function sourceOf({ fields, rest }: Frontmatter, legacyHeading: RegExp | null): CopiedSource {
 	const lines = rest.split("\n");
 	const h1 = leadingH1(lines);
 	const start = h1 ? h1.index + 1 : 0;
-	const end = generatedStart(lines, start);
+	const end = generatedStart(lines, start, legacyHeading);
 	const fallbackTitle = typeof fields["title"] === "string" ? fields["title"] : "";
 	return {
 		fields,
@@ -90,7 +103,7 @@ export function parsePageSource(text: string): PageSource {
 	return { ...source, id, version };
 }
 
-function scalarString(value: FrontmatterValue | undefined): string {
+export function scalarString(value: FrontmatterValue | undefined): string {
 	if (typeof value === "string") return value;
 	if (typeof value === "number") return String(value);
 	return "";
@@ -104,13 +117,17 @@ function leadingH1(lines: string[]): { index: number; title: string } | null {
 	return null;
 }
 
-function generatedStart(lines: string[], start: number): number {
+function generatedStart(lines: string[], start: number, legacyHeading: RegExp | null): number {
 	const after = (test: (line: string) => boolean) =>
 		lines.findIndex((line, i) => i >= start && test(line));
-	const marker = after((line) => line.trim() === GENERATED_MARKER);
-	if (marker !== -1) return marker;
-	const legacy = after((line) => LEGACY_SECTION_HEADING.test(line));
+	const marker = after(isMarker);
+	if (marker !== -1 || !legacyHeading) return marker === -1 ? lines.length : marker;
+	const legacy = after((line) => legacyHeading.test(line));
 	return legacy === -1 ? lines.length : legacy;
+}
+
+function isMarker(line: string): boolean {
+	return line.trim() === GENERATED_MARKER;
 }
 
 function commentsSection(comments: CopiedComment[]): string {

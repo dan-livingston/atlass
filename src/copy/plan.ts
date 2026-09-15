@@ -62,20 +62,24 @@ export function planIssueCopy(issue: JiraIssue, out: string | undefined): CopyPl
 	);
 }
 
+export function pageFields(page: ConfluencePage): Fields {
+	return {
+		title: page.title,
+		id: page.id,
+		space: page.spaceKey,
+		version: page.version,
+		author: page.author,
+		created: page.createdAt,
+		updated: page.updatedAt,
+		url: page.url,
+	};
+}
+
 export function planPageCopy(page: ConfluencePage, out: string | undefined): CopyPlan {
 	return planCopy(
 		{
 			baseName: `${page.id}-${slugify(page.title)}`,
-			fields: {
-				title: page.title,
-				id: page.id,
-				space: page.spaceKey,
-				version: page.version,
-				author: page.author,
-				created: page.createdAt,
-				updated: page.updatedAt,
-				url: page.url,
-			},
+			fields: pageFields(page),
 			title: page.title,
 			body: page.body,
 			comments: page.comments,

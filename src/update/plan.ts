@@ -128,7 +128,7 @@ const IMAGE_COUNT_LABELS: [ImageKind, string][] = [
 	["missing", "missing"],
 ];
 
-function imageCounts(images: PlannedImage[]): string {
+export function imageCounts(images: PlannedImage[]): string {
 	return IMAGE_COUNT_LABELS.map(([kind, label]) => ({
 		n: images.filter((i) => i.kind === kind).length,
 		label,
@@ -138,7 +138,7 @@ function imageCounts(images: PlannedImage[]): string {
 		.join(", ");
 }
 
-function row(label: string, value: string): string {
+export function row(label: string, value: string): string {
 	return `  ${`${label}:`.padEnd(9)}${value}`;
 }
 

@@ -2,7 +2,14 @@ import { expect, test } from "vite-plus/test";
 
 import type { CopiedDoc, CopiedSource } from "#/markdown/copied-document.ts";
 
-import { parse, parseIssueSource, parsePageSource, render } from "#/markdown/copied-document.ts";
+import {
+	parse,
+	parseDraft,
+	parseIssueSource,
+	parsePageSource,
+	render,
+	withGeneratedMarker,
+} from "#/markdown/copied-document.ts";
 import { BOM } from "#/markdown/text-layout.ts";
 
 function doc(over: Partial<CopiedDoc> = {}): CopiedDoc {
@@ -177,6 +184,22 @@ test("parse reads a file saved with CRLF line endings and a BOM", () => {
 
 test("parse throws without frontmatter", () => {
 	expect(() => parse("# Title\n\nbody")).toThrow(/frontmatter/);
+});
+
+test("parseDraft reads plain Markdown and keeps a real Attachments section in the body", () => {
+	expect(
+		parseDraft("# Title\r\n\r\nIntro\r\n\r\n## Attachments\r\n\r\nSee the drive.\r\n"),
+	).toEqual({
+		fields: {},
+		title: "Title",
+		body: "Intro\n\n## Attachments\n\nSee the drive.",
+	});
+});
+
+test("withGeneratedMarker adds the marker once", () => {
+	const marked = withGeneratedMarker("# T\n\nbody\n\n\n");
+	expect(marked).toBe("# T\n\nbody\n\n<!-- atlass:generated -->\n");
+	expect(withGeneratedMarker(marked)).toBe(marked);
 });
 
 const roundTrips: [string, CopiedDoc][] = [

@@ -130,6 +130,18 @@ assignees take `me`, an account id, or a name matching one assignable user.
 `--dry-run` prints the resolved payload. `--json` prints the created key, id,
 and URL. `jira fields` shows what each field expects.
 
+```bash
+atlass confluence create notes.md --space DEV
+atlass confluence create notes.md --space DEV --parent 123456 --star
+```
+
+`confluence create` publishes a Markdown file as a new page. The title is the
+H1, or `title` in the frontmatter. The space comes from `--space` or `space` in
+the frontmatter, and the page goes under the space homepage unless `--parent`
+names another page. Local images are uploaded as attachments. The file then gets
+the same frontmatter as a copy, so `update` works on it straight away.
+`--dry-run` previews and exits 1 if the create would be refused.
+
 ## List
 
 ```bash
