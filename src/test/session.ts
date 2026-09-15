@@ -6,6 +6,7 @@ export interface FakeTransport {
 	postJson?: (path: string, body: unknown) => unknown;
 	putJson?: (path: string, body: unknown) => unknown;
 	putNoContent?: (path: string, body: unknown) => void | Promise<void>;
+	deleteNoContent?: (path: string) => void | Promise<void>;
 	postMultipart?: (path: string, filename: string, bytes: Uint8Array) => unknown;
 	getBinary?: (urlOrPath: string) => Uint8Array | Promise<Uint8Array>;
 }
@@ -31,6 +32,10 @@ function fakeTransport(spec: FakeTransport): Transport {
 		async putNoContent(path: string, body: unknown): Promise<void> {
 			if (!spec.putNoContent) throw unexpected("PUT", path);
 			await spec.putNoContent(path, body);
+		},
+		async deleteNoContent(path: string): Promise<void> {
+			if (!spec.deleteNoContent) throw unexpected("DELETE", path);
+			await spec.deleteNoContent(path);
 		},
 		async postMultipart<T>(path: string, filename: string, bytes: Uint8Array): Promise<T> {
 			if (!spec.postMultipart) throw unexpected("POST", path);

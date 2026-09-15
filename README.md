@@ -145,7 +145,9 @@ In Progress first, then To Do, and the most recently updated at the top of each
 group. Done issues are left out; `--all` adds those updated in the last 30 days.
 
 `confluence list` shows the pages you starred as `ID  SPACE  Age  Title`, most
-recently updated first. `--limit` works as for search.
+recently updated first. `--limit` works as for search. Star or unstar a page
+with `atlass confluence star <page>` or `unstar <page>`, where `<page>` is an
+id, a URL, or a copied `.md` file.
 
 For both, `--json` and `--copy` work as for search.
 

@@ -13,6 +13,7 @@ export interface Transport {
 	postJson<T>(path: string, body: unknown): Promise<T>;
 	putJson<T>(path: string, body: unknown): Promise<T>;
 	putNoContent(path: string, body: unknown): Promise<void>;
+	deleteNoContent(path: string): Promise<void>;
 	postMultipart<T>(path: string, filename: string, bytes: Uint8Array): Promise<T>;
 	getBinary(urlOrPath: string): Promise<Uint8Array>;
 }
@@ -74,6 +75,10 @@ export class AtlassianClient implements Transport {
 			headers: { Accept: "application/json", "Content-Type": "application/json" },
 			body: JSON.stringify(body),
 		});
+	}
+
+	async deleteNoContent(path: string): Promise<void> {
+		await this.request(path, { method: "DELETE", headers: { Accept: "application/json" } });
 	}
 
 	async postMultipart<T>(path: string, filename: string, bytes: Uint8Array): Promise<T> {

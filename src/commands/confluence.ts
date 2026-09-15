@@ -13,6 +13,7 @@ import type { UpdatePlan } from "#/update/plan.ts";
 import { imageHrefs } from "#/adf/from-markdown.ts";
 import { listAttachments, uploadAttachment } from "#/api/confluence-attachments.ts";
 import { fetchPage, fetchPageState, updatePage } from "#/api/confluence-pages.ts";
+import { PAGE_REF } from "#/commands/page-ref.ts";
 import { resolveRef } from "#/commands/resolve-ref.ts";
 import {
 	attachmentSection,
@@ -28,7 +29,7 @@ import { parsePageSource } from "#/markdown/copied-document.ts";
 import { rewriteFields } from "#/markdown/frontmatter.ts";
 import { planPageUpdate, withUploadedIds } from "#/update/plan-page.ts";
 import { runPlan } from "#/update/run.ts";
-import { isExternalHref, parsePageId } from "#/util/parse.ts";
+import { isExternalHref } from "#/util/parse.ts";
 
 export async function confluenceView(
 	{ session, term }: SessionEnv,
@@ -151,10 +152,3 @@ export async function copyPage(
 	const page = await fetchPage(env.session, env.session.site, id);
 	await runCopy(env, planPageCopy(page, out));
 }
-
-const PAGE_REF = {
-	message: "Confluence page id or URL:",
-	flag: "[page]",
-	parse: parsePageId,
-	notFound: (raw: string) => `Could not find a page id in "${raw}".`,
-};

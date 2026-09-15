@@ -3,6 +3,7 @@ import type { Command } from "commander";
 import { jiraAction } from "#/cli/run.ts";
 import { collect, moved, outputOptions } from "#/cli/search-options.ts";
 import { confluenceCql, confluenceList, confluenceSearch } from "#/commands/confluence-search.ts";
+import { confluenceStar, confluenceUnstar } from "#/commands/confluence-star.ts";
 import { confluenceCopy, confluenceUpdate, confluenceView } from "#/commands/confluence.ts";
 
 export function registerConfluence(confluence: Command): Command {
@@ -26,6 +27,14 @@ export function registerConfluence(confluence: Command): Command {
 		.option("-f, --force", "skip the stale-version and data-loss checks")
 		.option("--dry-run", "show what would change without writing")
 		.action(jiraAction(confluenceUpdate));
+	confluence
+		.command("star [page]")
+		.description("Star a Confluence page (id, URL, or copied file)")
+		.action(jiraAction(confluenceStar));
+	confluence
+		.command("unstar [page]")
+		.description("Unstar a Confluence page (id, URL, or copied file)")
+		.action(jiraAction(confluenceUnstar));
 	outputOptions(
 		confluence
 			.command("list")
