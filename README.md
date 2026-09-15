@@ -100,6 +100,9 @@ Files copied before that line existed end the body at `## Comments` or
   overwriting.
 - Confluence uploads local images referenced in the body as attachments. Jira
   update does not support image changes yet.
+- After a Confluence update, the new `version` and `updated` (and `title` with
+  `--title`) are written back to the frontmatter, so the file can be pushed
+  again without a fresh copy.
 
 ## Create
 

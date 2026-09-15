@@ -106,11 +106,16 @@ export interface UpdatePageParams {
 	message?: string;
 }
 
+export interface PageVersion {
+	number: number;
+	createdAt: string;
+}
+
 export async function updatePage(
 	client: Transport,
 	id: string,
 	params: UpdatePageParams,
-): Promise<number> {
+): Promise<PageVersion> {
 	const res = await client.putJson<PageResponse>(`/wiki/api/v2/pages/${encodeURIComponent(id)}`, {
 		id,
 		status: "current",
@@ -121,7 +126,10 @@ export async function updatePage(
 		},
 		version: { number: params.nextVersion, message: params.message },
 	});
-	return res.version?.number ?? params.nextVersion;
+	return {
+		number: res.version?.number ?? params.nextVersion,
+		createdAt: res.version?.createdAt ?? "",
+	};
 }
 
 async function fetchSpaceKey(client: Transport, spaceId: string): Promise<string> {

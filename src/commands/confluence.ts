@@ -1,12 +1,14 @@
 import kleur from "kleur";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 
-import type { ConfluencePage } from "#/api/confluence-pages.ts";
+import type { ConfluencePage, PageVersion } from "#/api/confluence-pages.ts";
 import type { CopyOptions } from "#/commands/jira.ts";
 import type { ViewOptions } from "#/commands/view.ts";
 import type { SessionEnv } from "#/env.ts";
 import type { Files } from "#/files.ts";
+import type { Fields } from "#/markdown/frontmatter.ts";
 import type { LocalImage } from "#/update/plan-page.ts";
+import type { UpdatePlan } from "#/update/plan.ts";
 
 import { imageHrefs } from "#/adf/from-markdown.ts";
 import { listAttachments, uploadAttachment } from "#/api/confluence-attachments.ts";
@@ -23,6 +25,7 @@ import {
 import { planPageCopy } from "#/copy/plan.ts";
 import { runCopy } from "#/copy/run.ts";
 import { parsePageSource } from "#/markdown/copied-document.ts";
+import { rewriteFields } from "#/markdown/frontmatter.ts";
 import { planPageUpdate, withUploadedIds } from "#/update/plan-page.ts";
 import { runPlan } from "#/update/run.ts";
 import { isExternalHref, parsePageId } from "#/util/parse.ts";
@@ -88,7 +91,8 @@ export async function confluenceUpdate(
 			flag: "[file]",
 			required: true,
 		}));
-	const src = parsePageSource(await files.readText(file));
+	const raw = await files.readText(file);
+	const src = parsePageSource(raw);
 
 	const state = await fetchPageState(session, src.id);
 	const attachments = await listAttachments(session, src.id);
@@ -108,8 +112,16 @@ export async function confluenceUpdate(
 			body: withUploadedIds(plan.body, ids),
 			message: options.message ?? "Updated via atlass",
 		});
-		term.out(`Updated page ${src.id} to version ${version}.`);
+		term.out(`Updated page ${src.id} to version ${version.number}.`);
+		await files.writeText(file, rewriteFields(raw, pushedFields(plan, version)));
 	});
+}
+
+function pushedFields(plan: UpdatePlan, version: PageVersion): Fields {
+	const fields: Fields = { version: version.number };
+	if (version.createdAt) fields["updated"] = version.createdAt;
+	if (plan.headline.next !== plan.headline.current) fields["title"] = plan.headline.next;
+	return fields;
 }
 
 async function statLocalImages(files: Files, dir: string, md: string): Promise<LocalImage[]> {

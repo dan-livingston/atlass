@@ -164,6 +164,38 @@ test("confluence update: uploads land before the page write, and ids reach the b
 	expect(env.term.written).toEqual(["Updated page 123 to version 5."]);
 });
 
+test("confluence update: the new version and time are written back, keeping CRLF", async () => {
+	const crlf = ["---", 'id: "123"', "version: 4", "---", "", "# Release Notes", "", "Hi.", ""];
+	const env = fakeJiraEnv(
+		{
+			getJson: routed(PAGE_JSON),
+			putJson: () => ({ version: { number: 5, createdAt: "2026-09-15T01:00:00.000Z" } }),
+		},
+		{ files: { [PAGE_FILE]: crlf.join("\r\n") } },
+	);
+	await confluenceUpdate(env, PAGE_FILE, {});
+
+	expect(await env.files.readText(PAGE_FILE)).toBe(
+		crlf
+			.join("\r\n")
+			.replace("version: 4", 'version: 5\r\nupdated: "2026-09-15T01:00:00.000Z"'),
+	);
+});
+
+test("confluence update: a title pushed with --title is written back too", async () => {
+	const env = fakeJiraEnv(
+		{ getJson: routed(PAGE_JSON), putJson: () => ({ version: { number: 5 } }) },
+		{ files: pageSeed("All good.") },
+	);
+	const before = (await env.files.readText(PAGE_FILE)).replace("# Release Notes", "# Renamed");
+	await env.files.writeText(PAGE_FILE, before);
+	await confluenceUpdate(env, PAGE_FILE, { title: true });
+
+	expect(await env.files.readText(PAGE_FILE)).toBe(
+		before.replace("version: 4", 'version: 5\ntitle: "Renamed"'),
+	);
+});
+
 test("confluence update: a page with no images uploads nothing", async () => {
 	const order: string[] = [];
 	const env = fakeJiraEnv(

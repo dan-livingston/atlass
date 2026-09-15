@@ -4,7 +4,7 @@ import type { AdfNode } from "#/adf/types.ts";
 import type { DownloadedAttachment, RemoteAttachment } from "#/api/attachments.ts";
 import type { ConfluencePage } from "#/api/confluence-pages.ts";
 import type { JiraIssue } from "#/api/jira-types.ts";
-import type { FrontmatterValue } from "#/markdown/copied-document.ts";
+import type { Fields } from "#/markdown/frontmatter.ts";
 
 import { adfToMarkdown } from "#/adf/to-markdown.ts";
 import { mediaResolver } from "#/api/attachments.ts";
@@ -21,7 +21,7 @@ export interface PlannedDownload extends DownloadedAttachment {
 }
 
 interface CopiedContent {
-	fields: Record<string, FrontmatterValue>;
+	fields: Fields;
 	title: string;
 	body: AdfNode | null;
 	comments: CopiedCommentSource[];
