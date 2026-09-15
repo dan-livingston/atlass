@@ -169,7 +169,54 @@ test("page: dry run lines count images by kind", () => {
 		'Dry run for page 123 "My Page"',
 		"  images:  1 new, 1 reused, 1 external",
 		"  stale:   copied at v7, server now v8 (would refuse without --force)",
+		"--- server v8",
+		"+++ file v7",
+		"@@ -1,1 +1,1 @@",
+		"-Old body.",
+		"+![same](p.assets/same.png) ![fresh](p.assets/fresh.png) ![logo](https://cdn/logo.png)",
 		"  nothing was written (dry run)",
+	]);
+});
+
+test("page: the diff is empty when the body matches the server, reused images included", () => {
+	const state = pageState({
+		body: doc(
+			paragraph("Intro."),
+			media({ type: "file", id: "f-same", collection: "contentId-123", alt: "same" }),
+		),
+	});
+	const src = pageSource({ body: "Intro.\n\n![same](img/same.png)" });
+	const plan = planPageUpdate(
+		src,
+		state,
+		[attachment("same.png", "f-same", 10)],
+		[local("img/same.png", 10)],
+		{},
+	);
+	expect(plan.diff).toEqual([]);
+});
+
+test("page: the diff shows edited lines with context", () => {
+	const state = pageState({
+		body: doc(paragraph("One."), paragraph("Two."), paragraph("Three.")),
+	});
+	const plan = planPageUpdate(
+		pageSource({ body: "One.\n\nTwo, edited.\n\nThree." }),
+		state,
+		[],
+		[],
+		{},
+	);
+	expect(plan.diff).toEqual([
+		"--- server v7",
+		"+++ file v7",
+		"@@ -1,5 +1,5 @@",
+		" One.",
+		" ",
+		"-Two.",
+		"+Two, edited.",
+		" ",
+		" Three.",
 	]);
 });
 

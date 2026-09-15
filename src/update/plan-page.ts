@@ -7,6 +7,8 @@ import type { UpdatePlan } from "#/update/plan.ts";
 import { externalMedia, imageHrefs, markdownToAdf, mediaNode } from "#/adf/from-markdown.ts";
 import { htmlWarnings } from "#/adf/html.ts";
 import { findLossyNodes } from "#/adf/lossy.ts";
+import { adfToMarkdown } from "#/adf/to-markdown.ts";
+import { unifiedDiff } from "#/update/body-diff.ts";
 import { emptyBodyRefusal, headline, revision, withVerdict } from "#/update/plan.ts";
 import { isExternalHref } from "#/util/parse.ts";
 
@@ -56,6 +58,10 @@ export function planPageUpdate(
 			revision: revision(`v${source.version}`, `v${state.version}`),
 			lossy: findLossyNodes(state.body),
 			warnings: htmlWarnings(source.body),
+			diff: unifiedDiff(serverMarkdown(state, attachments, entries), source.body, [
+				`server v${state.version}`,
+				`file v${source.version}`,
+			]),
 			images: entries.map(({ href, kind }) => ({ href, kind })),
 			uploads: entries.flatMap((e) =>
 				e.kind === "upload" || e.kind === "changed"
@@ -67,6 +73,20 @@ export function planPageUpdate(
 		},
 		options.force ?? false,
 	);
+}
+
+function serverMarkdown(
+	state: PageState,
+	attachments: AttachmentInfo[],
+	entries: PageImage[],
+): string {
+	const reused = new Map(
+		entries.flatMap((e) => (e.kind === "reuse" ? [[e.fileId, e.href]] : [])),
+	);
+	return adfToMarkdown(state.body, {
+		resolveMedia: ({ id }) =>
+			reused.get(id ?? "") ?? attachments.find((a) => a.fileId === id)?.filename,
+	});
 }
 
 type PageImage =

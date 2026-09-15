@@ -5,6 +5,7 @@ import type { IssueSource } from "#/markdown/copied-document.ts";
 import { externalMedia, imageHrefs, markdownToAdf } from "#/adf/from-markdown.ts";
 import { htmlWarnings } from "#/adf/html.ts";
 import { findLossyNodes, formatLossy, JIRA_LOSSY_LABELS } from "#/adf/lossy.ts";
+import { colorDiffLine } from "#/update/body-diff.ts";
 import { isExternalHref } from "#/util/parse.ts";
 
 export interface Revision {
@@ -44,6 +45,7 @@ export interface UpdatePlan {
 	revision: Revision;
 	lossy: Map<string, number>;
 	warnings: string[];
+	diff: string[];
 	images: PlannedImage[];
 	uploads: PendingUpload[];
 	body: AdfDoc;
@@ -86,6 +88,7 @@ export function planIssueUpdate(
 			revision: revision(source.updatedAtCopy, issue.updated),
 			lossy: findLossyNodes(issue.description, JIRA_LOSSY_LABELS),
 			warnings: htmlWarnings(source.body),
+			diff: [],
 			images,
 			uploads: [],
 			body,
@@ -111,6 +114,7 @@ export function formatPlan(plan: UpdatePlan): string[] {
 	if (plan.revision.stale) {
 		lines.push(row("stale", `${revisionText(plan.revision)} (would refuse without --force)`));
 	}
+	lines.push(...plan.diff.map(colorDiffLine));
 	lines.push("  nothing was written (dry run)");
 	return lines;
 }

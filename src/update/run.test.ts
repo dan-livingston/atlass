@@ -13,6 +13,7 @@ function plan(verdict: Verdict): UpdatePlan {
 		revision: { local: "v1", server: "v1", stale: false },
 		lossy: new Map(),
 		warnings: [],
+		diff: [],
 		images: [],
 		uploads: [],
 		body: { type: "doc", version: 1, content: [] },

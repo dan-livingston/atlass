@@ -89,8 +89,9 @@ atlass confluence update file.md --title      # also push the H1 as the title
 atlass confluence update file.md -m "fix typo"
 ```
 
-Both accept `--dry-run` to preview and `--force` to skip the checks below. The
-body sent is everything between the H1 and the `<!-- atlass:generated -->` line.
+Both accept `--dry-run` to preview and `--force` to skip the checks below. A
+Confluence dry run also prints a diff of the body against the server. A dry run
+exits 1 when the real update would refuse or would need to ask. The body sent is everything between the H1 and the `<!-- atlass:generated -->` line.
 Files copied before that line existed end the body at `## Comments` or
 `## Attachments`.
 
