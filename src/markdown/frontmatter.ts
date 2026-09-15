@@ -1,4 +1,4 @@
-import { layoutOf, normalized, withLayout } from "#/markdown/text-layout.ts";
+import { editKeepingLayout } from "#/markdown/text-layout.ts";
 
 export type FrontmatterValue = string | number | string[];
 
@@ -26,10 +26,10 @@ export function formatFrontmatter(fields: Fields): string {
 }
 
 export function rewriteFields(raw: string, fields: Fields): string {
-	return withLayout(withFields(normalized(raw), fields), layoutOf(raw));
+	return editKeepingLayout(raw, (text) => withFields(text, fields));
 }
 
-function withFields(text: string, fields: Fields): string {
+export function withFields(text: string, fields: Fields): string {
 	const match = text.match(BLOCK);
 	if (!match) return `${formatFrontmatter(fields)}\n\n${text}`;
 	const lines = (match[1] ?? "").split("\n");

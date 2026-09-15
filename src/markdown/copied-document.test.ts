@@ -3,6 +3,7 @@ import { expect, test } from "vite-plus/test";
 import type { CopiedDoc, CopiedSource } from "#/markdown/copied-document.ts";
 
 import { parse, parseIssueSource, parsePageSource, render } from "#/markdown/copied-document.ts";
+import { BOM } from "#/markdown/text-layout.ts";
 
 function doc(over: Partial<CopiedDoc> = {}): CopiedDoc {
 	return {
@@ -170,7 +171,7 @@ test("parse of a file without the marker stops the body at the first trailing se
 });
 
 test("parse reads a file saved with CRLF line endings and a BOM", () => {
-	const text = `﻿${pageFile.replace(/\n/g, "\r\n")}`;
+	const text = `${BOM}${pageFile.replace(/\n/g, "\r\n")}`;
 	expect(parse(text)).toEqual(source(page));
 });
 

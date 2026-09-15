@@ -1,6 +1,7 @@
 import { expect, test } from "vite-plus/test";
 
 import { rewriteFields, splitFrontmatter } from "#/markdown/frontmatter.ts";
+import { BOM } from "#/markdown/text-layout.ts";
 
 const file = [
 	"---",
@@ -36,9 +37,9 @@ test("rewriteFields replaces a list, with its items, by a scalar", () => {
 });
 
 test("rewriteFields keeps CRLF line endings and a BOM", () => {
-	const crlf = `﻿${file.replace(/\n/g, "\r\n")}`;
+	const crlf = `${BOM}${file.replace(/\n/g, "\r\n")}`;
 	expect(rewriteFields(crlf, { version: 4 })).toBe(
-		`﻿${file.replace("version: 3", "version: 4").replace(/\n/g, "\r\n")}`,
+		`${BOM}${file.replace("version: 3", "version: 4").replace(/\n/g, "\r\n")}`,
 	);
 });
 
