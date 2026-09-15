@@ -142,6 +142,11 @@ test("parse stops the body at the first trailing section, even one written by th
 	expect(parse(text).body).toBe("body");
 });
 
+test("parse reads a file saved with CRLF line endings and a BOM", () => {
+	const text = `﻿${pageFile.replace(/\n/g, "\r\n")}`;
+	expect(parse(text)).toEqual(source(page));
+});
+
 test("parse throws without frontmatter", () => {
 	expect(() => parse("# Title\n\nbody")).toThrow(/frontmatter/);
 });

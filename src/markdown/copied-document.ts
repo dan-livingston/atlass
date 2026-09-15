@@ -1,3 +1,4 @@
+import { normalized } from "#/markdown/text-layout.ts";
 import { formatDateTime } from "#/util/format.ts";
 
 export type FrontmatterValue = string | number | string[];
@@ -53,7 +54,8 @@ export function render(doc: CopiedDoc): string {
 	return `${sections.filter((s) => s.trim().length > 0).join("\n\n")}\n`;
 }
 
-export function parse(text: string): CopiedSource {
+export function parse(raw: string): CopiedSource {
+	const text = normalized(raw);
 	const match = text.match(FRONTMATTER_BLOCK);
 	if (!match) {
 		throw new Error("Not an atlass file: no YAML frontmatter found.");
