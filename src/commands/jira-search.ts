@@ -18,7 +18,13 @@ import {
 } from "#/commands/jira-field-columns.ts";
 import { checkQuery, searchHint, searchParams } from "#/commands/jira-filters.ts";
 import { colorForCategory, copyIssue } from "#/commands/jira.ts";
-import { alignedRows, checkedLimit, runSearch, showRows } from "#/commands/search-run.ts";
+import {
+	alignedRows,
+	checkedLimit,
+	runSearch,
+	searchFooter,
+	showRows,
+} from "#/commands/search-run.ts";
 
 export interface FieldOptions extends OutputOptions {
 	field?: string[];
@@ -84,7 +90,7 @@ export interface ListOptions extends FieldOptions {
 
 export async function jiraList(env: SessionEnv, options: ListOptions): Promise<void> {
 	const { session, term } = env;
-	checkedLimit(options);
+	const limit = checkedLimit(options);
 	const columns = await resolveFieldColumns(session, options.field);
 
 	const { issues, truncated } = await listAssignedIssues(
@@ -93,26 +99,35 @@ export async function jiraList(env: SessionEnv, options: ListOptions): Promise<v
 		{ all: options.all, project: options.project },
 		fieldIds(columns),
 	);
+	const sorted = sortByCategoryThenUpdated(withNamedFields(issues, columns));
+	const shown = options.limit === undefined ? sorted : sorted.slice(0, limit);
 
 	await runSearch(
 		term,
-		formatIssueRows(
-			sortByCategoryThenUpdated(withNamedFields(issues, columns)),
-			Date.now(),
-			columns,
-		),
+		formatIssueRows(shown, Date.now(), columns),
 		{
 			json: options.json,
 			copy: options.copy,
 			out: options.out,
 			empty: options.all ? "No issues assigned to you." : "No open issues assigned to you.",
-			footer: truncated
-				? `\nShowing the first ${issues.length}; narrow with --project.`
-				: undefined,
+			footer: listFooter(shown.length, sorted.length, truncated, limit),
 		},
 		ISSUE_NOUN,
 		(key) => copyIssue(env, key, options.out),
 	);
+}
+
+function listFooter(
+	shown: number,
+	fetched: number,
+	truncated: boolean,
+	limit: number,
+): string | undefined {
+	if (shown < fetched) return searchFooter(limit);
+	if (truncated)
+		return `
+Showing the first ${shown}; narrow with --project.`;
+	return undefined;
 }
 
 export function formatIssueRows(

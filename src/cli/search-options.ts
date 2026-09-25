@@ -13,9 +13,12 @@ export function moved(flags: string, command: string): Option {
 	});
 }
 
-export function outputOptions(command: Command): Command {
+export function outputOptions(
+	command: Command,
+	limitHelp = "max results (default 25, max 100)",
+): Command {
 	return command
-		.option("-l, --limit <n>", "max results (default 25, max 100)")
+		.option("-l, --limit <n>", limitHelp)
 		.option("--json", "output results as JSON")
 		.option("-c, --copy", "pick results to copy to Markdown")
 		.option("-o, --out <dir>", "output directory for --copy");

@@ -87,6 +87,7 @@ export function registerJira(jira: Command): Command {
 			.option("-p, --project <key>", "limit to a project")
 			.option("-a, --all", "include Done issues updated in the last 30 days")
 			.option(...FIELD_OPTION),
+		"max results (default all, max 100)",
 	).action(jiraAction(jiraList));
 	outputOptions(
 		jira

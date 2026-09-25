@@ -157,6 +157,7 @@ atlass confluence list --space DOCS
 `jira list` shows issues assigned to you as `KEY  Status  Age  Summary`, with
 In Progress first, then To Do, and the most recently updated at the top of each
 group. Done issues are left out; `--all` adds those updated in the last 30 days.
+`--limit` keeps the first rows of that order; without it, all are shown.
 
 `confluence list` shows the pages you starred as `ID  SPACE  Age  Title`, most
 recently updated first. `--limit` works as for search. Star or unstar a page
