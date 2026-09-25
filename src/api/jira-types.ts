@@ -48,6 +48,7 @@ export interface IssueSearchParams {
 	status?: string[];
 	type?: string[];
 	label?: string[];
+	sprint?: string[];
 	updatedSince?: string;
 	open?: boolean;
 	limit: number;

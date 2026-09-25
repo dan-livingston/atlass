@@ -17,6 +17,12 @@ export function userClause(field: string, given: string[] | undefined): string |
 	);
 }
 
+export function anyOf(terms: string[]): string | null {
+	if (terms.length === 0) return null;
+	if (terms.length === 1) return terms[0]!;
+	return `(${terms.join(" OR ")})`;
+}
+
 function renderClause(field: string, rendered: string[]): string | null {
 	if (rendered.length === 0) return null;
 	if (rendered.length === 1) return `${field} = ${rendered[0]}`;

@@ -106,6 +106,11 @@ export function registerJira(jira: Command): Command {
 			.option("-s, --status <status>", "limit to a status (repeatable)", collect)
 			.option("-t, --type <type>", "limit to an issue type (repeatable)", collect)
 			.option("--label <label>", "limit to a label (repeatable)", collect)
+			.option(
+				"--sprint <sprint>",
+				"limit to a sprint: active, future, an id, or a name (repeatable)",
+				collect,
+			)
 			.option("-u, --updated <when>", "changed since 7d, 2w, 3m, or YYYY-MM-DD")
 			.option("--open", "exclude issues in the Done category")
 			.option(...FIELD_OPTION)

@@ -94,6 +94,16 @@ test("search: --updated is the only thing that bounds the window", async () => {
 	expect(jqlOf(paths[0]!)).toContain('updated >= "2026-01-01"');
 });
 
+test("search: --sprint reaches the query alongside the other filters", async () => {
+	const paths: string[] = [];
+	const env = fakeJiraEnv(capturing(paths));
+	await jiraSearch(env, undefined, { sprint: ["active"], assignee: ["me"] });
+
+	expect(jqlOf(paths[0]!)).toBe(
+		"assignee = currentUser() AND sprint in openSprints() ORDER BY updated DESC",
+	);
+});
+
 test("jql: the query reaches the server untouched, ORDER BY included", async () => {
 	const paths: string[] = [];
 	const env = fakeJiraEnv(capturing(paths));

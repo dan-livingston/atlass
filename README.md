@@ -175,10 +175,12 @@ atlass confluence search "onboarding" --space DOCS --label runbook
 ```
 
 Jira filters on `--project`, `--assignee`, `--reporter`, `--status`, `--type`,
-`--label`, `--updated` and `--open`; Confluence on `--space`, `--label`,
-`--updated` and `--starred`. Repeating a flag matches any of its values;
-different flags must all match. `--assignee` and `--reporter` take `me`, an
-account id, or a name to look up. `--updated` takes `7d`, `2w`, `3m` or
+`--label`, `--sprint`, `--updated` and `--open`; Confluence on `--space`,
+`--label`, `--updated` and `--starred`. Repeating a flag matches any of its
+values; different flags must all match. `--assignee` and `--reporter` take `me`,
+an account id, or a name to look up. `--sprint` takes `active`, `future`, a
+sprint id, or a sprint name; names can repeat across boards, an id cannot.
+`--updated` takes `7d`, `2w`, `3m` or
 `YYYY-MM-DD`. Results sort by most recently updated and use the same columns
 as `jira list` and `confluence list`.
 

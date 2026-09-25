@@ -7,7 +7,7 @@ import type {
 } from "#/api/jira-types.ts";
 
 import { browseUrl } from "#/api/jira-url.ts";
-import { inClause, joinClauses, quote, userClause } from "#/api/query.ts";
+import { anyOf, inClause, joinClauses, quote, userClause, values } from "#/api/query.ts";
 import { decodeEntities } from "#/util/html.ts";
 
 const RECENT_ISSUES_CLAUSE = "updated >= -30d";
@@ -94,11 +94,23 @@ export function buildJql(params: IssueSearchParams): string {
 		userClause("assignee", params.assignee),
 		userClause("reporter", params.reporter),
 		inClause("labels", params.label),
+		anyOf(values(params.sprint).map(sprintTerm)),
 		params.updatedSince ? `updated >= ${quote(params.updatedSince)}` : null,
 		params.text ? `text ~ ${quote(params.text)}` : null,
 	].filter((c) => c !== null);
 	if (clauses.length === 0) clauses.push(RECENT_ISSUES_CLAUSE);
 	return joinClauses(clauses, ISSUE_ORDER);
+}
+
+const SPRINT_FUNCTIONS: Record<string, string> = {
+	active: "openSprints()",
+	future: "futureSprints()",
+};
+
+function sprintTerm(sprint: string): string {
+	const sprintFunction = SPRINT_FUNCTIONS[sprint];
+	if (sprintFunction) return `sprint in ${sprintFunction}`;
+	return `sprint = ${/^\d+$/.test(sprint) ? sprint : quote(sprint)}`;
 }
 
 export function buildListJql(params: IssueListParams): string {

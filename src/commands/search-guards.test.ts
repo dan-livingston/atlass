@@ -32,6 +32,13 @@ test("jira search: a lone filter is enough to search on", async () => {
 	expect(seen).toHaveLength(1);
 });
 
+test("jira search: a lone --sprint is enough to search on", async () => {
+	const seen: string[] = [];
+	const env = fakeJiraEnv(unreachable(seen));
+	await jiraSearch(env, undefined, { sprint: ["active"] });
+	expect(seen).toHaveLength(1);
+});
+
 test("jira search: an issue key as the query points at view rather than searching for it", async () => {
 	const seen: string[] = [];
 	const env = fakeJiraEnv(unreachable(seen));

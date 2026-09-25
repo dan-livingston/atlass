@@ -72,6 +72,49 @@ test("jql: text query is escaped", () => {
 	);
 });
 
+test("jql: sprint active means the started, unfinished sprints", () => {
+	expect(buildJql({ sprint: ["active"], limit: 25 })).toBe(
+		"sprint in openSprints() ORDER BY updated DESC",
+	);
+});
+
+test("jql: sprint future means the planned sprints", () => {
+	expect(buildJql({ sprint: ["future"], limit: 25 })).toBe(
+		"sprint in futureSprints() ORDER BY updated DESC",
+	);
+});
+
+test("jql: a numeric sprint is an id", () => {
+	expect(buildJql({ sprint: ["1908"], limit: 25 })).toBe("sprint = 1908 ORDER BY updated DESC");
+});
+
+test("jql: any other sprint is a quoted name", () => {
+	expect(buildJql({ sprint: ['26.13 "Content"'], limit: 25 })).toBe(
+		'sprint = "26.13 \\"Content\\"" ORDER BY updated DESC',
+	);
+});
+
+test("jql: repeated sprints are OR'd in one group", () => {
+	expect(buildJql({ sprint: ["active", "future", "1908"], limit: 25 })).toBe(
+		"(sprint in openSprints() OR sprint in futureSprints() OR sprint = 1908)" +
+			" ORDER BY updated DESC",
+	);
+});
+
+test("jql: sprint ANDs with assignee and status", () => {
+	expect(
+		buildJql({
+			sprint: ["active", "Blastworks 26.12"],
+			assignee: ["me"],
+			status: ["Verified", "Closed"],
+			limit: 25,
+		}),
+	).toBe(
+		'status in ("Verified", "Closed") AND assignee = currentUser()' +
+			' AND (sprint in openSprints() OR sprint = "Blastworks 26.12") ORDER BY updated DESC',
+	);
+});
+
 test("jql: every filter at once keeps a stable clause order", () => {
 	expect(
 		buildJql({
@@ -83,13 +126,14 @@ test("jql: every filter at once keeps a stable clause order", () => {
 			assignee: ["me"],
 			reporter: ["me"],
 			label: ["regression"],
+			sprint: ["active"],
 			updatedSince: "2026-08-28",
 			limit: 25,
 		}),
 	).toBe(
 		'project = "PROJ" AND type = "Bug" AND status = "To Do" AND statusCategory != Done' +
 			' AND assignee = currentUser() AND reporter = currentUser() AND labels = "regression"' +
-			' AND updated >= "2026-08-28" AND text ~ "login" ORDER BY updated DESC',
+			' AND sprint in openSprints() AND updated >= "2026-08-28" AND text ~ "login" ORDER BY updated DESC',
 	);
 });
 

@@ -13,11 +13,20 @@ export interface Filters {
 	status?: string[];
 	type?: string[];
 	label?: string[];
+	sprint?: string[];
 	updated?: string;
 	open?: boolean;
 }
 
-const FILTER_FLAGS = ["project", "assignee", "reporter", "status", "type", "label"] as const;
+const FILTER_FLAGS = [
+	"project",
+	"assignee",
+	"reporter",
+	"status",
+	"type",
+	"label",
+	"sprint",
+] as const;
 const ISSUE_KEY = /^[A-Z][A-Z0-9]+-\d+$/i;
 
 export function hasFilters(filters: Filters): boolean {
@@ -56,6 +65,7 @@ export async function searchParams(
 		status: filters.status,
 		type: filters.type,
 		label: filters.label,
+		sprint: filters.sprint,
 		updatedSince: filters.updated ? parseSince(filters.updated, nowMs) : undefined,
 		open: filters.open,
 		limit,
