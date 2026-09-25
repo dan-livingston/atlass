@@ -106,6 +106,7 @@ test("jira board: an id shows estimation, filter JQL and each column's statuses 
 test.each([
 	"https://acme.atlassian.net/jira/software/c/projects/BW/boards/11",
 	"https://acme.atlassian.net/jira/software/projects/BW/boards/11/backlog?selectedIssue=BW-3",
+	"https://acme.atlassian.net/jira/people/61958254744c4d00695a2916/boards/11",
 	"https://acme.atlassian.net/secure/RapidBoard.jspa?rapidView=11",
 ])("jira board: the URL %s resolves to the same board as its id", async (url) => {
 	const env = fakeJiraEnv({ getJson: routed(SCRUM_BOARD) });
