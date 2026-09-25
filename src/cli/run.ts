@@ -50,10 +50,13 @@ function guarded<A extends unknown[]>(fn: (env: Env, args: A) => Promise<void>):
 	};
 }
 
-export function fail(err: unknown): never {
-	if (isPromptInterrupt(err)) process.exit(SIGINT_EXIT_CODE);
+export function fail(err: unknown): void {
+	if (isPromptInterrupt(err)) {
+		process.exitCode = SIGINT_EXIT_CODE;
+		return;
+	}
 	ttyTerminal().err(`Error: ${err instanceof Error ? err.message : String(err)}`);
-	process.exit(1);
+	process.exitCode = 1;
 }
 
 function isPromptInterrupt(err: unknown): boolean {
