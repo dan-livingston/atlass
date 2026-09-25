@@ -7,6 +7,7 @@ import {
 	collectPages,
 	repoPath,
 } from "#/api/bitbucket-repo.ts";
+import { parseChoices } from "#/util/parse.ts";
 
 export interface PullRequestSummary {
 	id: number;
@@ -39,23 +40,7 @@ interface PullRequestValue {
 const PULL_REQUEST_STATES = ["OPEN", "MERGED", "DECLINED", "SUPERSEDED"];
 
 export function parsePullRequestStates(values: string[] | undefined): string[] {
-	const raw = (values ?? []).flatMap((value) => value.split(","));
-	const states: string[] = [];
-	for (const value of raw) {
-		const state = value.trim().toUpperCase();
-		if (!state) continue;
-		if (!PULL_REQUEST_STATES.includes(state)) {
-			throw new Error(
-				`Invalid --state "${value.trim()}". Expected ${PULL_REQUEST_STATES.map((s) =>
-					s.toLowerCase(),
-				)
-					.join(", ")
-					.replace(/, (?=[^,]*$)/, ", or ")}.`,
-			);
-		}
-		if (!states.includes(state)) states.push(state);
-	}
-	return states;
+	return parseChoices(values, PULL_REQUEST_STATES, "--state");
 }
 
 export function allPullRequestStates(): string[] {

@@ -6,6 +6,7 @@ import { jiraBoard } from "#/commands/jira-board.ts";
 import { jiraBoards } from "#/commands/jira-boards.ts";
 import { jiraCreate, jiraFields } from "#/commands/jira-create.ts";
 import { jiraJql, jiraList, jiraSearch } from "#/commands/jira-search.ts";
+import { jiraSprints } from "#/commands/jira-sprints.ts";
 import { jiraCopy, jiraProjects, jiraStatuses, jiraUpdate, jiraView } from "#/commands/jira.ts";
 
 export function registerJira(jira: Command): Command {
@@ -30,6 +31,12 @@ export function registerJira(jira: Command): Command {
 		)
 		.option("--json", "output results as JSON")
 		.action(jiraAction(jiraBoard));
+	jira.command("sprints <ref>")
+		.description("List a board's sprints, active by default (id, URL or exact name)")
+		.option("-s, --state <state>", "active, future, or closed (repeatable)", collect)
+		.option("-l, --limit <n>", "max results (default 25, max 100)")
+		.option("--json", "output results as JSON")
+		.action(jiraAction(jiraSprints));
 	jira.command("create [project] [type]")
 		.description("Create a Jira issue, prompting for fields or taking them all as flags")
 		.option("-s, --summary <text>", "issue summary")

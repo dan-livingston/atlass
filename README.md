@@ -214,6 +214,16 @@ project key. Boards that span projects leave the project cell empty.
 column's statuses with their categories. A name must match exactly, ignoring
 case; if several boards share it, use the id.
 
+## Sprints
+
+```bash
+atlass jira sprints <id|url|name> [--state active|future|closed ...] [--limit N] [--json]
+```
+
+Lists a board's sprints as `ID  State  Name  Start  End`, active only unless
+`--state` says otherwise. Active sprints come first, then future, then closed
+newest first. The board takes the same forms as `board`.
+
 ## Bitbucket
 
 `--repo` takes `workspace/slug` or a bare slug under the configured workspace,

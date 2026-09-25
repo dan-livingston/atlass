@@ -39,3 +39,8 @@ export function relativeTime(iso: string, nowMs: number): string {
 	if (days < 365) return `${Math.floor(days / 30)}mo ago`;
 	return `${Math.floor(days / 365)}y ago`;
 }
+
+export function orList(items: readonly string[]): string {
+	if (items.length < 3) return items.join(" or ");
+	return `${items.slice(0, -1).join(", ")}, or ${items.at(-1)}`;
+}

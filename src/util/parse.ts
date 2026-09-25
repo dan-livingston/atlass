@@ -1,3 +1,5 @@
+import { orList } from "#/util/format.ts";
+
 export function parseIssueKey(input: string): string | null {
 	const match = input.toUpperCase().match(/[A-Z][A-Z0-9]+-\d+/);
 	return match ? match[0] : null;
@@ -89,6 +91,24 @@ export function resolveRepo(
 	throw new Error(
 		`No repo given. Pass --repo workspace/slug (or a bare slug), or set a default repo at \`atlass bitbucket login\`.`,
 	);
+}
+
+export function parseChoices<T extends string>(
+	values: string[] | undefined,
+	choices: readonly T[],
+	flag: string,
+): T[] {
+	const picked = new Set<T>();
+	const raw = (values ?? []).flatMap((v) => v.split(",")).map((v) => v.trim());
+	for (const value of raw.filter(Boolean)) {
+		const choice = choices.find((c) => c.toLowerCase() === value.toLowerCase());
+		if (!choice) {
+			const expected = orList(choices.map((c) => c.toLowerCase()));
+			throw new Error(`Invalid ${flag} "${value}". Expected ${expected}.`);
+		}
+		picked.add(choice);
+	}
+	return choices.filter((c) => picked.has(c));
 }
 
 const DEFAULT_LIMIT = 25;

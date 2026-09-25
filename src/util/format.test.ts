@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { formatDuration, relativeTime } from "#/util/format.ts";
+import { formatDuration, orList, relativeTime } from "#/util/format.ts";
 
 test("duration: null or missing renders as a dash", () => {
 	expect(formatDuration(null)).toBe("-");
@@ -47,4 +47,10 @@ test("relativeTime: a future time clamps to just now", () => {
 test("relativeTime: empty or unparseable renders as a dash", () => {
 	expect(relativeTime("", NOW)).toBe("-");
 	expect(relativeTime("not a date", NOW)).toBe("-");
+});
+
+test("orList: joins two items with or and longer lists with a serial comma", () => {
+	expect(orList(["active"])).toBe("active");
+	expect(orList(["active", "future"])).toBe("active or future");
+	expect(orList(["active", "future", "closed"])).toBe("active, future, or closed");
 });

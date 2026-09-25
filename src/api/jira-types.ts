@@ -155,3 +155,16 @@ export interface BoardDetail {
 	filter: BoardFilter;
 	columns: BoardColumn[];
 }
+
+export const SPRINT_STATES = ["active", "future", "closed"] as const;
+
+export type SprintState = (typeof SPRINT_STATES)[number];
+
+export interface SprintSummary {
+	id: number;
+	state: SprintState;
+	name: string;
+	start: string | null;
+	end: string | null;
+	boardId: number;
+}
