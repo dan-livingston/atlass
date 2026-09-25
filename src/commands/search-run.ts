@@ -64,6 +64,7 @@ export interface Cells {
 	color: (text: string) => string;
 	text: string;
 	timestamp: string;
+	columns?: string[];
 }
 
 export function alignedRows<T extends object>(
@@ -73,17 +74,28 @@ export function alignedRows<T extends object>(
 ): SearchRow[] {
 	const rows = items.map((item) => {
 		const cell = cells(item);
-		return { ...cell, age: relativeTime(cell.timestamp, nowMs), json: { ...item } };
+		return {
+			...cell,
+			columns: cell.columns ?? [],
+			age: relativeTime(cell.timestamp, nowMs),
+			json: { ...item },
+		};
 	});
 	const width = (pick: (row: (typeof rows)[number]) => string) =>
 		Math.max(...rows.map((row) => pick(row).length));
 	const idWidth = width((row) => row.id);
 	const labelWidth = width((row) => row.label);
+	const columnWidths = (rows[0]?.columns ?? []).map((_, i) => width((row) => row.columns[i]!));
 	const ageWidth = width((row) => row.age);
 	return rows.map((row) => ({
 		id: row.id,
 		url: row.url,
-		fixedColumns: `${row.id.padEnd(idWidth)}  ${row.color(row.label.padEnd(labelWidth))}  ${row.age.padEnd(ageWidth)}`,
+		fixedColumns: [
+			row.id.padEnd(idWidth),
+			row.color(row.label.padEnd(labelWidth)),
+			...row.columns.map((column, i) => column.padEnd(columnWidths[i]!)),
+			row.age.padEnd(ageWidth),
+		].join("  "),
 		freeText: row.text,
 		json: row.json,
 	}));

@@ -19,6 +19,7 @@ interface SearchIssueResponse {
 		summary?: string;
 		status?: { name?: string; statusCategory?: { key?: string } };
 		updated?: string;
+		[id: string]: unknown;
 	};
 }
 
@@ -34,8 +35,9 @@ export async function searchIssues(
 	client: Transport,
 	site: string,
 	params: IssueSearchParams,
+	fieldIds: string[] = [],
 ): Promise<IssueSummary[]> {
-	return searchIssuesByJql(client, site, buildJql(params), params.limit);
+	return searchIssuesByJql(client, site, buildJql(params), params.limit, fieldIds);
 }
 
 export async function searchIssuesByJql(
@@ -43,34 +45,41 @@ export async function searchIssuesByJql(
 	site: string,
 	jql: string,
 	limit: number,
+	fieldIds: string[] = [],
 ): Promise<IssueSummary[]> {
-	const res = await fetchSearchPage(client, jql, limit);
-	return (res.issues ?? []).map((i) => toIssueSummary(site, i));
+	const res = await fetchSearchPage(client, jql, limit, fieldIds);
+	return (res.issues ?? []).map((i) => toIssueSummary(site, i, fieldIds));
 }
 
 async function fetchSearchPage(
 	client: Transport,
 	jql: string,
 	maxResults: number,
+	fieldIds: string[],
 	nextPageToken?: string,
 ): Promise<SearchResponse> {
 	const query = new URLSearchParams({
 		jql,
 		maxResults: String(maxResults),
-		fields: SEARCH_FIELDS,
+		fields: [SEARCH_FIELDS, ...fieldIds].join(","),
 	});
 	if (nextPageToken) query.set("nextPageToken", nextPageToken);
 	return client.getJson<SearchResponse>(`/rest/api/3/search/jql?${query.toString()}`);
 }
 
-function toIssueSummary(site: string, i: SearchIssueResponse): IssueSummary {
-	return {
+function toIssueSummary(site: string, i: SearchIssueResponse, fieldIds: string[]): IssueSummary {
+	const summary: IssueSummary = {
 		key: i.key,
 		status: i.fields?.status?.name ?? "",
 		statusCategory: i.fields?.status?.statusCategory?.key ?? "",
 		summary: decodeEntities(i.fields?.summary ?? ""),
 		updated: i.fields?.updated ?? "",
 		url: browseUrl(site, i.key),
+	};
+	if (fieldIds.length === 0) return summary;
+	return {
+		...summary,
+		fields: Object.fromEntries(fieldIds.map((id) => [id, i.fields?.[id] ?? null])),
 	};
 }
 
@@ -110,6 +119,7 @@ export async function listAssignedIssues(
 	client: Transport,
 	site: string,
 	params: IssueListParams,
+	fieldIds: string[] = [],
 ): Promise<IssueList> {
 	const jql = buildListJql(params);
 	const issues: IssueSummary[] = [];
@@ -120,10 +130,11 @@ export async function listAssignedIssues(
 			client,
 			jql,
 			Math.min(LIST_PAGE_SIZE, room),
+			fieldIds,
 			nextPageToken,
 		);
 		const page = res.issues ?? [];
-		issues.push(...page.map((i) => toIssueSummary(site, i)));
+		issues.push(...page.map((i) => toIssueSummary(site, i, fieldIds)));
 		if (res.isLast || !res.nextPageToken || page.length === 0) {
 			return { issues, truncated: false };
 		}

@@ -10,6 +10,12 @@ import { jiraJql, jiraList, jiraSearch } from "#/commands/jira-search.ts";
 import { jiraSprints } from "#/commands/jira-sprints.ts";
 import { jiraCopy, jiraProjects, jiraStatuses, jiraUpdate, jiraView } from "#/commands/jira.ts";
 
+const FIELD_OPTION = [
+	"-f, --field <name|id>",
+	"add a field's value to each issue (repeatable)",
+	collect,
+] as const;
+
 export function registerJira(jira: Command): Command {
 	jira.description("Jira commands");
 	jira.command("projects [query]")
@@ -79,7 +85,8 @@ export function registerJira(jira: Command): Command {
 			.command("list")
 			.description("List open issues assigned to you")
 			.option("-p, --project <key>", "limit to a project")
-			.option("-a, --all", "include Done issues updated in the last 30 days"),
+			.option("-a, --all", "include Done issues updated in the last 30 days")
+			.option(...FIELD_OPTION),
 	).action(jiraAction(jiraList));
 	outputOptions(
 		jira
@@ -101,10 +108,14 @@ export function registerJira(jira: Command): Command {
 			.option("--label <label>", "limit to a label (repeatable)", collect)
 			.option("-u, --updated <when>", "changed since 7d, 2w, 3m, or YYYY-MM-DD")
 			.option("--open", "exclude issues in the Done category")
+			.option(...FIELD_OPTION)
 			.addOption(moved("--jql <jql>", "jira jql")),
 	).action(jiraAction(jiraSearch));
 	outputOptions(
-		jira.command("jql <query>").description("Search Jira issues with a raw JQL query"),
+		jira
+			.command("jql <query>")
+			.description("Search Jira issues with a raw JQL query")
+			.option(...FIELD_OPTION),
 	).action(jiraAction(jiraJql));
 	return jira;
 }

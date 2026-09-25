@@ -193,6 +193,19 @@ atlass confluence cql "label = runbook AND creator = currentUser()"
 to pick results interactively and copy each one, with `--out` as the target
 directory. All four work on both search commands.
 
+`--field` adds a field's value to each issue on `jira search`, `jira jql` and
+`jira list`:
+
+```bash
+atlass jira search --assignee me --status Closed --field "Story Points" --json
+```
+
+It takes a field id or a name, ignoring case, and repeats for more fields. A
+name several fields share fails and lists their ids; `atlass jira fields
+--search` finds the one you want. Each field becomes a column after the status.
+With `--json`, each issue gains a `fields` object of raw values keyed by the
+name you passed.
+
 Discovery aids for the filters:
 
 ```bash

@@ -37,6 +37,7 @@ export interface IssueSummary {
 	summary: string;
 	updated: string;
 	url: string;
+	fields?: Record<string, unknown>;
 }
 
 export interface IssueSearchParams {

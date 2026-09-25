@@ -1,4 +1,5 @@
 import type { IssueSummary } from "#/api/jira-types.ts";
+import type { FieldColumn } from "#/commands/jira-field-columns.ts";
 import type { Filters } from "#/commands/jira-filters.ts";
 import type { OutputOptions, SearchRow } from "#/commands/search-run.ts";
 import type { SessionEnv } from "#/env.ts";
@@ -9,11 +10,21 @@ import {
 	searchIssuesByJql,
 	sortByCategoryThenUpdated,
 } from "#/api/jira-search.ts";
+import {
+	fieldCell,
+	fieldIds,
+	resolveFieldColumns,
+	withNamedFields,
+} from "#/commands/jira-field-columns.ts";
 import { checkQuery, searchHint, searchParams } from "#/commands/jira-filters.ts";
 import { colorForCategory, copyIssue } from "#/commands/jira.ts";
 import { alignedRows, checkedLimit, runSearch, showRows } from "#/commands/search-run.ts";
 
-export interface SearchOptions extends OutputOptions, Filters {}
+export interface FieldOptions extends OutputOptions {
+	field?: string[];
+}
+
+export interface SearchOptions extends FieldOptions, Filters {}
 
 export async function jiraSearch(
 	env: SessionEnv,
@@ -24,36 +35,41 @@ export async function jiraSearch(
 	checkQuery(query, options);
 
 	const limit = checkedLimit(options);
+	const columns = await resolveFieldColumns(session, options.field);
 	const params = await searchParams(session, query, options, limit, Date.now());
-	const issues = await searchIssues(session, session.site, params).catch((err: unknown) => {
-		throw searchHint(err, options.project);
-	});
+	const issues = await searchIssues(session, session.site, params, fieldIds(columns)).catch(
+		(err: unknown) => {
+			throw searchHint(err, options.project);
+		},
+	);
 
-	await showIssues(env, issues, limit, options);
+	await showIssues(env, withNamedFields(issues, columns), columns, limit, options);
 }
 
 export async function jiraJql(
 	env: SessionEnv,
 	query: string,
-	options: OutputOptions,
+	options: FieldOptions,
 ): Promise<void> {
 	const { session } = env;
 	const limit = checkedLimit(options);
-	const issues = await searchIssuesByJql(session, session.site, query, limit);
+	const columns = await resolveFieldColumns(session, options.field);
+	const issues = await searchIssuesByJql(session, session.site, query, limit, fieldIds(columns));
 
-	await showIssues(env, issues, limit, options);
+	await showIssues(env, withNamedFields(issues, columns), columns, limit, options);
 }
 
 async function showIssues(
 	env: SessionEnv,
 	issues: IssueSummary[],
+	columns: FieldColumn[],
 	limit: number,
 	options: OutputOptions,
 	empty = "No matching issues.",
 ): Promise<void> {
 	await showRows(
 		env.term,
-		formatIssueRows(issues, Date.now()),
+		formatIssueRows(issues, Date.now(), columns),
 		{ empty, hasMore: issues.length === limit, limit },
 		options,
 		ISSUE_NOUN,
@@ -61,7 +77,7 @@ async function showIssues(
 	);
 }
 
-export interface ListOptions extends OutputOptions {
+export interface ListOptions extends FieldOptions {
 	project?: string;
 	all?: boolean;
 }
@@ -69,15 +85,22 @@ export interface ListOptions extends OutputOptions {
 export async function jiraList(env: SessionEnv, options: ListOptions): Promise<void> {
 	const { session, term } = env;
 	checkedLimit(options);
+	const columns = await resolveFieldColumns(session, options.field);
 
-	const { issues, truncated } = await listAssignedIssues(session, session.site, {
-		all: options.all,
-		project: options.project,
-	});
+	const { issues, truncated } = await listAssignedIssues(
+		session,
+		session.site,
+		{ all: options.all, project: options.project },
+		fieldIds(columns),
+	);
 
 	await runSearch(
 		term,
-		formatIssueRows(sortByCategoryThenUpdated(issues), Date.now()),
+		formatIssueRows(
+			sortByCategoryThenUpdated(withNamedFields(issues, columns)),
+			Date.now(),
+			columns,
+		),
 		{
 			json: options.json,
 			copy: options.copy,
@@ -92,7 +115,11 @@ export async function jiraList(env: SessionEnv, options: ListOptions): Promise<v
 	);
 }
 
-export function formatIssueRows(issues: IssueSummary[], nowMs: number): SearchRow[] {
+export function formatIssueRows(
+	issues: IssueSummary[],
+	nowMs: number,
+	columns: FieldColumn[] = [],
+): SearchRow[] {
 	return alignedRows(issues, nowMs, (i) => ({
 		id: i.key,
 		url: i.url,
@@ -100,6 +127,7 @@ export function formatIssueRows(issues: IssueSummary[], nowMs: number): SearchRo
 		color: colorForCategory(i.statusCategory),
 		text: i.summary,
 		timestamp: i.updated,
+		columns: columns.map((c) => fieldCell(i.fields?.[c.name])),
 	}));
 }
 
