@@ -200,6 +200,15 @@ atlass jira projects [query]
 atlass jira statuses [query] [--project PROJ]
 ```
 
+## Boards
+
+```bash
+atlass jira boards [query] [--project PROJ]
+```
+
+Lists every board as `ID  Type  Name  Project`, filtered by name and project
+key. Boards that span projects leave the project cell empty.
+
 ## Bitbucket
 
 `--repo` takes `workspace/slug` or a bare slug under the configured workspace,

@@ -2,6 +2,7 @@ import type { Command } from "commander";
 
 import { jiraAction } from "#/cli/run.ts";
 import { collect, moved, outputOptions } from "#/cli/search-options.ts";
+import { jiraBoards } from "#/commands/jira-boards.ts";
 import { jiraCreate, jiraFields } from "#/commands/jira-create.ts";
 import { jiraJql, jiraList, jiraSearch } from "#/commands/jira-search.ts";
 import { jiraCopy, jiraProjects, jiraStatuses, jiraUpdate, jiraView } from "#/commands/jira.ts";
@@ -17,6 +18,11 @@ export function registerJira(jira: Command): Command {
 		.option("-p, --project <key>", "limit to statuses used by a project")
 		.option("--json", "output results as JSON")
 		.action(jiraAction(jiraStatuses));
+	jira.command("boards [query]")
+		.description("List boards (optionally filtered by name, scoped with --project)")
+		.option("-p, --project <key>", "limit to boards located in a project")
+		.option("--json", "output results as JSON")
+		.action(jiraAction(jiraBoards));
 	jira.command("create [project] [type]")
 		.description("Create a Jira issue, prompting for fields or taking them all as flags")
 		.option("-s, --summary <text>", "issue summary")

@@ -121,3 +121,11 @@ export interface JiraUser {
 	email: string;
 	active: boolean;
 }
+
+export interface BoardSummary {
+	id: number;
+	name: string;
+	type: string;
+	project: string | null;
+	url: string;
+}
