@@ -16,8 +16,17 @@ interface IssueTypeStatusesResponse {
 export async function listStatuses(client: Transport, project?: string): Promise<StatusSummary[]> {
 	const raw = project
 		? await fetchProjectStatuses(client, project)
-		: await client.getJson<StatusResponse[]>("/rest/api/3/status");
+		: await fetchAllStatuses(client);
 	return dedupeAndSortStatuses(raw.map(toStatusSummary));
+}
+
+export async function statusesById(client: Transport): Promise<Map<string, StatusSummary>> {
+	const raw = await fetchAllStatuses(client);
+	return new Map(raw.map((s) => [s.id, toStatusSummary(s)]));
+}
+
+function fetchAllStatuses(client: Transport): Promise<StatusResponse[]> {
+	return client.getJson<StatusResponse[]>("/rest/api/3/status");
 }
 
 async function fetchProjectStatuses(client: Transport, project: string): Promise<StatusResponse[]> {

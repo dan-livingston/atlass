@@ -13,6 +13,15 @@ export function parsePageId(input: string): string | null {
 	return null;
 }
 
+export function parseBoardId(input: string): number | null {
+	const trimmed = input.trim();
+	if (/^\d+$/.test(trimmed)) return Number(trimmed);
+	if (!/^https?:\/\//i.test(trimmed)) return null;
+	const match =
+		trimmed.match(/\/boards\/(\d+)(?:[/?#]|$)/) ?? trimmed.match(/[?&]rapidView=(\d+)/);
+	return match ? Number(match[1]) : null;
+}
+
 export interface PullRequestRef {
 	id: number;
 	repo?: RepoRef;

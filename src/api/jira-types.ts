@@ -129,3 +129,29 @@ export interface BoardSummary {
 	project: string | null;
 	url: string;
 }
+
+export interface BoardEstimation {
+	fieldId: string;
+	fieldName: string;
+}
+
+export interface BoardFilter {
+	id: string;
+	jql: string | null;
+	subQuery: string | null;
+}
+
+export interface BoardColumn {
+	name: string;
+	statuses: StatusSummary[];
+}
+
+export interface BoardDetail {
+	id: number;
+	name: string;
+	type: string;
+	url: string;
+	estimation: BoardEstimation | null;
+	filter: BoardFilter;
+	columns: BoardColumn[];
+}

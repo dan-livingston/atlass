@@ -25,7 +25,7 @@ export function httpError(
 		);
 	}
 	if (status === 404) {
-		return new HttpError(status, `Not found (404): ${path}`);
+		return new HttpError(status, `Not found (404): ${path}`, undefined, path);
 	}
 	if (status === 409) {
 		const detail = extractErrorMessage(body);

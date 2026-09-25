@@ -2,6 +2,7 @@ import type { Command } from "commander";
 
 import { jiraAction } from "#/cli/run.ts";
 import { collect, moved, outputOptions } from "#/cli/search-options.ts";
+import { jiraBoard } from "#/commands/jira-board.ts";
 import { jiraBoards } from "#/commands/jira-boards.ts";
 import { jiraCreate, jiraFields } from "#/commands/jira-create.ts";
 import { jiraJql, jiraList, jiraSearch } from "#/commands/jira-search.ts";
@@ -23,6 +24,12 @@ export function registerJira(jira: Command): Command {
 		.option("-p, --project <key>", "limit to boards located in a project")
 		.option("--json", "output results as JSON")
 		.action(jiraAction(jiraBoards));
+	jira.command("board <ref>")
+		.description(
+			"Show a board's estimation field, filter JQL and columns (id, URL or exact name)",
+		)
+		.option("--json", "output results as JSON")
+		.action(jiraAction(jiraBoard));
 	jira.command("create [project] [type]")
 		.description("Create a Jira issue, prompting for fields or taking them all as flags")
 		.option("-s, --summary <text>", "issue summary")

@@ -204,10 +204,15 @@ atlass jira statuses [query] [--project PROJ]
 
 ```bash
 atlass jira boards [query] [--project PROJ]
+atlass jira board <id|url|name> [--json]
 ```
 
-Lists every board as `ID  Type  Name  Project`, filtered by name and project
-key. Boards that span projects leave the project cell empty.
+`boards` lists every board as `ID  Type  Name  Project`, filtered by name and
+project key. Boards that span projects leave the project cell empty.
+
+`board` shows one board: the field it estimates with, its filter JQL, and each
+column's statuses with their categories. A name must match exactly, ignoring
+case; if several boards share it, use the id.
 
 ## Bitbucket
 
