@@ -1,7 +1,7 @@
 import kleur from "kleur";
 import { expect, test } from "vite-plus/test";
 
-import { jiraCreate, jiraFields } from "#/commands/jira-create.ts";
+import { jiraCreate } from "#/commands/jira-create.ts";
 import { fakeJiraEnv, routed } from "#/test/env.ts";
 
 kleur.enabled = false;
@@ -120,11 +120,4 @@ test("declining the review aborts before the issue is posted", async () => {
 
 	expect(posted).toBe(0);
 	expect(env.term.written.at(-1)).toBe("Aborted.");
-});
-
-test("jira fields lists the issue types a project offers", async () => {
-	const env = createEnv();
-	await jiraFields(env, "proj", undefined, {});
-
-	expect(env.term.written).toEqual(["Bug  A problem"]);
 });

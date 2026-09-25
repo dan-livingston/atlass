@@ -224,6 +224,18 @@ Lists a board's sprints as `ID  State  Name  Start  End`, active only unless
 `--state` says otherwise. Active sprints come first, then future, then closed
 newest first. The board takes the same forms as `board`.
 
+## Fields
+
+```bash
+atlass jira fields [--search TEXT] [--json]
+```
+
+With no project, `fields` lists every field on the site as `ID  Name  Type`,
+sorted by name. `--search` filters by name or id, ignoring case. The type is the
+custom field's plugin type, such as `float` or `gh-sprint`, or the schema type
+for system fields. `--json` carries the full schema, plugin key included. With a
+project, `fields` shows the create form instead (see Create).
+
 ## Bitbucket
 
 `--repo` takes `workspace/slug` or a bare slug under the configured workspace,

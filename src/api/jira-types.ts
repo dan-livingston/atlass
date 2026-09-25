@@ -97,6 +97,7 @@ export interface FieldSchema {
 	items?: string;
 	system?: string;
 	custom?: string;
+	customId?: number;
 }
 
 export interface CreateField {
@@ -167,4 +168,11 @@ export interface SprintSummary {
 	start: string | null;
 	end: string | null;
 	boardId: number;
+}
+
+export interface SiteField {
+	id: string;
+	name: string;
+	custom: boolean;
+	schema: FieldSchema | null;
 }

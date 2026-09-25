@@ -8,7 +8,7 @@ import { createIssue, fetchCreateFields, fetchCreateIssueTypes } from "#/api/jir
 import { searchAssignableUsers } from "#/api/jira-users.ts";
 import { resolveProject, resolveType, userResolver } from "#/commands/jira-create-resolve.ts";
 import { encodeCreate } from "#/create/encode.ts";
-import { formatFieldRows, formatIssueTypeRows, formatMissingFields } from "#/create/format.ts";
+import { formatMissingFields } from "#/create/format.ts";
 import { walkFields } from "#/create/prompt.ts";
 
 export interface CreateOptions {
@@ -146,28 +146,4 @@ function describeRejection(err: unknown, meta: CreateField[]): unknown {
 	return new Error(
 		["Jira rejected the issue:", ...errorMessages.map((m) => `  ${m}`), ...perField].join("\n"),
 	);
-}
-
-export interface FieldsOptions {
-	json?: boolean;
-}
-
-export async function jiraFields(
-	{ session, term }: SessionEnv,
-	projectArg: string,
-	typeArg: string | undefined,
-	options: FieldsOptions,
-): Promise<void> {
-	const project = projectArg.toUpperCase();
-	const types = await fetchCreateIssueTypes(session, project);
-	if (!typeArg) {
-		if (options.json) term.json(types);
-		else if (types.length === 0) term.out(`You cannot create issues in ${project}.`);
-		else term.out(formatIssueTypeRows(types));
-		return;
-	}
-	const type = await resolveType(term.ask, project, types, typeArg, true);
-	const fields = await fetchCreateFields(session, project, type.id);
-	if (options.json) term.json(fields);
-	else term.out(formatFieldRows(fields));
 }

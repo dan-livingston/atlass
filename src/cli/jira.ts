@@ -4,7 +4,8 @@ import { jiraAction } from "#/cli/run.ts";
 import { collect, moved, outputOptions } from "#/cli/search-options.ts";
 import { jiraBoard } from "#/commands/jira-board.ts";
 import { jiraBoards } from "#/commands/jira-boards.ts";
-import { jiraCreate, jiraFields } from "#/commands/jira-create.ts";
+import { jiraCreate } from "#/commands/jira-create.ts";
+import { jiraFields } from "#/commands/jira-fields.ts";
 import { jiraJql, jiraList, jiraSearch } from "#/commands/jira-search.ts";
 import { jiraSprints } from "#/commands/jira-sprints.ts";
 import { jiraCopy, jiraProjects, jiraStatuses, jiraUpdate, jiraView } from "#/commands/jira.ts";
@@ -51,10 +52,11 @@ export function registerJira(jira: Command): Command {
 		.option("--dry-run", "print the resolved payload instead of creating")
 		.option("--json", "print the created issue as JSON")
 		.action(jiraAction(jiraCreate));
-	jira.command("fields <project> [type]")
+	jira.command("fields [project] [type]")
 		.description(
-			"Show the issue types you can create in a project, or the create form for one type",
+			"List site fields, or the issue types a project offers, or the create form for one type",
 		)
+		.option("--search <text>", "site fields only: filter by name or id")
 		.option("--json", "output results as JSON")
 		.action(jiraAction(jiraFields));
 	jira.command("view [issue]")
