@@ -6,6 +6,12 @@ export interface RemoteAttachment {
 	url: string;
 }
 
+export interface Attached {
+	filename: string;
+	id: string;
+	size: number;
+}
+
 export interface DownloadedAttachment extends RemoteAttachment {
 	relativePath: string;
 }

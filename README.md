@@ -107,6 +107,16 @@ line, or the first `## Comments` or `## Attachments` in older copies.
   with `--title`) is written back to the frontmatter, so the file can be pushed
   again without a fresh copy.
 
+## Attach
+
+```bash
+atlass jira attach PROJ-123 screenshot.png logs.zip
+```
+
+Uploads files as new attachments, one request per file. Every file is read
+before anything uploads, and the first failed upload stops the run. `--json`
+prints the filename, id, and size of each attachment.
+
 ## Create
 
 ```bash

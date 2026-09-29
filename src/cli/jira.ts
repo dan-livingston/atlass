@@ -2,6 +2,7 @@ import type { Command } from "commander";
 
 import { jiraAction } from "#/cli/run.ts";
 import { collect, moved, outputOptions } from "#/cli/search-options.ts";
+import { jiraAttach } from "#/commands/jira-attach.ts";
 import { jiraBoard } from "#/commands/jira-board.ts";
 import { jiraBoards } from "#/commands/jira-boards.ts";
 import { jiraCreate } from "#/commands/jira-create.ts";
@@ -80,6 +81,10 @@ export function registerJira(jira: Command): Command {
 		.option("-f, --force", "skip the stale-issue and data-loss checks")
 		.option("--dry-run", "show what would change without writing")
 		.action(jiraAction(jiraUpdate));
+	jira.command("attach <issue> <files...>")
+		.description("Upload files as attachments to a Jira issue (key or URL)")
+		.option("--json", "print the uploaded attachments as JSON")
+		.action(jiraAction(jiraAttach));
 	outputOptions(
 		jira
 			.command("list")

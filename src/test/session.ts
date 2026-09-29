@@ -1,4 +1,4 @@
-import type { Transport } from "#/api/client.ts";
+import type { MultipartExtras, Transport } from "#/api/client.ts";
 import type { AtlassianSession, BitbucketSession } from "#/api/session.ts";
 
 export interface FakeTransport {
@@ -7,7 +7,12 @@ export interface FakeTransport {
 	putJson?: (path: string, body: unknown) => unknown;
 	putNoContent?: (path: string, body: unknown) => void | Promise<void>;
 	deleteNoContent?: (path: string) => void | Promise<void>;
-	postMultipart?: (path: string, filename: string, bytes: Uint8Array) => unknown;
+	postMultipart?: (
+		path: string,
+		filename: string,
+		bytes: Uint8Array,
+		extras?: MultipartExtras,
+	) => unknown;
 	getBinary?: (urlOrPath: string) => Uint8Array | Promise<Uint8Array>;
 }
 
@@ -37,9 +42,14 @@ function fakeTransport(spec: FakeTransport): Transport {
 			if (!spec.deleteNoContent) throw unexpected("DELETE", path);
 			await spec.deleteNoContent(path);
 		},
-		async postMultipart<T>(path: string, filename: string, bytes: Uint8Array): Promise<T> {
+		async postMultipart<T>(
+			path: string,
+			filename: string,
+			bytes: Uint8Array,
+			extras?: MultipartExtras,
+		): Promise<T> {
 			if (!spec.postMultipart) throw unexpected("POST", path);
-			return (await spec.postMultipart(path, filename, bytes)) as T;
+			return (await spec.postMultipart(path, filename, bytes, extras)) as T;
 		},
 		async getBinary(urlOrPath: string): Promise<Uint8Array> {
 			if (!spec.getBinary) throw unexpected("GET", urlOrPath);

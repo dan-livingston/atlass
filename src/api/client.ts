@@ -8,13 +8,22 @@ export interface Credentials {
 	token: string;
 }
 
+export interface MultipartExtras {
+	type?: string;
+}
+
 export interface Transport {
 	getJson<T>(path: string): Promise<T>;
 	postJson<T>(path: string, body: unknown): Promise<T>;
 	putJson<T>(path: string, body: unknown): Promise<T>;
 	putNoContent(path: string, body: unknown): Promise<void>;
 	deleteNoContent(path: string): Promise<void>;
-	postMultipart<T>(path: string, filename: string, bytes: Uint8Array): Promise<T>;
+	postMultipart<T>(
+		path: string,
+		filename: string,
+		bytes: Uint8Array,
+		extras?: MultipartExtras,
+	): Promise<T>;
 	getBinary(urlOrPath: string): Promise<Uint8Array>;
 }
 
@@ -81,9 +90,14 @@ export class AtlassianClient implements Transport {
 		await this.request(path, { method: "DELETE", headers: { Accept: "application/json" } });
 	}
 
-	async postMultipart<T>(path: string, filename: string, bytes: Uint8Array): Promise<T> {
+	async postMultipart<T>(
+		path: string,
+		filename: string,
+		bytes: Uint8Array,
+		extras: MultipartExtras = {},
+	): Promise<T> {
 		const form = new FormData();
-		const blob = new Blob([bytes as unknown as Uint8Array<ArrayBuffer>]);
+		const blob = new Blob([bytes as unknown as Uint8Array<ArrayBuffer>], { type: extras.type });
 		form.append("file", blob, filename);
 		const res = await this.request(path, {
 			method: "POST",

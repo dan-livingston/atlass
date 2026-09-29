@@ -172,7 +172,7 @@ export async function copyIssue(
 	await runCopy(env, planIssueCopy(issue, out));
 }
 
-const ISSUE_REF = {
+export const ISSUE_REF = {
 	message: "Jira issue key or URL:",
 	flag: "[issue]",
 	parse: parseIssueKey,
