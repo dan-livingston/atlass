@@ -151,6 +151,30 @@ test("page: images are reused when name and size match, uploaded otherwise, and 
 	expect(plan.verdict).toEqual({ kind: "proceed" });
 });
 
+test("page: videos fill the text column while images keep their natural size", () => {
+	const src = pageSource({
+		body: [
+			"![demo](p.assets/demo.mp4)",
+			"![clip](p.assets/Clip.MOV)",
+			"![remote](https://cdn/intro.webm?v=2)",
+			"![shot](p.assets/shot.png)",
+		].join("\n\n"),
+	});
+	const attachments = [attachment("demo.mp4", "f-demo", 10)];
+	const locals = [
+		local("p.assets/demo.mp4", 10),
+		local("p.assets/Clip.MOV", 20),
+		local("p.assets/shot.png", 5),
+	];
+	const plan = planPageUpdate(src, pageState(), attachments, locals, options());
+	expect(plan.body.content?.map((n) => n.attrs)).toEqual([
+		{ layout: "center", width: 100, widthType: "percentage" },
+		{ layout: "center", width: 100, widthType: "percentage" },
+		{ layout: "center", width: 100, widthType: "percentage" },
+		{ layout: "center" },
+	]);
+});
+
 test("page: a missing image file is refused even with --force", () => {
 	const src = pageSource({ body: "Text.\n\n![gone](p.assets/gone.png)" });
 	const plan = planPageUpdate(

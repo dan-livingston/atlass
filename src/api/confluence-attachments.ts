@@ -1,7 +1,7 @@
 import type { Attached, RemoteAttachment } from "#/api/attachments.ts";
 import type { Transport } from "#/api/client.ts";
 
-import { mediaType } from "#/api/media-type.ts";
+import { mediaType } from "#/util/media-type.ts";
 
 interface AttachmentResponse {
 	fileId?: string;

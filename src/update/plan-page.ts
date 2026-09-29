@@ -51,7 +51,7 @@ export function planPageBody(
 			if (!entry || entry.kind === "missing") return undefined;
 			if (entry.kind === "external") return externalMedia(href, alt);
 			const id = entry.kind === "reuse" ? entry.fileId : href;
-			return mediaNode({ type: "file", id, collection }, alt);
+			return mediaNode({ type: "file", id, collection }, alt, href);
 		},
 	});
 	const uploads = images.flatMap((e) =>

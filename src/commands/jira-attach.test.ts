@@ -2,9 +2,9 @@ import { expect, test } from "vite-plus/test";
 
 import type { FakeTransport } from "#/test/session.ts";
 
-import { mediaType } from "#/api/media-type.ts";
 import { jiraAttach } from "#/commands/jira-attach.ts";
 import { fakeJiraEnv } from "#/test/env.ts";
+import { mediaType } from "#/util/media-type.ts";
 
 const bytes = (text: string) => new TextEncoder().encode(text);
 

@@ -103,6 +103,8 @@ line, or the first `## Comments` or `## Attachments` in older copies.
   overwriting.
 - Confluence uploads local images referenced in the body as attachments. Jira
   update does not support image changes yet.
+- Embedded videos are set to the full width of the text column. Images keep
+  their natural size.
 - After an update, the new `updated` (and for Confluence, `version`, and `title`
   with `--title`) is written back to the frontmatter, so the file can be pushed
   again without a fresh copy.

@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import type { AdfDoc, AdfMark, AdfNode } from "#/adf/types.ts";
 
 import { isOnlyComments } from "#/adf/html.ts";
+import { isVideo } from "#/util/media-type.ts";
 
 export interface FromMarkdownOptions {
 	resolveImage?: (href: string, alt: string) => AdfNode | undefined;
@@ -15,12 +16,15 @@ export type MediaSource =
 	| { type: "external"; url: string }
 	| { type: "file"; id: string; collection: string };
 
-export function mediaNode(source: MediaSource, alt: string): AdfNode {
+const NATURAL_SIZE = { layout: "center" };
+const TEXT_WIDTH = { layout: "center", width: 100, widthType: "percentage" };
+
+export function mediaNode(source: MediaSource, alt: string, href: string): AdfNode {
 	const attrs: Record<string, unknown> = { ...source };
 	if (alt) attrs["alt"] = alt;
 	return {
 		type: "mediaSingle",
-		attrs: { layout: "center" },
+		attrs: isVideo(href) ? TEXT_WIDTH : NATURAL_SIZE,
 		content: [{ type: "media", attrs }],
 	};
 }
@@ -232,7 +236,7 @@ function withUniqueMark(marks: AdfMark[], mark: AdfMark): AdfMark[] {
 }
 
 export function externalMedia(href: string, alt: string): AdfNode {
-	return mediaNode({ type: "external", url: href }, alt);
+	return mediaNode({ type: "external", url: href }, alt, href);
 }
 
 function textToken(text: string): Tokens.Text {
