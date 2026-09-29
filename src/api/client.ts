@@ -10,6 +10,7 @@ export interface Credentials {
 
 export interface MultipartExtras {
 	type?: string;
+	fields?: Record<string, string>;
 }
 
 export interface Transport {
@@ -99,6 +100,7 @@ export class AtlassianClient implements Transport {
 		const form = new FormData();
 		const blob = new Blob([bytes as unknown as Uint8Array<ArrayBuffer>], { type: extras.type });
 		form.append("file", blob, filename);
+		for (const [name, value] of Object.entries(extras.fields ?? {})) form.append(name, value);
 		const res = await this.request(path, {
 			method: "POST",
 			headers: { Accept: "application/json", ...DISABLE_XSRF_CHECK },

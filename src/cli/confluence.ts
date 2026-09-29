@@ -2,6 +2,7 @@ import type { Command } from "commander";
 
 import { jiraAction } from "#/cli/run.ts";
 import { collect, moved, outputOptions } from "#/cli/search-options.ts";
+import { confluenceAttach } from "#/commands/confluence-attach.ts";
 import { confluenceCreate } from "#/commands/confluence-create.ts";
 import { confluenceCql, confluenceList, confluenceSearch } from "#/commands/confluence-search.ts";
 import { confluenceStar, confluenceUnstar } from "#/commands/confluence-star.ts";
@@ -36,6 +37,12 @@ export function registerConfluence(confluence: Command): Command {
 		.option("--star", "star the new page")
 		.option("--dry-run", "show what would be created without writing")
 		.action(jiraAction(confluenceCreate));
+	confluence
+		.command("attach <page> <files...>")
+		.description("Upload files as attachments to a Confluence page (id or URL)")
+		.option("--comment <text>", "attachment comment, applied to every file")
+		.option("--json", "print the uploaded attachments as JSON")
+		.action(jiraAction(confluenceAttach));
 	confluence
 		.command("star [page]")
 		.description("Star a Confluence page (id, URL, or copied file)")

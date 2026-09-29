@@ -1,5 +1,7 @@
-import type { RemoteAttachment } from "#/api/attachments.ts";
+import type { Attached, RemoteAttachment } from "#/api/attachments.ts";
 import type { Transport } from "#/api/client.ts";
+
+import { mediaType } from "#/api/media-type.ts";
 
 interface AttachmentResponse {
 	fileId?: string;
@@ -33,7 +35,15 @@ export async function listAttachments(client: Transport, id: string): Promise<At
 }
 
 interface UploadResponse {
-	results?: { title?: string; extensions?: { fileId?: string } }[];
+	results?: {
+		id?: string;
+		title?: string;
+		extensions?: { fileId?: string; fileSize?: number };
+	}[];
+}
+
+function uploadPath(pageId: string): string {
+	return `/wiki/rest/api/content/${encodeURIComponent(pageId)}/child/attachment`;
 }
 
 export async function uploadAttachment(
@@ -42,14 +52,30 @@ export async function uploadAttachment(
 	filename: string,
 	bytes: Uint8Array,
 ): Promise<string> {
-	const res = await client.postMultipart<UploadResponse>(
-		`/wiki/rest/api/content/${encodeURIComponent(pageId)}/child/attachment`,
-		filename,
-		bytes,
-	);
+	const res = await client.postMultipart<UploadResponse>(uploadPath(pageId), filename, bytes);
 	return (
 		res.results?.[0]?.extensions?.fileId ?? (await fileIdByListing(client, pageId, filename))
 	);
+}
+
+export async function attachToPage(
+	client: Transport,
+	pageId: string,
+	filename: string,
+	bytes: Uint8Array,
+	comment?: string,
+): Promise<Attached> {
+	const res = await client.postMultipart<UploadResponse>(uploadPath(pageId), filename, bytes, {
+		type: mediaType(filename),
+		fields: comment ? { comment } : undefined,
+	});
+	const first = res.results?.[0];
+	if (!first?.id) throw new Error(`Upload of "${filename}" returned no attachment.`);
+	return {
+		filename: first.title ?? filename,
+		id: first.id,
+		size: first.extensions?.fileSize ?? bytes.byteLength,
+	};
 }
 
 async function fileIdByListing(

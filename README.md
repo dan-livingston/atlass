@@ -111,11 +111,15 @@ line, or the first `## Comments` or `## Attachments` in older copies.
 
 ```bash
 atlass jira attach PROJ-123 screenshot.png logs.zip
+atlass confluence attach 123456 diagram.png --comment "v2 layout"
 ```
 
 Uploads files as new attachments, one request per file. Every file is read
 before anything uploads, and the first failed upload stops the run. `--json`
 prints the filename, id, and size of each attachment.
+
+Jira keeps duplicate filenames side by side. Confluence refuses a filename the
+page already has, checked before any upload. `--comment` is Confluence only.
 
 ## Create
 
